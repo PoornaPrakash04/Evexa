@@ -1,0 +1,148 @@
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Poppins, sans-serif;
+}
+
+body{
+height:100vh;
+background:#f5f7fb;
+display:flex;
+align-items:center;
+justify-content:center;
+overflow:hidden;
+}
+
+/* background shapes */
+.background{
+position:absolute;
+width:100%;
+height:100%;
+}
+
+.shape{
+position:absolute;
+border-radius:50%;
+opacity:.35;
+animation:float 8s infinite ease-in-out;
+transition:transform .2s linear;
+}
+
+.s1{
+width:260px;
+height:260px;
+background:linear-gradient(45deg,#ffb347,#ff5f6d);
+left:-80px;
+top:40%;
+}
+
+.s2{
+width:200px;
+height:200px;
+background:linear-gradient(45deg,#36d1dc,#5b86e5);
+right:-80px;
+bottom:50px;
+animation-delay:2s;
+}
+
+.s3{
+width:140px;
+height:140px;
+background:linear-gradient(45deg,#c471f5,#fa71cd);
+top:90px;
+left:45%;
+animation-delay:3s;
+}
+
+.ring{
+width:260px;
+height:260px;
+border:28px solid #40e0d0;
+right:120px;
+top:55%;
+}
+
+@keyframes float{
+0%,100%{transform:translateY(0)}
+50%{transform:translateY(-35px)}
+}
+
+/* container */
+.container{
+width:560px;
+text-align:center;
+position:relative;
+z-index:2;
+}
+
+.gradient{
+background:linear-gradient(90deg,#ff7a18,#32d2aa,#9b5cff);
+-webkit-background-clip:text;
+color:transparent;
+}
+
+.subtitle{
+color:#777;
+margin-bottom:30px;
+}
+
+/* cards */
+.card{
+background:white;
+border-radius:20px;
+padding:22px;
+margin-bottom:20px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+box-shadow:0 12px 28px rgba(0,0,0,.08);
+transition:.35s;
+}
+
+.card:hover{
+transform:translateY(-6px) scale(1.02);
+}
+
+.left{
+display:flex;
+align-items:center;
+gap:18px;
+}
+
+/* icons */
+.icon{
+width:60px;
+height:60px;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:26px;
+}
+
+.student-icon{background:rgba(249,178,51,.18); color:#f9b233;}
+.organizer-icon{background:rgba(142,68,255,.18); color:#8e44ff;}
+.faculty-icon{background:rgba(255,122,24,.18); color:#ff7a18;}
+.admin-icon{background:rgba(31,182,91,.18); color:#1fb65b;}
+
+/* buttons */
+.btn{
+border:none;
+padding:12px 28px;
+border-radius:26px;
+color:white;
+font-weight:600;
+cursor:pointer;
+transition:.25s;
+}
+
+.student .btn{background:#f9b233;}
+.organizer .btn{background:#8e44ff;}
+.faculty .btn{background:#ff7a18;}
+.admin .btn{background:#1fb65b;}
+
+.student .btn:hover{box-shadow:0 8px 20px rgba(249,178,51,.45); transform:scale(1.08);}
+.organizer .btn:hover{box-shadow:0 8px 20px rgba(142,68,255,.45); transform:scale(1.08);}
+.faculty .btn:hover{box-shadow:0 8px 20px rgba(255,122,24,.45); transform:scale(1.08);}
+.admin .btn:hover{box-shadow:0 8px 20px rgba(31,182,91,.45); transform:scale(1.08);}
