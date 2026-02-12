@@ -93,6 +93,7 @@ margin-bottom:10px;
 
 h1 span{
 background:linear-gradient(90deg,#f9b233,#ff7a18);
+background-clip:text;
 -webkit-background-clip:text;
 color:transparent;
 }
