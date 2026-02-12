@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evexa – Organizer dashboard</title>
+  <link rel="stylesheet" href="orgstyle.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+<!-- TOP NAVBAR -->
+<nav class="topnav">
+  <div class="topnav-left">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar"><i class="fa fa-bars"></i></button>
+    <div class="brand">
+      <span class="brand-logo">E</span>
+      <span class="brand-name">EVEXA</span>
+      <span class="brand-sub">Organizer</span>
+    </div>
+  </div>
+  <div class="topnav-center">
+    <div class="global-search">
+      <i class="fa fa-search"></i>
+      <input type="text" placeholder="Search events, venues, members…" />
+    </div>
+  </div>
+  <div class="topnav-right">
+    <button class="nav-icon-btn" id="notifBtn" title="Notifications">
+      <i class="fa fa-bell"></i>
+      <span class="badge" id="notifBadge">3</span>
+    </button>
+    <div class="profile-pill" id="profilePillBtn">
+      <img src="https://api.dicebear.com/7.x/initials/svg?seed=Arjun+Kumar&backgroundColor=6c63ff" alt="Profile" class="profile-avatar" />
+      <div class="profile-info">
+        <span class="profile-name">Arjun Kumar</span>
+        <span class="profile-role">IEEE Club Organizer</span>
+      </div>
+      <i class="fa fa-chevron-down"></i>
+    </div>
+  </div>
+</nav>
+
+<!-- NOTIFICATION PANEL -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-header">
+    <h3>Notifications</h3>
+    <div class="notif-tabs">
+      <button class="ntab active" data-tab="history">History</button>
+      <button class="ntab" data-tab="schedule">Scheduled</button>
+      <button class="ntab" data-tab="requests">Requests</button>
+    </div>
+  </div>
+  <div class="notif-body" id="notifBody"></div>
+</div>
+<div class="overlay" id="overlay"></div>
+
+<!-- LAYOUT WRAPPER -->
+<div class="layout" id="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-page="dashboard">
+        <span class="nav-icon"><i class="fa fa-th-large"></i></span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="#" class="nav-item" data-page="events">
+        <span class="nav-icon"><i class="fa fa-calendar-alt"></i></span>
+        <span class="nav-label">Events</span>
+      </a>
+      <a href="#" class="nav-item" data-page="venue">
+        <span class="nav-icon"><i class="fa fa-map-marker-alt"></i></span>
+        <span class="nav-label">Venue</span>
+      </a>
+      <a href="#" class="nav-item" data-page="announcements">
+        <span class="nav-icon"><i class="fa fa-bullhorn"></i></span>
+        <span class="nav-label">Announcements</span>
+      </a>
+      <a href="#" class="nav-item" data-page="execom">
+        <span class="nav-icon"><i class="fa fa-users"></i></span>
+        <span class="nav-label">Execom</span>
+      </a>
+     
+      <a href="#" class="nav-item" data-page="settings">
+        <span class="nav-icon"><i class="fa fa-cog"></i></span>
+        <span class="nav-label">Settings</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content" id="mainContent">
+
+    <!-- ===== DASHBOARD PAGE ===== -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p class="page-sub">Welcome back, Arjun! Here's what's happening.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('createEventModal')">
+          <i class="fa fa-plus"></i> Add Event
+        </button>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="stats-grid">
+        <div class="stat-card" style="--accent:#6c63ff">
+          <div class="stat-icon"><i class="fa fa-calendar-check"></i></div>
+          <div class="stat-info">
+            <span class="stat-num">24</span>
+            <span class="stat-label">Total Events</span>
+          </div>
+          <div class="stat-chart"><canvas id="chartTotal"></canvas></div>
+        </div>
+        <div class="stat-card" style="--accent:#ff6584">
+          <div class="stat-icon"><i class="fa fa-history"></i></div>
+          <div class="stat-info">
+            <span class="stat-num">18</span>
+            <span class="stat-label">Past Events</span>
+          </div>
+        </div>
+        <div class="stat-card" style="--accent:#43d9a2">
+          <div class="stat-icon"><i class="fa fa-rocket"></i></div>
+          <div class="stat-info">
+            <span class="stat-num">6</span>
+            <span class="stat-label">Upcoming Events</span>
+          </div>
+        </div>
+        <div class="stat-card" style="--accent:#f4a261">
+          <div class="stat-icon"><i class="fa fa-clock"></i></div>
+          <div class="stat-info">
+            <span class="stat-num">3</span>
+            <span class="stat-label">Pending Approvals</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending Approvals -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <h2><i class="fa fa-tasks"></i> Pending Approvals</h2>
+        </div>
+        <div class="approval-list" id="approvalList"></div>
+      </div>
+
+      <!-- Upcoming Events Preview -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <h2><i class="fa fa-calendar"></i> Our Events</h2>
+          <button class="btn btn-outline" onclick="switchPage('events')">View All</button>
+        </div>
+        <div class="event-cards-grid" id="dashEventGrid"></div>
+      </div>
+    </div>
+
+    <!-- ===== EVENTS PAGE ===== -->
+    <div class="page" id="page-events">
+      <div class="page-header">
+        <div>
+          <h1>Events</h1>
+          <p class="page-sub">Browse and manage all club events</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('createEventModal')">
+          <i class="fa fa-plus"></i> Create Event
+        </button>
+      </div>
+      <!-- Search & Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-search">
+          <i class="fa fa-search"></i>
+          <input type="text" id="eventSearch" placeholder="Search by event name…" oninput="filterEvents()" />
+        </div>
+        <select id="filterType" name="filterType" onchange="filterEvents()">
+          <option value="">All Types</option>
+          <option value="Workshop">Workshop</option>
+          <option value="Seminar">Seminar</option>
+          <option value="Hackathon">Hackathon</option>
+          <option value="Cultural">Cultural</option>
+          <option value="Sports">Sports</option>
+        </select>
+        <select id="filterClub" onchange="filterEvents()">
+          <option value="">All Clubs</option>
+          <option>IEEE</option>
+          <option>CSI</option>
+          <option>NSS</option>
+          <option>Rotaract</option>
+        </select>
+        <select id="filterVenue" onchange="filterEvents()">
+          <option value="">All Venues</option>
+          <option>Auditorium</option>
+          <option>Seminar Hall</option>
+          <option>Lab Block</option>
+          <option>Ground</option>
+        </select>
+        <select id="filterFee" onchange="filterEvents()">
+          <option value="">Fee: Any</option>
+          <option value="free">Free</option>
+          <option value="paid">Paid</option>
+        </select>
+        <input type="date" id="filterDate" onchange="filterEvents()" />
+      </div>
+      <div class="event-cards-grid" id="eventsGrid"></div>
+    </div>
+
+    <!-- ===== VENUE PAGE ===== -->
+    <div class="page" id="page-venue">
+      <div class="page-header">
+        <div>
+          <h1>Venue Management</h1>
+          <p class="page-sub">Check availability and book venues</p>
+        </div>
+      </div>
+      <div class="venue-layout">
+        <div class="venue-sidebar-panel">
+          <h3>Venues</h3>
+          <div class="venue-list" id="venueList"></div>
+        </div>
+        <div class="venue-calendar-panel">
+          <div class="venue-cal-header">
+            <button class="btn btn-icon" id="prevDay"><i class="fa fa-chevron-left"></i></button>
+            <h3 id="calDate">Today</h3>
+            <button class="btn btn-icon" id="nextDay"><i class="fa fa-chevron-right"></i></button>
+          </div>
+          <div class="venue-legend">
+            <span class="leg-item"><span class="leg-dot available"></span>Available</span>
+            <span class="leg-item"><span class="leg-dot booked"></span>Booked</span>
+            <span class="leg-item"><span class="leg-dot pending"></span>Pending</span>
+          </div>
+          <div class="time-grid" id="timeGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ANNOUNCEMENTS PAGE ===== -->
+    <div class="page" id="page-announcements">
+      <div class="page-header">
+        <div>
+          <h1>Announcements</h1>
+          <p class="page-sub">Manage club communications</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('addAnnouncementModal')">
+          <i class="fa fa-plus"></i> New Announcement
+        </button>
+      </div>
+      <div class="table-card">
+        <table class="data-table" id="announcementTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Title</th>
+              <th>Club</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="announcementBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== EXECOM PAGE ===== -->
+    <div class="page" id="page-execom">
+      <div class="page-header">
+        <div>
+          <h1>Execom Details</h1>
+          <p class="page-sub">Executive Committee Members</p>
+        </div>
+      </div>
+      <div class="execom-grid" id="execomGrid"></div>
+    </div>
+
+    <!-- ===== PROFILE PAGE ===== -->
+    <div class="page" id="page-profile">
+      <div class="page-header">
+        <h1>Organizer Profile</h1>
+      </div>
+      <div class="profile-layout">
+        <div class="profile-card-main">
+          <div class="profile-banner"></div>
+          <div class="profile-avatar-wrap">
+            <img src="https://api.dicebear.com/7.x/initials/svg?seed=Arjun+Kumar&backgroundColor=6c63ff" alt="Avatar" />
+          </div>
+          <div class="profile-details">
+            <h2>Arjun Kumar</h2>
+            <p class="profile-position">Chairperson – IEEE Club</p>
+            <div class="profile-fields">
+              <div class="pf-row"><span class="pf-label"><i class="fa fa-id-badge"></i> Roll No</span><span class="pf-val">21CS001</span></div>
+              <div class="pf-row"><span class="pf-label"><i class="fa fa-hashtag"></i> Admission No</span><span class="pf-val">LBS2021CS001</span></div>
+              <div class="pf-row"><span class="pf-label"><i class="fa fa-graduation-cap"></i> Class</span><span class="pf-val">S6 CSE – A</span></div>
+              <div class="pf-row"><span class="pf-label"><i class="fa fa-users"></i> Club</span><span class="pf-val">IEEE Student Branch</span></div>
+              <div class="pf-row"><span class="pf-label"><i class="fa fa-envelope"></i> Email</span><span class="pf-val">arjun@lbscek.ac.in</span></div>
+              <div class="pf-row"><span class="pf-label"><i class="fa fa-phone"></i> Phone</span><span class="pf-val">+91 98765 43210</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="profile-stats-side">
+          <div class="pstat-card"><span class="pstat-num">12</span><span class="pstat-label">Events Organized</span></div>
+          <div class="pstat-card"><span class="pstat-num">340</span><span class="pstat-label">Participants</span></div>
+          <div class="pstat-card"><span class="pstat-num">48</span><span class="pstat-label">Activity Points</span></div>
+          <div class="pstat-card"><span class="pstat-num">2</span><span class="pstat-label">Pending Requests</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SETTINGS PAGE ===== -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <h1>Settings</h1>
+      </div>
+      <div class="settings-layout">
+        <div class="settings-section">
+          <h3>Notifications</h3>
+          <div class="setting-row"><span>Email Notifications</span><label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label></div>
+          <div class="setting-row"><span>Push Notifications</span><label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label></div>
+          <div class="setting-row"><span>Event Reminders</span><label class="toggle"><input type="checkbox" /></span></label></div>
+        </div>
+        <div class="settings-section">
+          <h3>Privacy</h3>
+          <div class="setting-row"><span>Show Profile Publicly</span><label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label></div>
+          <div class="setting-row"><span>Allow Event Suggestions</span><label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label></div>
+        </div>
+        <div class="settings-section">
+          <h3>Theme</h3>
+          <div class="setting-row"><span>Dark Mode</span><label class="toggle"><input type="checkbox" id="darkModeToggle" /><span class="slider"></span></label></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ======= MODALS ======= -->
+
+<!-- Event Detail Modal -->
+<div class="modal-overlay" id="eventDetailModal">
+  <div class="modal modal-large">
+    <button class="modal-close" onclick="closeModal('eventDetailModal')"><i class="fa fa-times"></i></button>
+    <div id="eventDetailContent"></div>
+  </div>
+</div>
+
+<!-- Create Event Modal -->
+<div class="modal-overlay" id="createEventModal">
+  <div class="modal modal-large">
+    <button class="modal-close" onclick="closeModal('createEventModal')"><i class="fa fa-times"></i></button>
+    <h2 class="modal-title"><i class="fa fa-plus-circle"></i> Create New Event</h2>
+    <form class="create-event-form" onsubmit="submitCreateEvent(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Event Name *</label>
+          <input type="text" placeholder="e.g. IoT Workshop 2025" required />
+        </div>
+        <div class="form-group">
+          <label>Event Type *</label>
+          <select required>
+            <option value="">Select Type</option>
+            <option>Workshop</option>
+            <option>Seminar</option>
+            <option>Hackathon</option>
+            <option>Cultural</option>
+            <option>Sports</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label>Description *</label>
+          <textarea rows="3" placeholder="Describe the event…" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Date *</label>
+          <input type="date" required />
+        </div>
+        <div class="form-group">
+          <label>Time *</label>
+          <input type="time" required />
+        </div>
+        <div class="form-group">
+          <label>Capacity *</label>
+          <input type="number" placeholder="e.g. 100" required />
+        </div>
+        <div class="form-group">
+          <label>Registration Fee (₹)</label>
+          <input type="number" placeholder="0 for free" />
+        </div>
+        <div class="form-group full-width">
+          <label>Facilities Needed</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" /> Projector</label>
+            <label><input type="checkbox" /> PA System</label>
+            <label><input type="checkbox" /> Laptop</label>
+            <label><input type="checkbox" /> Mics</label>
+            <label><input type="checkbox" /> Chairs</label>
+            <label><input type="checkbox" /> Tables</label>
+          </div>
+        </div>
+        <div class="form-group full-width">
+          <label>Venue Request</label>
+          <div class="multi-venue-section" id="venueSection">
+            <div class="venue-request-row">
+              <select>
+                <option value="">Select Venue</option>
+                <option>Auditorium</option>
+                <option>Seminar Hall A</option>
+                <option>Seminar Hall B</option>
+                <option>Lab Block 1</option>
+                <option>Ground</option>
+              </select>
+              <input type="date" />
+              <input type="time" />
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addVenueRow()">
+            <i class="fa fa-plus"></i> Add Another Venue
+          </button>
+        </div>
+        <div class="form-group">
+          <label>Event Poster</label>
+          <input type="file" accept="image/*" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('createEventModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Send Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Announcement Modal -->
+<div class="modal-overlay" id="addAnnouncementModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addAnnouncementModal')"><i class="fa fa-times"></i></button>
+    <h2 class="modal-title"><i class="fa fa-bullhorn"></i> New Announcement</h2>
+    <form onsubmit="submitAnnouncement(event)">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="annTitle" placeholder="Announcement title" required />
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="annType">
+          <option>General</option>
+          <option>Urgent</option>
+          <option>Event</option>
+          <option>Result</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Message</label>
+        <textarea rows="4" id="annMessage" placeholder="Write your message…" required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('addAnnouncementModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Publish</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="orgscript.js"></script>
+</body>
+</html>
