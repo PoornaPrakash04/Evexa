@@ -23,3 +23,5 @@ app.get("/", (req, res) => {
 app.listen(5000, () => {
   console.log("Server running on http://localhost:5000");
 });
+const venueRoutes = require("./routes/venue");
+app.use("/api/venue", venueRoutes);

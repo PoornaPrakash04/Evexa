@@ -93,7 +93,7 @@ font-size:30px;
 margin-bottom:10px;
 }
 
-span{
+h1 span{
 background:linear-gradient(90deg,#8e44ff,#32d2aa);
 -webkit-background-clip:text;
 color:transparent;
