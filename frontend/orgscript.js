@@ -1,4 +1,7 @@
 // ===================== DATA =====================
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+let currentVenue = "Auditorium";
 
 const events = [
   { id: 1, name: "IoT Workshop 2025", type: "Workshop", club: "IEEE", venue: "Seminar Hall A", date: "2025-03-15", time: "10:00", capacity: 80, registered: 62, fee: 150, status: "upcoming", emoji: "🤖", description: "A hands-on workshop on Internet of Things. Participants will build sensors and connect them to cloud platforms. Includes practical sessions with Arduino and Raspberry Pi.", poster: null },
@@ -59,7 +62,6 @@ const venueBookings = {
 
 // ===================== STATE =====================
 let currentPage = 'dashboard';
-let currentVenue = 'Auditorium';
 let calendarDate = new Date();
 let filteredEvents = [...events];
 let notifTab = 'history';
@@ -72,10 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDashEventGrid();
   renderEventsGrid();
   renderVenueSidebar();
-  renderTimeGrid();
+  
+  renderCalendar();
+
+
   renderAnnouncements();
   renderExecom();
-  updateCalDate();
+ 
   setupSidebar();
   setupNotifications();
   setupDarkMode();
@@ -124,7 +129,7 @@ function switchPage(name) {
   document.getElementById(`page-${name}`).classList.add('active');
   document.querySelector(`.nav-item[data-page="${name}"]`)?.classList.add('active');
   currentPage = name;
-  if (name === 'venue') renderTimeGrid();
+ 
 }
 
 // ===================== NOTIFICATIONS =====================
@@ -180,7 +185,6 @@ function renderDashboardApprovals() {
         <span>${e.club} • ${formatDate(e.date)} • ${e.venue}</span>
       </div>
       <div class="approval-actions">
-        <button class="btn btn-sm btn-success" onclick="showToast('✅ Sent for approval!')"><i class="fa fa-paper-plane"></i> Submit</button>
         <button class="btn btn-sm btn-outline" onclick="openEventDetail(${e.id})"><i class="fa fa-eye"></i> View</button>
       </div>
     </div>
@@ -306,7 +310,6 @@ function buildEventDetail(e) {
 
     <div class="event-detail-tabs">
       <button class="detail-tab active" data-tab="info">Description</button>
-      <button class="detail-tab" data-tab="points">Activity Points</button>
       <button class="detail-tab" data-tab="registrations">Registrations</button>
       <button class="detail-tab" data-tab="qr">QR / Attendance</button>
       <button class="detail-tab" data-tab="resources">Resources</button>
@@ -362,62 +365,127 @@ function buildEventDetail(e) {
 }
 
 // ===================== VENUE =====================
+
 function renderVenueSidebar() {
   const list = document.getElementById('venueList');
   list.innerHTML = venues.map(v => `
-    <div class="venue-list-item ${v === currentVenue ? 'active' : ''}" onclick="selectVenue('${v}')">${v}</div>
+    <div class="venue-list-item" onclick="selectVenue('${v}')">
+  ${v}
+</div>
+
   `).join('');
 }
 
+
 function selectVenue(name) {
   currentVenue = name;
-  renderVenueSidebar();
-  renderTimeGrid();
+
+  console.log("Switched to venue:", currentVenue);
+
+  renderCalendar(); // re-draw calendar
 }
 
-function renderTimeGrid() {
-  const grid = document.getElementById('timeGrid');
-  const bookings = venueBookings[currentVenue] || {};
-  let html = '';
-  for (let h = 8; h <= 21; h++) {
-    const status = bookings[h];
-    const label = formatHour(h);
-    const slotClass = status === 'booked' ? 'slot-booked' : status === 'pending' ? 'slot-pending' : 'slot-available';
-    const slotText = status === 'booked' ? '🔒 Booked' : status === 'pending' ? '⏳ Pending Approval' : '✅ Available – Click to Book';
-    html += `
-      <div class="time-slot">
-        <div class="time-label">${label}</div>
-        <div class="slot-block ${slotClass}" onclick="handleSlotClick(${h}, '${status || 'available'}')">${slotText}</div>
-      </div>
-    `;
+
+
+// Example booking data (replace with real data later)
+
+
+function renderCalendar() {
+
+
+  const month = currentMonth;
+  const year = currentYear;
+
+  console.log("Month:", month);
+  console.log("Year:", year);
+ 
+  const monthNames = [
+  "January", "February", "March", "April",
+  "May", "June", "July", "August",
+  "September", "October", "November", "December"
+];
+
+const title = document.getElementById("calendarTitle");
+if (title) {
+  title.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+}
+
+  console.log("Current venue:", currentVenue);
+  console.log("Venue bookings:", venueBookings[currentVenue]);
+
+  const calendar = document.getElementById("calendarGrid");
+  if (!calendar) return;
+
+  calendar.innerHTML = "";
+// 👇 ADD THIS PART
+const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+days.forEach(day => {
+  const header = document.createElement("div");
+  header.classList.add("day-header");
+  header.textContent = day;
+  calendar.appendChild(header);
+});
+
+
+  const firstDay = new Date(year, month).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Empty cells before first date
+  for (let i = 0; i < firstDay; i++) {
+    const empty = document.createElement("div");
+    empty.classList.add("calendar-day", "empty");
+    calendar.appendChild(empty);
   }
-  grid.innerHTML = html;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cell = document.createElement("div");
+    cell.classList.add("calendar-day");
+    cell.textContent = day;
+
+    const bookings = venueBookings[currentVenue] || {};
+
+if (bookings[day] === "booked") {
+  cell.classList.add("booked");
+} 
+else if (bookings[day] === "pending") {
+  cell.classList.add("pending");
 }
 
-function handleSlotClick(hour, status) {
-  if (status === 'available') {
-    showToast(`📅 Booking request sent for ${currentVenue} at ${formatHour(hour)}`);
-    venueBookings[currentVenue] = venueBookings[currentVenue] || {};
-    venueBookings[currentVenue][hour] = 'pending';
-    renderTimeGrid();
-  } else if (status === 'pending') {
-    showToast('⏳ This slot is awaiting approval.');
-  } else {
-    showToast('❌ This slot is already booked.');
+
+    calendar.appendChild(cell);
   }
 }
 
-function updateCalDate() {
-  document.getElementById('calDate').textContent = calendarDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-}
+document.getElementById("prevMonth")?.addEventListener("click", () => {
+  currentMonth--;
+  if (currentMonth < 0) {
+    currentMonth = 11;
+    currentYear--;
+  }
+  renderCalendar();
+});
+
+document.getElementById("nextMonth")?.addEventListener("click", () => {
+  currentMonth++;
+  if (currentMonth > 11) {
+    currentMonth = 0;
+    currentYear++;
+  }
+  renderCalendar();
+});
+
+
+
+
 
 document.getElementById('prevDay')?.addEventListener('click', () => {
   calendarDate.setDate(calendarDate.getDate() - 1);
-  updateCalDate();
+ 
 });
 document.getElementById('nextDay')?.addEventListener('click', () => {
   calendarDate.setDate(calendarDate.getDate() + 1);
-  updateCalDate();
+  
 });
 
 // ===================== ANNOUNCEMENTS =====================

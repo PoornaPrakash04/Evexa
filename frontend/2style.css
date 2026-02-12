@@ -77,10 +77,12 @@ z-index:2;
 }
 
 .gradient{
-background:linear-gradient(90deg,#ff7a18,#32d2aa,#9b5cff);
--webkit-background-clip:text;
-color:transparent;
+  background: linear-gradient(90deg,#ff7a18,#32d2aa,#9b5cff);
+  background-clip: text;            
+  -webkit-background-clip: text;   
+  color: transparent;
 }
+
 
 .subtitle{
 color:#777;

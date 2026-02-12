@@ -20,11 +20,6 @@
       <span class="brand-sub">Organizer</span>
     </div>
   </div>
-  <div class="topnav-center">
-    <div class="global-search">
-      <i class="fa fa-search"></i>
-      <input type="text" placeholder="Search events, venues, members…" />
-    </div>
   </div>
   <div class="topnav-right">
     <button class="nav-icon-btn" id="notifBtn" title="Notifications">
@@ -207,33 +202,47 @@
 
     <!-- ===== VENUE PAGE ===== -->
     <div class="page" id="page-venue">
-      <div class="page-header">
-        <div>
-          <h1>Venue Management</h1>
-          <p class="page-sub">Check availability and book venues</p>
-        </div>
-      </div>
-      <div class="venue-layout">
-        <div class="venue-sidebar-panel">
-          <h3>Venues</h3>
-          <div class="venue-list" id="venueList"></div>
-        </div>
-        <div class="venue-calendar-panel">
-          <div class="venue-cal-header">
-            <button class="btn btn-icon" id="prevDay"><i class="fa fa-chevron-left"></i></button>
-            <h3 id="calDate">Today</h3>
-            <button class="btn btn-icon" id="nextDay"><i class="fa fa-chevron-right"></i></button>
-          </div>
-          <div class="venue-legend">
-            <span class="leg-item"><span class="leg-dot available"></span>Available</span>
-            <span class="leg-item"><span class="leg-dot booked"></span>Booked</span>
-            <span class="leg-item"><span class="leg-dot pending"></span>Pending</span>
-          </div>
-          <div class="time-grid" id="timeGrid"></div>
-        </div>
-      </div>
+         <div class="page-header">
+             <div> <h1>Venue Management</h1>
+                 <p class="page-sub">Check availability and book venues</p> 
+                </div> </div>
+                 <div class="venue-layout"> 
+                    <div class="venue-sidebar-panel"> <h3>Venues</h3> 
+                        <div class="venue-list" id="venueList"></div>
+                     </div> 
+                     <div class="venue-calendar-panel"> 
+                         <div class="calendar-container">
+
+    <div class="calendar-header">
+        <button class="btn btn-icon" id="prevMonth">
+            <i class="fa fa-chevron-left"></i>
+        </button>
+
+        <div class="calendar-header">
+    <button class="btn btn-icon" id="prevMonth">
+        <i class="fa fa-chevron-left"></i>
+    </button>
+
+    <div class="calendar-title">
+        <h3 id="calendarTitle"></h3>
     </div>
 
+    <button class="btn btn-icon" id="nextMonth">
+        <i class="fa fa-chevron-right"></i>
+    </button>
+</div>
+
+        <button class="btn btn-icon" id="nextMonth">
+            <i class="fa fa-chevron-right"></i>
+        </button>
+    </div>
+
+    <div class="calendar-grid" id="calendarGrid"></div>
+
+</div>
+ </div> 
+ </div>
+</div>
     <!-- ===== ANNOUNCEMENTS PAGE ===== -->
     <div class="page" id="page-announcements">
       <div class="page-header">
@@ -299,19 +308,20 @@
           </div>
         </div>
         <div class="profile-stats-side">
-          <div class="pstat-card"><span class="pstat-num">12</span><span class="pstat-label">Events Organized</span></div>
-          <div class="pstat-card"><span class="pstat-num">340</span><span class="pstat-label">Participants</span></div>
-          <div class="pstat-card"><span class="pstat-num">48</span><span class="pstat-label">Activity Points</span></div>
+          <div class="pstat-card"><span class="pstat-num">12</span><span class="pstat-label">Events Organized</span></div><br>
+          <div class="pstat-card"><span class="pstat-num">340</span><span class="pstat-label">Participants</span></div><br>
           <div class="pstat-card"><span class="pstat-num">2</span><span class="pstat-label">Pending Requests</span></div>
         </div>
       </div>
     </div>
 
     <!-- ===== SETTINGS PAGE ===== -->
+    
     <div class="page" id="page-settings">
       <div class="page-header">
         <h1>Settings</h1>
       </div>
+    <center>
       <div class="settings-layout">
         <div class="settings-section">
           <h3>Notifications</h3>
@@ -330,15 +340,14 @@
         </div>
       </div>
     </div>
-
   </main>
 </div>
-
+</center>
 <!-- ======= MODALS ======= -->
 
 <!-- Event Detail Modal -->
 <div class="modal-overlay" id="eventDetailModal">
-  <div class="modal modal-large">
+  <div class="modal ">
     <button class="modal-close" onclick="closeModal('eventDetailModal')"><i class="fa fa-times"></i></button>
     <div id="eventDetailContent"></div>
   </div>
