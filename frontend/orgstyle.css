@@ -972,7 +972,4 @@ textarea { resize: vertical; }
   align-items: center;
   flex-wrap: wrap;
 }
-.modal {
-  background: linear-gradient(135deg, #f5f6fb, #ede9ff);
-  padding: 60px;
-}
+
