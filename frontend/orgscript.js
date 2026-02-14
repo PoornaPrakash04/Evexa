@@ -1,16 +1,102 @@
+async function loadOrganizerProfile() {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    window.location.href = "ogsignin.html";
+    return;
+  }
+
+  try {
+    const res = await fetch("http://localhost:5000/api/auth/me", {
+      headers: {
+        Authorization: "Bearer " + token
+      }
+    });
+
+    if (!res.ok) {
+      localStorage.removeItem("token");
+      window.location.href = "ogsignin.html";
+      return;
+    }
+
+    const data = await res.json();
+
+    // Navbar
+    const navProfileName = document.querySelector(".profile-name");
+    const navProfileRole = document.querySelector(".profile-role");
+    
+    if (navProfileName) {
+      navProfileName.textContent = data.name || "User";
+    }
+    if (navProfileRole) {
+      navProfileRole.textContent = data.club ? `${data.club} Organizer` : "Organizer";
+    }
+
+    const navProfileAvatar = document.querySelector(".profile-avatar");
+    if (navProfileAvatar && data.name) {
+      const seed = data.name.replace(/ /g, '+');
+      navProfileAvatar.src = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=6c63ff`;
+    }
+
+    // Profile Page
+    const profilePageTitle = document.querySelector("#page-profile h2");
+    if (profilePageTitle) {
+      profilePageTitle.textContent = data.name || "Organizer";
+    }
+
+    const profilePosition = document.querySelector(".profile-position");
+    if (profilePosition) {
+      profilePosition.textContent = data.club ? `Organizer – ${data.club}` : "Organizer";
+    }
+
+    const profileAvatarWrap = document.querySelector(".profile-avatar-wrap img");
+    if (profileAvatarWrap && data.name) {
+      const seed = data.name.replace(/ /g, '+');
+      profileAvatarWrap.src = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=6c63ff`;
+    }
+
+    const pfClub = document.getElementById("pfClub");
+    if (pfClub) {
+      pfClub.textContent = data.club || "N/A";
+    }
+
+    const pfEmail = document.getElementById("pfEmail");
+    if (pfEmail) {
+      pfEmail.textContent = data.email || "N/A";
+    }
+
+    const pfPhone = document.getElementById("pfPhone");
+    if (pfPhone) {
+      pfPhone.textContent = data.phone || "N/A";
+    }
+
+    const pfRollNo = document.getElementById("pfRollNo");
+    if (pfRollNo && data.rollNo) {
+      pfRollNo.textContent = data.rollNo;
+    }
+
+    const pfAdmissionNo = document.getElementById("pfAdmissionNo");
+    if (pfAdmissionNo && data.admissionNo) {
+      pfAdmissionNo.textContent = data.admissionNo;
+    }
+
+    const pfClass = document.getElementById("pfClass");
+    if (pfClass && data.class) {
+      pfClass.textContent = data.class;
+    }
+
+  } catch (err) {
+    console.error("Profile load error:", err);
+  }
+}
+
 // ===================== DATA =====================
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let currentVenue = "Auditorium";
 
-const events = [
-  { id: 1, name: "IoT Workshop 2025", type: "Workshop", club: "IEEE", venue: "Seminar Hall A", date: "2025-03-15", time: "10:00", capacity: 80, registered: 62, fee: 150, status: "upcoming", emoji: "🤖", description: "A hands-on workshop on Internet of Things. Participants will build sensors and connect them to cloud platforms. Includes practical sessions with Arduino and Raspberry Pi.", poster: null },
-  { id: 2, name: "Tech Talks: AI Edition", type: "Seminar", club: "CSI", venue: "Auditorium", date: "2025-03-22", time: "14:00", capacity: 200, registered: 185, fee: 0, status: "upcoming", emoji: "🧠", description: "Industry experts share insights on the future of AI, machine learning trends, and career opportunities in the field.", poster: null },
-  { id: 3, name: "Code Fiesta Hackathon", type: "Hackathon", club: "IEEE", venue: "Lab Block", date: "2025-02-10", time: "09:00", capacity: 120, registered: 120, fee: 200, status: "past", emoji: "💻", description: "24-hour hackathon where teams compete to build innovative solutions for real-world problems.", poster: null },
-  { id: 4, name: "Cultural Nite 2025", type: "Cultural", club: "NSS", venue: "Auditorium", date: "2025-04-05", time: "17:00", capacity: 500, registered: 320, fee: 0, status: "upcoming", emoji: "🎭", description: "Annual cultural night featuring dance, music, drama and other cultural performances by students.", poster: null },
-  { id: 5, name: "Python Bootcamp", type: "Workshop", club: "CSI", venue: "Lab Block", date: "2025-01-20", time: "10:00", capacity: 60, registered: 58, fee: 100, status: "past", emoji: "🐍", description: "Intensive 2-day Python bootcamp covering data structures, algorithms, and web development basics.", poster: null },
-  { id: 6, name: "Robo Race 2025", type: "Workshop", club: "IEEE", venue: "Ground", date: "2025-04-18", time: "09:00", capacity: 150, registered: 45, fee: 300, status: "pending", emoji: "🏎️", description: "Inter-college robot racing competition. Design and build autonomous robots.", poster: null },
-];
+let events = [];
+let filteredEvents = [];
 
 const notifications = {
   history: [
@@ -63,28 +149,69 @@ const venueBookings = {
 // ===================== STATE =====================
 let currentPage = 'dashboard';
 let calendarDate = new Date();
-let filteredEvents = [...events];
 let notifTab = 'history';
 let currentEventDetail = null;
 let detailTab = 'info';
 
+// ===================== LOAD EVENTS FROM BACKEND =====================
+async function loadEvents() {
+  const token = localStorage.getItem("token");
+
+  try {
+    const response = await fetch("http://localhost:5000/api/events/my", {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    if (!response.ok) {
+      console.error("Failed to load events");
+      return;
+    }
+
+    events = await response.json();
+    filteredEvents = [...events];
+
+    renderDashboardApprovals();
+    renderDashEventGrid();
+    renderEventsGrid();
+    updateDashboardStats();
+
+  } catch (error) {
+    console.error("Event load error:", error);
+  }
+}
+
+function updateDashboardStats() {
+  const total = events.length;
+  const past = events.filter(e => e.status === "past").length;
+  const upcoming = events.filter(e => e.status === "upcoming").length;
+  const pending = events.filter(e => e.status === "pending").length;
+
+  const stats = document.querySelectorAll(".stat-num");
+
+  if (stats.length >= 4) {
+    stats[0].textContent = total;
+    stats[1].textContent = past;
+    stats[2].textContent = upcoming;
+    stats[3].textContent = pending;
+  }
+}
+
 // ===================== INIT =====================
-document.addEventListener('DOMContentLoaded', () => {
-  renderDashboardApprovals();
-  renderDashEventGrid();
-  renderEventsGrid();
-  renderVenueSidebar();
-  
-  renderCalendar();
-
-
-  renderAnnouncements();
-  renderExecom();
- 
+document.addEventListener('DOMContentLoaded', async () => {
+  // Setup event listeners first
   setupSidebar();
   setupNotifications();
   setupDarkMode();
   setupProfile();
+
+  // Load data from backend
+  await loadOrganizerProfile();
+  await loadEvents();
+
+  // Render initial dashboard content
+  renderExecom();
 });
 
 // ===================== SIDEBAR & NAVIGATION =====================
@@ -93,6 +220,8 @@ function setupSidebar() {
   const sidebar = document.getElementById('sidebar');
   const mainContent = document.getElementById('mainContent');
   const overlay = document.getElementById('overlay');
+
+  if (!toggle || !sidebar) return;
 
   toggle.addEventListener('click', () => {
     const isMobile = window.innerWidth <= 768;
@@ -108,7 +237,10 @@ function setupSidebar() {
   overlay.addEventListener('click', () => {
     sidebar.classList.remove('open');
     overlay.classList.remove('active');
-    document.getElementById('notifPanel').classList.remove('open');
+    const notifPanel = document.getElementById('notifPanel');
+    if (notifPanel) {
+      notifPanel.classList.remove('open');
+    }
   });
 
   document.querySelectorAll('.nav-item[data-page]').forEach(item => {
@@ -126,10 +258,27 @@ function setupSidebar() {
 function switchPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById(`page-${name}`).classList.add('active');
-  document.querySelector(`.nav-item[data-page="${name}"]`)?.classList.add('active');
+  
+  const targetPage = document.getElementById(`page-${name}`);
+  const targetNav = document.querySelector(`.nav-item[data-page="${name}"]`);
+  
+  if (targetPage) {
+    targetPage.classList.add('active');
+  }
+  
+  if (targetNav) {
+    targetNav.classList.add('active');
+  }
+  
   currentPage = name;
- 
+  
+  // Render page-specific content when switching
+  if (name === 'venue') {
+    renderVenueSidebar();
+    renderCalendar();
+  } else if (name === 'announcements') {
+    renderAnnouncements();
+  }
 }
 
 // ===================== NOTIFICATIONS =====================
@@ -137,6 +286,8 @@ function setupNotifications() {
   const btn = document.getElementById('notifBtn');
   const panel = document.getElementById('notifPanel');
   const overlay = document.getElementById('overlay');
+
+  if (!btn) return;
 
   btn.addEventListener('click', () => {
     panel.classList.toggle('open');
@@ -158,25 +309,31 @@ function setupNotifications() {
 function renderNotifications(tab) {
   const body = document.getElementById('notifBody');
   const items = notifications[tab] || [];
-  if (!items.length) { body.innerHTML = `<div class="empty-state"><i class="fa fa-bell-slash"></i><p>No notifications</p></div>`; return; }
+  if (!items.length) {
+    body.innerHTML = `<div class="empty-state"><i class="fa fa-bell-slash"></i><p>No notifications</p></div>`;
+    return;
+  }
   body.innerHTML = items.map(n => `
     <div class="notif-item">
       <div class="notif-dot" style="background:${n.color}"></div>
       <div class="notif-text">
         <p>${n.text}</p>
         <span>${n.time}</span>
-       
       </div>
     </div>
   `).join('');
 }
 
-
 // ===================== DASHBOARD =====================
 function renderDashboardApprovals() {
   const list = document.getElementById('approvalList');
+  if (!list) return;
+  
   const pending = events.filter(e => e.status === 'pending');
-  if (!pending.length) { list.innerHTML = `<div class="empty-state"><i class="fa fa-check-circle"></i><p>No pending approvals</p></div>`; return; }
+  if (!pending.length) {
+    list.innerHTML = `<div class="empty-state"><i class="fa fa-check-circle"></i><p>No pending approvals</p></div>`;
+    return;
+  }
   list.innerHTML = pending.map(e => `
     <div class="approval-item">
       <span class="event-type-badge">${e.emoji}</span>
@@ -193,6 +350,8 @@ function renderDashboardApprovals() {
 
 function renderDashEventGrid() {
   const grid = document.getElementById('dashEventGrid');
+  if (!grid) return;
+  
   const subset = events.slice(0, 4);
   grid.innerHTML = subset.map(e => createEventCard(e)).join('');
   grid.querySelectorAll('.event-card').forEach((card, i) => {
@@ -203,6 +362,8 @@ function renderDashEventGrid() {
 // ===================== EVENTS =====================
 function renderEventsGrid() {
   const grid = document.getElementById('eventsGrid');
+  if (!grid) return;
+  
   if (!filteredEvents.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><i class="fa fa-search"></i><p>No events found matching your filters.</p></div>`;
     return;
@@ -270,7 +431,6 @@ function openEventDetail(id) {
   detailTab = 'info';
   document.getElementById('eventDetailContent').innerHTML = buildEventDetail(currentEventDetail);
   openModal('eventDetailModal');
-  // bind tab clicks after render
   document.querySelectorAll('.detail-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
@@ -319,16 +479,6 @@ function buildEventDetail(e) {
       <p style="line-height:1.7;color:var(--text-muted);font-size:0.9rem">${e.description}</p>
     </div>
 
-    <div class="detail-tab-content" id="dtab-points">
-      <div class="activity-points-list">
-        <div class="ap-item"><span>Participation</span><span class="ap-pts">+2 pts</span></div>
-        <div class="ap-item"><span>Attendance (Full Day)</span><span class="ap-pts">+3 pts</span></div>
-        <div class="ap-item"><span>Certificate Earned</span><span class="ap-pts">+1 pt</span></div>
-        <div class="ap-item"><span>Winner / Prize</span><span class="ap-pts">+5 pts</span></div>
-        <div class="ap-item" style="background:var(--primary-light)"><span><b>Maximum Points</b></span><span class="ap-pts"><b>+11 pts</b></span></div>
-      </div>
-    </div>
-
     <div class="detail-tab-content" id="dtab-registrations">
       <p style="margin-bottom:12px;font-size:0.85rem;color:var(--text-muted)">${e.registered} registrations of ${e.capacity} capacity</p>
       <div style="background:var(--bg);border-radius:8px;height:8px;margin-bottom:16px;overflow:hidden">
@@ -365,73 +515,60 @@ function buildEventDetail(e) {
 }
 
 // ===================== VENUE =====================
-
 function renderVenueSidebar() {
   const list = document.getElementById('venueList');
+  if (!list) return;
+  
   list.innerHTML = venues.map(v => `
-    <div class="venue-list-item" onclick="selectVenue('${v}')">
-  ${v}
-</div>
-
+    <div class="venue-list-item ${v === currentVenue ? 'active' : ''}" onclick="selectVenue('${v}')">
+      ${v}
+    </div>
   `).join('');
 }
 
-
 function selectVenue(name) {
   currentVenue = name;
-
-  console.log("Switched to venue:", currentVenue);
-
-  renderCalendar(); // re-draw calendar
+  
+  document.querySelectorAll('.venue-list-item').forEach(item => {
+    item.classList.remove('active');
+    if (item.textContent.trim() === name) {
+      item.classList.add('active');
+    }
+  });
+  
+  renderCalendar();
 }
-
-
-
-// Example booking data (replace with real data later)
-
 
 function renderCalendar() {
-
-
-  const month = currentMonth;
-  const year = currentYear;
-
-  console.log("Month:", month);
-  console.log("Year:", year);
- 
-  const monthNames = [
-  "January", "February", "March", "April",
-  "May", "June", "July", "August",
-  "September", "October", "November", "December"
-];
-
-const title = document.getElementById("calendarTitle");
-if (title) {
-  title.textContent = `${monthNames[currentMonth]} ${currentYear}`;
-}
-
-  console.log("Current venue:", currentVenue);
-  console.log("Venue bookings:", venueBookings[currentVenue]);
-
   const calendar = document.getElementById("calendarGrid");
   if (!calendar) return;
 
+  const monthNames = [
+    "January", "February", "March", "April",
+    "May", "June", "July", "August",
+    "September", "October", "November", "December"
+  ];
+
+  const title = document.getElementById("calendarTitle");
+  if (title) {
+    title.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+  }
+
   calendar.innerHTML = "";
-// 👇 ADD THIS PART
-const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-days.forEach(day => {
-  const header = document.createElement("div");
-  header.classList.add("day-header");
-  header.textContent = day;
-  calendar.appendChild(header);
-});
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  days.forEach(day => {
+    const header = document.createElement("div");
+    header.classList.add("day-header");
+    header.textContent = day;
+    calendar.appendChild(header);
+  });
 
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-  const firstDay = new Date(year, month).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const bookings = venueBookings[currentVenue] || {};
 
-  // Empty cells before first date
   for (let i = 0; i < firstDay; i++) {
     const empty = document.createElement("div");
     empty.classList.add("calendar-day", "empty");
@@ -443,54 +580,60 @@ days.forEach(day => {
     cell.classList.add("calendar-day");
     cell.textContent = day;
 
-    const bookings = venueBookings[currentVenue] || {};
-
-if (bookings[day] === "booked") {
-  cell.classList.add("booked");
-} 
-else if (bookings[day] === "pending") {
-  cell.classList.add("pending");
-}
-
+    if (bookings[day] === "booked") {
+      cell.classList.add("booked");
+      cell.title = `Day ${day} - Booked`;
+    } else if (bookings[day] === "pending") {
+      cell.classList.add("pending");
+      cell.title = `Day ${day} - Pending Approval`;
+    } else {
+      cell.classList.add("available");
+      cell.title = `Day ${day} - Available`;
+    }
 
     calendar.appendChild(cell);
   }
 }
 
-document.getElementById("prevMonth")?.addEventListener("click", () => {
-  currentMonth--;
-  if (currentMonth < 0) {
-    currentMonth = 11;
-    currentYear--;
-  }
-  renderCalendar();
-});
+// Month navigation
+const prevMonthBtn = document.getElementById("prevMonth");
+const nextMonthBtn = document.getElementById("nextMonth");
 
-document.getElementById("nextMonth")?.addEventListener("click", () => {
-  currentMonth++;
-  if (currentMonth > 11) {
-    currentMonth = 0;
-    currentYear++;
-  }
-  renderCalendar();
-});
+if (prevMonthBtn) {
+  prevMonthBtn.addEventListener("click", () => {
+    currentMonth--;
+    if (currentMonth < 0) {
+      currentMonth = 11;
+      currentYear--;
+    }
+    renderCalendar();
+  });
+}
 
-
-
-
-
-document.getElementById('prevDay')?.addEventListener('click', () => {
-  calendarDate.setDate(calendarDate.getDate() - 1);
- 
-});
-document.getElementById('nextDay')?.addEventListener('click', () => {
-  calendarDate.setDate(calendarDate.getDate() + 1);
-  
-});
+if (nextMonthBtn) {
+  nextMonthBtn.addEventListener("click", () => {
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
+    renderCalendar();
+  });
+}
 
 // ===================== ANNOUNCEMENTS =====================
 function renderAnnouncements() {
   const tbody = document.getElementById('announcementBody');
+  if (!tbody) return;
+  
+  if (!announcements.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">
+      <i class="fa fa-bullhorn" style="font-size:48px;margin-bottom:16px;opacity:0.3;display:block"></i>
+      No announcements yet
+    </td></tr>`;
+    return;
+  }
+  
   tbody.innerHTML = announcements.map((a, i) => `
     <tr>
       <td>${i + 1}</td>
@@ -509,14 +652,25 @@ function renderAnnouncements() {
 
 function deleteAnnouncement(id) {
   const idx = announcements.findIndex(a => a.id === id);
-  if (idx > -1) { announcements.splice(idx, 1); renderAnnouncements(); showToast('🗑️ Announcement deleted.'); }
+  if (idx > -1) {
+    announcements.splice(idx, 1);
+    renderAnnouncements();
+    showToast('🗑️ Announcement deleted.');
+  }
 }
 
 function submitAnnouncement(e) {
   e.preventDefault();
   const title = document.getElementById('annTitle').value;
   const type = document.getElementById('annType').value;
-  announcements.unshift({ id: Date.now(), title, club: 'IEEE', date: new Date().toISOString().split('T')[0], type, status: 'Active' });
+  announcements.unshift({
+    id: Date.now(),
+    title,
+    club: 'IEEE',
+    date: new Date().toISOString().split('T')[0],
+    type,
+    status: 'Active'
+  });
   renderAnnouncements();
   closeModal('addAnnouncementModal');
   showToast('📢 Announcement published!');
@@ -525,6 +679,8 @@ function submitAnnouncement(e) {
 // ===================== EXECOM =====================
 function renderExecom() {
   const grid = document.getElementById('execomGrid');
+  if (!grid) return;
+  
   grid.innerHTML = execomMembers.map(m => `
     <div class="execom-card" onclick="showToast('👤 ${m.name} – ${m.position}')">
       <img src="https://api.dicebear.com/7.x/initials/svg?seed=${m.seed}&backgroundColor=${m.color}" alt="${m.name}" class="execom-avatar" />
@@ -558,21 +714,26 @@ function submitCreateEvent(e) {
 // ===================== PROFILE =====================
 function setupProfile() {
   const profileBtn = document.getElementById('profilePillBtn');
-  let lastPage = 'dashboard'; // store last page before profile
+  if (!profileBtn) return;
+  
+  let lastPage = 'dashboard';
 
-  profileBtn?.addEventListener('click', () => {
+  profileBtn.addEventListener('click', () => {
     if (currentPage !== 'profile') {
-      lastPage = currentPage;        // save current page
-      switchPage('profile');          // open profile
+      lastPage = currentPage;
+      switchPage('profile');
     } else {
-      switchPage(lastPage);           // go back to last page
+      switchPage(lastPage);
     }
   });
 }
 
 // ===================== DARK MODE =====================
 function setupDarkMode() {
-  document.getElementById('darkModeToggle')?.addEventListener('change', function () {
+  const toggle = document.getElementById('darkModeToggle');
+  if (!toggle) return;
+  
+  toggle.addEventListener('change', function () {
     document.body.classList.toggle('dark', this.checked);
     showToast(this.checked ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
   });
@@ -582,9 +743,11 @@ function setupDarkMode() {
 function openModal(id) {
   document.getElementById(id).classList.add('open');
 }
+
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
+
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) overlay.classList.remove('open');
@@ -594,6 +757,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // ===================== TOAST =====================
 function showToast(message) {
   const toast = document.getElementById('toast');
+  if (!toast) return;
   toast.textContent = message;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3000);
@@ -604,13 +768,16 @@ function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
+
 function formatTime(t) {
   const [h, m] = t.split(':').map(Number);
   return `${h > 12 ? h - 12 : h}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 }
+
 function formatHour(h) {
   return `${h > 12 ? h - 12 : h}:00 ${h >= 12 ? 'PM' : 'AM'}`;
 }
+
 function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }

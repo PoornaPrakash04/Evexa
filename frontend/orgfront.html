@@ -10,7 +10,7 @@
 </head>
 <body>
 
-<!-- TOP NAVBAR -->
+<!-- UPDATED TOP NAVBAR - Remove hardcoded values -->
 <nav class="topnav">
   <div class="topnav-left">
     <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar"><i class="fa fa-bars"></i></button>
@@ -20,17 +20,16 @@
       <span class="brand-sub">Organizer</span>
     </div>
   </div>
-  </div>
   <div class="topnav-right">
     <button class="nav-icon-btn" id="notifBtn" title="Notifications">
       <i class="fa fa-bell"></i>
       <span class="badge" id="notifBadge">3</span>
     </button>
     <div class="profile-pill" id="profilePillBtn">
-      <img src="https://api.dicebear.com/7.x/initials/svg?seed=Arjun+Kumar&backgroundColor=6c63ff" alt="Profile" class="profile-avatar" />
+      <img src="https://api.dicebear.com/7.x/initials/svg?seed=User&backgroundColor=6c63ff" alt="Profile" class="profile-avatar" />
       <div class="profile-info">
-        <span class="profile-name">Arjun Kumar</span>
-        <span class="profile-role">IEEE Club Organizer</span>
+        <span class="profile-name">Loading...</span>
+        <span class="profile-role">Organizer</span>
       </div>
       <i class="fa fa-chevron-down"></i>
     </div>
@@ -93,7 +92,7 @@
       <div class="page-header">
         <div>
           <h1>Dashboard</h1>
-          <p class="page-sub">Welcome back, Arjun! Here's what's happening.</p>
+          <p class="page-sub">Welcome back! Here's what's happening.</p>
         </div>
         <button class="btn btn-primary" onclick="openModal('createEventModal')">
           <i class="fa fa-plus"></i> Add Event
@@ -202,47 +201,45 @@
 
     <!-- ===== VENUE PAGE ===== -->
     <div class="page" id="page-venue">
-         <div class="page-header">
-             <div> <h1>Venue Management</h1>
-                 <p class="page-sub">Check availability and book venues</p> 
-                </div> </div>
-                 <div class="venue-layout"> 
-                    <div class="venue-sidebar-panel"> <h3>Venues</h3> 
-                        <div class="venue-list" id="venueList"></div>
-                     </div> 
-                     <div class="venue-calendar-panel"> 
-                         <div class="calendar-container">
+  <div class="page-header">
+    <div>
+      <h1>Venue Management</h1>
+      <p class="page-sub">Check availability and book venues</p>
+    </div>
+  </div>
 
-    <div class="calendar-header">
-        <button class="btn btn-icon" id="prevMonth">
-            <i class="fa fa-chevron-left"></i>
-        </button>
+  <div class="venue-layout">
+
+    <div class="venue-sidebar-panel">
+      <h3>Venues</h3>
+      <div class="venue-list" id="venueList"></div>
+    </div>
+
+    <div class="venue-calendar-panel">
+      <div class="calendar-container">
 
         <div class="calendar-header">
-    <button class="btn btn-icon" id="prevMonth">
-        <i class="fa fa-chevron-left"></i>
-    </button>
+          <button class="btn btn-icon" id="prevMonth">
+            <i class="fa fa-chevron-left"></i>
+          </button>
 
-    <div class="calendar-title">
-        <h3 id="calendarTitle"></h3>
-    </div>
+          <div class="calendar-title">
+            <h3 id="calendarTitle"></h3>
+          </div>
 
-    <button class="btn btn-icon" id="nextMonth">
-        <i class="fa fa-chevron-right"></i>
-    </button>
-</div>
-
-        <button class="btn btn-icon" id="nextMonth">
+          <button class="btn btn-icon" id="nextMonth">
             <i class="fa fa-chevron-right"></i>
-        </button>
+          </button>
+        </div>
+
+        <div class="calendar-grid" id="calendarGrid"></div>
+
+      </div>
     </div>
 
-    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+</div>
 
-</div>
- </div> 
- </div>
-</div>
     <!-- ===== ANNOUNCEMENTS PAGE ===== -->
     <div class="page" id="page-announcements">
       <div class="page-header">
@@ -283,37 +280,55 @@
       <div class="execom-grid" id="execomGrid"></div>
     </div>
 
-    <!-- ===== PROFILE PAGE ===== -->
-    <div class="page" id="page-profile">
-      <div class="page-header">
-        <h1>Organizer Profile</h1>
+    <!-- UPDATED PROFILE PAGE - Remove hardcoded values -->
+<div class="page" id="page-profile">
+  <div class="page-header">
+    <h1>Organizer Profile</h1>
+  </div>
+  <div class="profile-layout">
+    <div class="profile-card-main">
+      <div class="profile-banner"></div>
+      <div class="profile-avatar-wrap">
+        <img src="https://api.dicebear.com/7.x/initials/svg?seed=User&backgroundColor=6c63ff" alt="Avatar" />
       </div>
-      <div class="profile-layout">
-        <div class="profile-card-main">
-          <div class="profile-banner"></div>
-          <div class="profile-avatar-wrap">
-            <img src="https://api.dicebear.com/7.x/initials/svg?seed=Arjun+Kumar&backgroundColor=6c63ff" alt="Avatar" />
+      <div class="profile-details">
+        <h2>Loading...</h2>
+        <p class="profile-position">Organizer</p>
+        <div class="profile-fields">
+          <div class="pf-row">
+            <span class="pf-label"><i class="fa fa-id-badge"></i> Roll No</span>
+            <span class="pf-val" id="pfRollNo">-</span>
           </div>
-          <div class="profile-details">
-            <h2>Arjun Kumar</h2>
-            <p class="profile-position">Chairperson – IEEE Club</p>
-            <div class="profile-fields">
-              <div class="pf-row"><span class="pf-label"><i class="fa fa-id-badge"></i> Roll No</span><span class="pf-val">21CS001</span></div>
-              <div class="pf-row"><span class="pf-label"><i class="fa fa-hashtag"></i> Admission No</span><span class="pf-val">LBS2021CS001</span></div>
-              <div class="pf-row"><span class="pf-label"><i class="fa fa-graduation-cap"></i> Class</span><span class="pf-val">S6 CSE – A</span></div>
-              <div class="pf-row"><span class="pf-label"><i class="fa fa-users"></i> Club</span><span class="pf-val">IEEE Student Branch</span></div>
-              <div class="pf-row"><span class="pf-label"><i class="fa fa-envelope"></i> Email</span><span class="pf-val">arjun@lbscek.ac.in</span></div>
-              <div class="pf-row"><span class="pf-label"><i class="fa fa-phone"></i> Phone</span><span class="pf-val">+91 98765 43210</span></div>
-            </div>
+          <div class="pf-row">
+            <span class="pf-label"><i class="fa fa-hashtag"></i> Admission No</span>
+            <span class="pf-val" id="pfAdmissionNo">-</span>
           </div>
-        </div>
-        <div class="profile-stats-side">
-          <div class="pstat-card"><span class="pstat-num">12</span><span class="pstat-label">Events Organized</span></div><br>
-          <div class="pstat-card"><span class="pstat-num">340</span><span class="pstat-label">Participants</span></div><br>
-          <div class="pstat-card"><span class="pstat-num">2</span><span class="pstat-label">Pending Requests</span></div>
+          <div class="pf-row">
+            <span class="pf-label"><i class="fa fa-graduation-cap"></i> Class</span>
+            <span class="pf-val" id="pfClass">-</span>
+          </div>
+          <div class="pf-row">
+            <span class="pf-label"><i class="fa fa-users"></i> Club</span>
+            <span class="pf-val" id="pfClub">Loading...</span>
+          </div>
+          <div class="pf-row">
+            <span class="pf-label"><i class="fa fa-envelope"></i> Email</span>
+            <span class="pf-val" id="pfEmail">Loading...</span>
+          </div>
+          <div class="pf-row">
+            <span class="pf-label"><i class="fa fa-phone"></i> Phone</span>
+            <span class="pf-val" id="pfPhone">Loading...</span>
+          </div>
         </div>
       </div>
     </div>
+    <div class="profile-stats-side">
+      <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Events Organized</span></div><br>
+      <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Participants</span></div><br>
+      <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Pending Requests</span></div>
+    </div>
+  </div>
+</div>
 
     <!-- ===== SETTINGS PAGE ===== -->
     
