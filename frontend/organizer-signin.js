@@ -1,8 +1,14 @@
-document.getElementById("loginForm").addEventListener("submit", async function(e) {
-  e.preventDefault();
+const form = document.getElementById("loginForm");
 
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+form.addEventListener("submit", async function (e) {
+  e.preventDefault();
+  
+  console.log("=== LOGIN ATTEMPT ===");
+
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  
+  console.log("Email:", email);
 
   try {
     const response = await fetch("http://localhost:5000/api/auth/login", {
@@ -13,17 +19,35 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
       body: JSON.stringify({ email, password })
     });
 
+    console.log("Response status:", response.status);
+    
     const data = await response.json();
+    console.log("Response data:", data);
 
-    if (response.ok) {
-      localStorage.setItem("token", data.token);
-      window.location.href = "orgfront.html";   // correct dashboard file
+    if (response.ok && data.token) {
+      console.log("✅ Token received:", data.token);
+      
+      // Save token
+      localStorage.setItem("authToken", data.token);
+      
+      // Verify it was saved
+      const saved = localStorage.getItem("authToken");
+      console.log("✅ Token saved, verified:", saved);
+      
+      // Wait a bit then redirect
+      setTimeout(() => {
+        console.log("✅ Redirecting now...");
+        window.location.href = "http://127.0.0.1:5501/frontend/orgfront.html";
+      }, 500);
+      
     } else {
-      alert(data.message);
+      console.error("❌ Login failed:", data.message);
+      alert(data.message || "Login failed");
     }
-
-  } catch (err) {
-    console.error(err);
-    alert("Server error");
+  } catch (error) {
+    console.error("❌ Error:", error);
+    alert("Network error: " + error.message);
   }
 });
+
+console.log("✅ Login script loaded");

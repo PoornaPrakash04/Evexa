@@ -149,3 +149,17 @@ font-size:14px;
 color:#777;
 cursor:pointer;
 }
+.event-card-poster {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.event-card-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
