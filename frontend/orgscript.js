@@ -184,9 +184,14 @@ async function loadEvents() {
 
 function updateDashboardStats() {
   const total = events.length;
-  const past = events.filter(e => e.status === "past").length;
-  const upcoming = events.filter(e => e.status === "upcoming").length;
-  const pending = events.filter(e => e.status === "pending").length;
+  const approved = events.filter(e => e.status === "Approved").length;
+const draft = events.filter(e => e.status === "Draft").length;
+
+stats[0].textContent = total;
+stats[1].textContent = approved;
+stats[2].textContent = draft;
+stats[3].textContent = 0;
+
 
   const stats = document.querySelectorAll(".stat-num");
 
@@ -338,7 +343,7 @@ function renderDashboardApprovals() {
     <div class="approval-item">
       <span class="event-type-badge">${e.emoji}</span>
       <div class="approval-info">
-        <strong>${e.name}</strong>
+        <strong>${e.title}</strong>
         <span>${e.club} • ${formatDate(e.date)} • ${e.venue}</span>
       </div>
       <div class="approval-actions">
@@ -387,7 +392,7 @@ function createEventCard(e) {
           <span class="event-type-badge">${e.type}</span>
           <span class="fee-badge ${e.fee > 0 ? 'fee-paid' : 'fee-free'}">${e.fee > 0 ? '₹' + e.fee : 'Free'}</span>
         </div>
-        <div class="event-card-title">${e.name}</div>
+        <div class="event-card-title">${e.title}</div>
         <div class="event-card-meta">
           <div class="event-meta-row"><i class="fa fa-calendar"></i>${formatDate(e.date)}</div>
           <div class="event-meta-row"><i class="fa fa-clock"></i>${formatTime(e.time)}</div>
@@ -412,7 +417,7 @@ function filterEvents() {
   const date = document.getElementById('filterDate').value;
 
   filteredEvents = events.filter(e => {
-    if (search && !e.name.toLowerCase().includes(search)) return false;
+    if (search && !e.title.toLowerCase().includes(search)) return false;
     if (type && e.type !== type) return false;
     if (club && e.club !== club) return false;
     if (venue && !e.venue.includes(venue)) return false;
@@ -453,7 +458,7 @@ function buildEventDetail(e) {
         <span style="font-size:4rem">${e.emoji}</span>
       </div>
       <div class="event-detail-info">
-        <h2>${e.name}</h2>
+        <h2>${e.title}</h2>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
           <span class="event-type-badge">${e.type}</span>
           <span class="event-status status-${e.status}">${capitalize(e.status)}</span>

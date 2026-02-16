@@ -10,9 +10,12 @@ router.post("/", auth, (req, res) => {
   const { title, date, capacity } = req.body;
 
   db.query(
-    "INSERT INTO events (title, date, capacity, status) VALUES (?, ?, ?, 'Draft')",
-    [title, date, capacity],
-    () => res.json({ message: "Event created" })
+    "INSERT INTO events (title, date, capacity, status, organizer_id) VALUES (?, ?, ?, 'Draft', ?)",
+    [title, date, capacity, req.user.id],
+    (err) => {
+      if (err) return res.status(500).json({ message: "Server error" });
+      res.json({ message: "Event created" });
+    }
   );
 });
 
@@ -34,6 +37,15 @@ router.get("/my", verifyToken, (req, res) => {
     }
   );
 });
-
+// Get all approved events (for students)
+router.get("/", (req, res) => {
+  db.query(
+    "SELECT * FROM events WHERE status = 'Approved'",
+    (err, result) => {
+      if (err) return res.status(500).json({ message: "Server error" });
+      res.json(result);
+    }
+  );
+});
 
 module.exports = router;
