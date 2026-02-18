@@ -37,7 +37,7 @@ form.addEventListener("submit", async function (e) {
       // Wait a bit then redirect
       setTimeout(() => {
         console.log("✅ Redirecting now...");
-        window.location.href = "http://127.0.0.1:5501/frontend/orgfront.html";
+        window.location.href = "http://127.0.0.1:5501/frontend/organizer/orgfront.html";
       }, 500);
       
     } else {

@@ -144,7 +144,7 @@
       <div class="section-card">
         <div class="section-card-header">
           <h2><i class="fa fa-calendar"></i> Our Events</h2>
-          <button class="btn btn-outline" onclick="switchPage('events')">View All</button>
+          <button class="btn btn-outline" onclick="viewAllClubEvents()">View All</button>
         </div>
         <div class="event-cards-grid" id="dashEventGrid"></div>
       </div>
@@ -180,7 +180,8 @@
           <option>IEEE</option>
           <option>CSI</option>
           <option>NSS</option>
-          <option>Rotaract</option>
+          <option>Cyber Club</option>
+          <option>Robotics Club</option>
         </select>
         <select id="filterVenue" onchange="filterEvents()">
           <option value="">All Venues</option>
@@ -189,12 +190,10 @@
           <option>Lab Block</option>
           <option>Ground</option>
         </select>
-        <select id="filterFee" onchange="filterEvents()">
-          <option value="">Fee: Any</option>
-          <option value="free">Free</option>
-          <option value="paid">Paid</option>
-        </select>
         <input type="date" id="filterDate" onchange="filterEvents()" />
+        <button class="btn btn-outline btn-sm" onclick="clearFilters()">
+  <i class="fa fa-times"></i> Clear
+</button>
       </div>
       <div class="event-cards-grid" id="eventsGrid"></div>
   </div> <!-- END page-events -->
@@ -238,6 +237,34 @@
       </div>
     </div>
 
+  </div>
+</div>
+<!-- Venue Slots Modal -->
+<div class="modal-overlay" id="venueSlotsModal">
+  <div class="modal modal-large">
+    <button class="modal-close" onclick="closeModal('venueSlotsModal')">
+      <i class="fa fa-times"></i>
+    </button>
+
+    <h2 class="modal-title">
+      <i class="fa fa-clock"></i> Available Slots
+    </h2>
+
+    <p id="venueSlotsSubtitle"
+       style="margin-bottom:14px;color:var(--text-muted);font-weight:600;">
+    </p>
+
+    <div class="table-card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date (MM/DD/YYYY)</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="venueSlotsBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -320,12 +347,16 @@
             <span class="pf-label"><i class="fa fa-phone"></i> Phone</span>
             <span class="pf-val" id="pfPhone">Loading...</span>
           </div>
+          <div class="profile-actions">
+  <button id="profileLogoutBtn" class="logout-btn" type="button">
+    <i class="fa fa-right-from-bracket"></i> Logout
+  </button>
+</div>
         </div>
       </div>
     </div>
     <div class="profile-stats-side">
       <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Events Organized</span></div><br>
-      <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Participants</span></div><br>
       <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Pending Requests</span></div>
     </div>
   </div>

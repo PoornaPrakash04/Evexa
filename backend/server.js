@@ -9,7 +9,8 @@ const certificateRoutes = require("./routes/certificates");
 const venueRoutes = require("./routes/venue");
 
 const app = express();
-
+const announcementRoutes = require("./routes/announcements");
+const execomRoutes = require("./routes/execom");
 app.use(cors());
 app.use(express.json());
 
@@ -19,7 +20,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/certificates", certificateRoutes);
-app.use("/api/venue", venueRoutes);
+app.use("/api/venues", venueRoutes);
 
 app.get("/", (req, res) => {
   res.send("EVEXA Backend is running");
@@ -30,3 +31,6 @@ app.listen(5000, () => {
 });
 console.log("JWT_SECRET:", process.env.JWT_SECRET);
 
+app.use("/api/certificates", certificateRoutes);
+app.use("/api/announcements", announcementRoutes);
+app.use("/api/execom", execomRoutes);

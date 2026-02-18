@@ -18,6 +18,8 @@ function generateSlots() {
 // GET available slots
 router.get("/slots", auth(["ORGANIZER"]), (req, res) => {
   const { venue_name, date } = req.query;
+  
+  console.log("Slots request:", venue_name, date); // DEBUG
 
   if (!venue_name || !date)
     return res.status(400).json({ message: "Venue and date required" });
@@ -25,10 +27,20 @@ router.get("/slots", auth(["ORGANIZER"]), (req, res) => {
   const allSlots = generateSlots();
 
   db.query(
-    "SELECT start_time FROM venue_bookings WHERE venue_name=? AND booking_date=?",
+    `SELECT TIME_FORMAT(vb.time, '%H:%i:%s') as start_time
+     FROM venue_bookings vb
+     JOIN venues v ON vb.venue_id = v.id
+     WHERE v.name = ? 
+     AND vb.date = ? 
+     AND vb.status != 'Rejected'`,
     [venue_name, date],
     (err, results) => {
-      if (err) return res.status(500).json(err);
+      if (err) {
+        console.error("Slots query error:", err); // DEBUG
+        return res.status(500).json({ message: err.message });
+      }
+
+      console.log("Booked slots:", results); // DEBUG
 
       const booked = results.map(r => r.start_time);
 
@@ -42,58 +54,64 @@ router.get("/slots", auth(["ORGANIZER"]), (req, res) => {
     }
   );
 });
-
+// GET all venues from venues table
+router.get("/", auth(["ORGANIZER"]), (req, res) => {
+  db.query("SELECT id, name, capacity, location FROM venues", (err, results) => {
+    if (err) return res.status(500).json(err);
+    res.json(results);
+  });
+});
 // Book slot
 router.post("/book", auth(["ORGANIZER"]), (req, res) => {
-  const { venue_name, event_id, date, start_time, end_time } = req.body;
+  const { venue_name, event_id, date, time } = req.body;
 
-  db.query(
-    `INSERT INTO venue_bookings 
-     (venue_name, event_id, booking_date, start_time, end_time, created_by)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [
-      venue_name,
-      event_id,
-      date,
-      start_time,
-      end_time,
-      req.user.id
-    ],
-    (err) => {
-      if (err) {
-        return res.status(400).json({
-          message: "Slot already booked or invalid",
-          error: err.message
-        });
+  db.query("SELECT id FROM venues WHERE name = ?", [venue_name], (err, results) => {
+    if (err || !results.length)
+      return res.status(400).json({ message: "Venue not found" });
+
+    const venue_id = results[0].id;
+
+    db.query(
+      `INSERT INTO venue_bookings (event_id, venue_id, date, time, status)
+       VALUES (?, ?, ?, ?, 'Pending')`,
+      [event_id, venue_id, date, time],
+      (err) => {
+        if (err) return res.status(400).json({ message: "Booking failed", error: err.message });
+        res.json({ message: "Venue booked successfully" });
       }
-
-      res.json({ message: "Venue booked successfully" });
-    }
-  );
+    );
+  });
 });
 
-module.exports = router;
 router.get("/calendar", auth(["ORGANIZER"]), (req, res) => {
   const { venue_name, year, month } = req.query;
-
-  const startDate = `${year}-${month}-01`;
-  const endDate = `${year}-${month}-31`;
+  
+  console.log("Calendar request:", venue_name, year, month); // DEBUG
+  
+  const paddedMonth = month.toString().padStart(2, "0");
+  const startDate = `${year}-${paddedMonth}-01`;
+  const endDate = `${year}-${paddedMonth}-31`;
 
   db.query(
-    `SELECT booking_date, COUNT(*) as total
-     FROM venue_bookings
-     WHERE venue_name=? 
-     AND booking_date BETWEEN ? AND ?
-     GROUP BY booking_date`,
+    `SELECT DAY(vb.date) as day,
+     CASE 
+       WHEN vb.status = 'Approved' THEN 'booked'
+       WHEN vb.status = 'Pending' THEN 'pending'
+     END as status
+     FROM venue_bookings vb
+     JOIN venues v ON vb.venue_id = v.id
+     WHERE v.name = ?
+     AND vb.date BETWEEN ? AND ?
+     AND vb.status IN ('Approved', 'Pending')`,
     [venue_name, startDate, endDate],
     (err, results) => {
-      if (err) return res.status(500).json(err);
-
-      const fullyBooked = results
-        .filter(r => r.total >= 13) // 8AM–9PM = 13 slots
-        .map(r => r.booking_date);
-
-      res.json(fullyBooked);
+      if (err) {
+        console.error("Calendar query error:", err); // DEBUG
+        return res.status(500).json({ message: err.message });
+      }
+      console.log("Calendar results:", results); // DEBUG
+      res.json(results);
     }
   );
 });
+module.exports = router;

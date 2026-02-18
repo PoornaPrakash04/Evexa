@@ -5,21 +5,39 @@ const upload = require("../middleware/upload");
 
 const router = express.Router();
 
-// Create event
+// Create event - FIXED VERSION
 router.post("/", authorize(), upload.single("poster"), (req, res) => {
-  const { title, date, capacity } = req.body;
+  const { 
+    title, 
+    type, 
+    description, 
+    date, 
+    time, 
+    capacity, 
+    registration_fee, 
+    venue
+  } = req.body;
+  
   const poster = req.file ? req.file.filename : null;
+  const club = req.user.club; // Get club from logged-in user
 
   db.query(
-    "INSERT INTO events (title, date, capacity, status, organizer_id, poster) VALUES (?, ?, ?, 'Draft', ?, ?)",
-    [title, date, capacity, req.user.id, poster],
-    (err) => {
-      if (err) return res.status(500).json({ message: "Server error" });
-      res.json({ message: "Event created" });
+    `INSERT INTO events 
+    (title, type, description, date, time, capacity, registration_fee, venue, club, status, organizer_id, poster) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Draft', ?, ?)`,
+    [title, type, description, date, time, capacity, registration_fee || 0, venue, club, req.user.id, poster],
+    (err, result) => {
+      if (err) {
+        console.error("DB Insert Error:", err);
+        return res.status(500).json({ message: "Server error", error: err.message });
+      }
+      res.json({ 
+        message: "Event created", 
+        eventId: result.insertId 
+      });
     }
   );
 });
-
 
 // Approve event
 router.put("/:id/approve", authorize(), (req, res) => {
@@ -33,7 +51,7 @@ router.put("/:id/approve", authorize(), (req, res) => {
 // Get organizer's events
 router.get("/my", authorize(), (req, res) => {
   db.query(
-    "SELECT * FROM events WHERE organizer_id = ?",
+    "SELECT * FROM events WHERE organizer_id = ? ORDER BY date DESC",
     [req.user.id],
     (err, result) => {
       if (err) return res.status(500).json({ message: "Server error" });
@@ -42,10 +60,24 @@ router.get("/my", authorize(), (req, res) => {
   );
 });
 
+router.get("/all", authorize(), (req, res) => {
+  console.log("📋 Getting all events");
+  db.query(
+    "SELECT * FROM events ORDER BY date DESC",
+    (err, result) => {
+      if (err) {
+        console.error("Error fetching all events:", err);
+        return res.status(500).json({ message: "Server error" });
+      }
+      console.log(`✅ Found ${result.length} total events`);
+      res.json(result);
+    }
+  );
+});
 // Get approved events (students)
 router.get("/", (req, res) => {
   db.query(
-    "SELECT * FROM events WHERE status = 'Approved' AND poster IS NOT NULL",
+    "SELECT * FROM events WHERE status = 'Approved' AND poster IS NOT NULL ORDER BY date DESC",
     (err, result) => {
       if (err) return res.status(500).json({ message: "Server error" });
       res.json(result);
@@ -53,8 +85,29 @@ router.get("/", (req, res) => {
   );
 });
 
-router.put("/:id/poster", authorize(), upload.single("poster"), (req, res) => {
+// Delete event
+router.delete("/:id", authorize(), (req, res) => {
+  const { id } = req.params;
+  
+  db.query(
+    "DELETE FROM events WHERE id = ? AND organizer_id = ?",
+    [id, req.user.id],
+    (err, result) => {
+      if (err) {
+        console.error("DB error:", err);
+        return res.status(500).json({ message: "Server error" });
+      }
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Event not found or unauthorized" });
+      }
+      
+      res.json({ message: "Event deleted" });
+    }
+  );
+});
 
+router.put("/:id/poster", authorize(), upload.single("poster"), (req, res) => {
   const poster = req.file ? req.file.filename : null;
 
   db.query(
@@ -66,6 +119,5 @@ router.put("/:id/poster", authorize(), upload.single("poster"), (req, res) => {
     }
   );
 });
-
 
 module.exports = router;
