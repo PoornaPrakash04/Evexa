@@ -1,0 +1,161 @@
+<!-- ===========================
+     event-single.html
+     Single Event Detail Page
+     =========================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Event Detail | EVEXA</title>
+  <link rel="stylesheet" href="student-dashboard.css" />
+  <link rel="stylesheet" href="event-details.css" />
+  <link rel="stylesheet" href="ticket.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      
+      <div class="brand">
+        <div class="brand-logo">S</div>
+        <div class="brand-text">
+          <div class="brand-name">EVEXA<span></span></div>
+          <div class="brand-sub">Student Portal</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        
+        <a class="nav-item" href="student-dashboard.html" data-nav="student-dashboard.html">
+          <span class="icon">🏠</span>
+          <span>Dashboard</span>
+        </a>
+
+        <!-- ✅ Renamed from "Event Details" to "Events" -->
+        <a class="nav-item" href="event-details.html" data-nav="event-details.html">
+          <span class="icon">📅</span>
+          <span>Events</span>
+        </a>
+        <!-- ✅ My Registrations -->
+        <a class="nav-item" href="event-details.html?filter=registered" data-nav="my-registrations">
+          <span class="icon">🎟️</span>
+          <span>My Registrations</span>
+        </a>
+
+        <!-- ✅ My Clubs -->
+        <a class="nav-item" href="clubs.html" data-nav="clubs.html">
+          <span class="icon">🏛️</span>
+          <span>My Clubs</span>
+        </a>
+        <a class="nav-item" href="account-setting.html" data-nav="account-setting.html">
+    <span class="icon">👤</span>
+    <span>Profile</span>
+  </a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="mini-user">
+          <div class="mini-avatar" aria-hidden="true"></div>
+          <div class="mini-meta">
+            <div class="mini-name" id="miniName"></div>
+            <div class="mini-role">Student</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
+          <div class="page-title">
+            <div class="title" id="topbarTitle">Event Detail</div>
+            <div class="subtitle">Full event information &amp; registration</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <nav class="top-links">
+            <button class="top-link" type="button">Clubs</button>
+            <button class="top-link" type="button">EVE</button>
+            <button class="top-link danger" id="logoutBtn" type="button">Logout</button>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Content rendered by event-single.js -->
+      <section class="content" id="pageContent">
+        <div class="not-found">Loading event...</div>
+      </section>
+    </main>
+  </div>
+<!-- QR Ticket Modal -->
+<div class="ticket-overlay" id="ticketOverlay" onclick="closeTicket()"></div>
+
+<div class="ticket-modal" id="ticketModal">
+  <div class="ticket-modal-inner">
+
+    <!-- Close -->
+    <button class="ticket-close-btn" onclick="closeTicket()" type="button">✕</button>
+
+    <!-- Ticket card -->
+    <div class="ticket-card" id="ticketCard">
+
+      <!-- Header -->
+      <div class="ticket-header">
+        <div class="ticket-brand">EVEXA</div>
+        <div class="ticket-badge">Event Ticket</div>
+      </div>
+
+      <!-- Event info -->
+      <div class="ticket-event-name" id="tEventName"></div>
+      <div class="ticket-event-meta">
+        <span id="tEventDate"></span> &nbsp;·&nbsp;
+        <span id="tEventVenue"></span>
+      </div>
+      <div class="ticket-event-club" id="tEventClub"></div>
+
+      <!-- Divider perforated -->
+      <div class="ticket-perforated">
+        <div class="ticket-hole left"></div>
+        <div class="ticket-dashes"></div>
+        <div class="ticket-hole right"></div>
+      </div>
+
+      <!-- Student info + QR -->
+      <div class="ticket-body">
+        <div class="ticket-student">
+          <div class="ticket-student-name" id="tStudentName"></div>
+          <div class="ticket-info-row"><span>Roll No</span><span id="tRollNo"></span></div>
+          <div class="ticket-info-row"><span>Department</span><span id="tDept"></span></div>
+          <div class="ticket-info-row"><span>Class</span><span id="tClass"></span></div>
+          <div class="ticket-info-row"><span>Email</span><span id="tEmail"></span></div>
+          <div class="ticket-info-row"><span>Ticket ID</span><span id="tTicketId" style="font-size:10px;"></span></div>
+        </div>
+        <div class="ticket-qr-wrap">
+          <img class="ticket-qr" id="ticketQR" src="" alt="QR Code" />
+          <div class="ticket-qr-label">Scan to verify</div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="ticket-footer">
+        <span>Valid for one-time entry only</span>
+        <span id="tIssuedAt"></span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="ticket-actions">
+      <button class="btn primary" onclick="downloadTicket()" type="button">⬇ Download Ticket</button>
+      <button class="btn ghost"  onclick="closeTicket()"    type="button">Close</button>
+    </div>
+
+  </div>
+</div>
+  <script src="student-dashboard.js"></script>
+  <script src="event-single.js"></script>
+</body>
+</html>

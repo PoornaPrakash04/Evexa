@@ -1,0 +1,222 @@
+/* ============================================================
+   ADD THIS TO event-single.css or a new ticket.css file
+   and link it in event-single.html
+   ============================================================ */
+
+/* Overlay */
+.ticket-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17,24,39,.6);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: .25s ease;
+  z-index: 100;
+}
+.ticket-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Modal wrapper */
+.ticket-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 101;
+  pointer-events: none;
+  padding: 20px;
+}
+.ticket-modal.show {
+  pointer-events: auto;
+}
+.ticket-modal-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  transform: translateY(30px) scale(.96);
+  opacity: 0;
+  transition: .3s cubic-bezier(.34,1.56,.64,1);
+}
+.ticket-modal.show .ticket-modal-inner {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+/* Close button */
+.ticket-close-btn {
+  align-self: flex-end;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(229,231,235,.8);
+  background: rgba(255,255,255,.9);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 900;
+  color: #374151;
+}
+.ticket-modal:not(.show) {
+  display: none; 
+}
+
+/* ── Ticket Card ─────────────────────────────────────────── */
+.ticket-card {
+  background: #ffffff;
+  border-radius: 24px;
+  width: min(420px, 95vw);
+  box-shadow: 0 30px 80px rgba(109,94,252,.25), 0 8px 20px rgba(17,24,39,.12);
+  overflow: hidden;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Header */
+.ticket-header {
+  background: linear-gradient(135deg, #6d5efc, #ff6aa0);
+  padding: 18px 22px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ticket-brand {
+  font-size: 22px;
+  font-weight: 900;
+  color: white;
+  letter-spacing: .5px;
+}
+.ticket-badge {
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: white;
+}
+
+/* Event info */
+.ticket-event-name {
+  font-size: 20px;
+  font-weight: 900;
+  color: #111827;
+  padding: 16px 22px 4px;
+}
+.ticket-event-meta {
+  font-size: 13px;
+  color: #6b7280;
+  padding: 0 22px 4px;
+}
+.ticket-event-club {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6d5efc;
+  padding: 0 22px 12px;
+}
+
+/* Perforated divider */
+.ticket-perforated {
+  display: flex;
+  align-items: center;
+  padding: 0 0;
+  position: relative;
+}
+.ticket-hole {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #f5f4ff;
+  flex: 0 0 auto;
+}
+.ticket-hole.left  { margin-left: -12px; }
+.ticket-hole.right { margin-right: -12px; }
+.ticket-dashes {
+  flex: 1;
+  border-top: 2px dashed #e5e7eb;
+  margin: 0 8px;
+}
+
+/* Body */
+.ticket-body {
+  display: flex;
+  gap: 16px;
+  padding: 16px 22px;
+  align-items: flex-start;
+}
+.ticket-student {
+  flex: 1;
+  min-width: 0;
+}
+.ticket-student-name {
+  font-size: 16px;
+  font-weight: 900;
+  color: #111827;
+  margin-bottom: 10px;
+}
+.ticket-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(229,231,235,.6);
+  color: #374151;
+}
+.ticket-info-row span:first-child {
+  color: #9ca3af;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ticket-info-row span:last-child {
+  font-weight: 700;
+  text-align: right;
+}
+
+/* QR */
+.ticket-qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.ticket-qr {
+  width: 110px;
+  height: 110px;
+  border-radius: 14px;
+  border: 2px solid rgba(109,94,252,.2);
+  padding: 4px;
+}
+.ticket-qr-label {
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Footer */
+.ticket-footer {
+  background: rgba(109,94,252,.06);
+  border-top: 1px dashed rgba(109,94,252,.2);
+  padding: 10px 22px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 700;
+}
+
+/* Actions */
+.ticket-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Download loading state */
+.btn-downloading {
+  opacity: .7;
+  cursor: wait;
+}

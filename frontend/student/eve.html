@@ -1,0 +1,163 @@
+<!-- ===========================
+     eve.html
+     EVE — AI Student Assistant
+     =========================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EVE — AI Assistant | EVEXA</title>
+  <link rel="stylesheet" href="student-dashboard.css" />
+  <link rel="stylesheet" href="eve.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      
+      <div class="brand">
+        <div class="brand-logo">S</div>
+        <div class="brand-text">
+          <div class="brand-name">EVEXA<span></span></div>
+          <div class="brand-sub">Student Portal</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        
+        <a class="nav-item" href="student-dashboard.html" data-nav="student-dashboard.html">
+          <span class="icon">🏠</span>
+          <span>Dashboard</span>
+        </a>
+
+        <!-- ✅ Renamed from "Event Details" to "Events" -->
+        <a class="nav-item" href="event-details.html" data-nav="event-details.html">
+          <span class="icon">📅</span>
+          <span>Events</span>
+        </a>
+        <!-- ✅ My Registrations -->
+        <a class="nav-item" href="event-details.html?filter=registered" data-nav="my-registrations">
+          <span class="icon">🎟️</span>
+          <span>My Registrations</span>
+        </a>
+
+        <!-- ✅ My Clubs -->
+        <a class="nav-item" href="clubs.html" data-nav="clubs.html">
+          <span class="icon">🏛️</span>
+          <span>My Clubs</span>
+        </a>
+        <a class="nav-item" href="account-setting.html" data-nav="account-setting.html">
+    <span class="icon">👤</span>
+    <span>Profile</span>
+  </a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="mini-user">
+          <div class="mini-avatar" aria-hidden="true"></div>
+          <div class="mini-meta">
+            <div class="mini-name" id="miniName"></div>
+            <div class="mini-role">Student</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
+          <div class="page-title">
+            <div class="title">EVE</div>
+            <div class="subtitle">Your AI-powered student assistant</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <nav class="top-links">
+            <button class="top-link" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
+            <button class="top-link active-eve" type="button">EVE</button>
+            <button class="top-link danger" id="logoutBtn" type="button">Logout</button>
+          </nav>
+        </div>
+      </header>
+
+      <!-- EVE Chat UI -->
+      <section class="eve-content">
+
+        <!-- Chat header -->
+        <div class="eve-header">
+          <div class="eve-avatar-wrap">
+            <div class="eve-avatar">✦</div>
+            <div class="eve-pulse"></div>
+          </div>
+          <div>
+            <div class="eve-name">EVE</div>
+            <div class="eve-status"><span class="eve-dot"></span> Online · Ready to help</div>
+          </div>
+          <button class="clear-btn" id="clearBtn" type="button">Clear chat</button>
+        </div>
+
+        <!-- Messages area -->
+        <div class="eve-messages" id="eveMessages">
+
+          <!-- Welcome message -->
+          <div class="msg eve-msg">
+            <div class="msg-avatar eve-msg-avatar">✦</div>
+            <div class="msg-bubble eve-bubble">
+              <div class="msg-text">
+                Hi Arjun! 👋 I'm <strong>EVE</strong>, your EVEXA student assistant.<br><br>
+                I can help you with:
+                <div class="quick-topics">
+                  <span class="topic-tag" data-prompt="What events are open for registration right now?">📅 Find Events</span>
+                  <span class="topic-tag" data-prompt="What clubs can I join?">🏷️ Explore Clubs</span>
+                  <span class="topic-tag" data-prompt="How do I get my certificate?">🎓 Certificates</span>
+                  <span class="topic-tag" data-prompt="How do I register for an event?">❓ Portal Help</span>
+                </div>
+                What would you like to know?
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Typing indicator (hidden by default) -->
+        <div class="typing-indicator" id="typingIndicator" style="display:none;">
+          <div class="msg-avatar eve-msg-avatar small">✦</div>
+          <div class="typing-bubble">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="eve-input-area">
+          <div class="eve-input-wrap">
+            <textarea
+              class="eve-input"
+              id="eveInput"
+              placeholder="Ask EVE anything about events, clubs, certificates..."
+              rows="1"
+            ></textarea>
+            <button class="eve-send-btn" id="eveSendBtn" type="button" aria-label="Send">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+          <div class="eve-disclaimer">EVE uses AI — responses are for guidance only.</div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <script src="student-dashboard.js"></script>
+  <script src="events-data.js"></script>
+  <script src="clubs-data.js"></script>
+  <script src="eve.js"></script>
+</body>
+</html>

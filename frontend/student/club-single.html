@@ -1,0 +1,97 @@
+<!-- ===========================
+     club-single.html
+     Single Club Detail Page
+     =========================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Club | EVEXA</title>
+  <link rel="stylesheet" href="student-dashboard.css" />
+  <link rel="stylesheet" href="clubs.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      
+      <div class="brand">
+        <div class="brand-logo">S</div>
+        <div class="brand-text">
+          <div class="brand-name">EVEXA<span></span></div>
+          <div class="brand-sub">Student Portal</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        
+        <a class="nav-item" href="student-dashboard.html" data-nav="student-dashboard.html">
+          <span class="icon">🏠</span>
+          <span>Dashboard</span>
+        </a>
+
+        <!-- ✅ Renamed from "Event Details" to "Events" -->
+        <a class="nav-item" href="event-details.html" data-nav="event-details.html">
+          <span class="icon">📅</span>
+          <span>Events</span>
+        </a>
+        <!-- ✅ My Registrations -->
+        <a class="nav-item" href="event-details.html?filter=registered" data-nav="my-registrations">
+          <span class="icon">🎟️</span>
+          <span>My Registrations</span>
+        </a>
+
+        <!-- ✅ My Clubs -->
+        <a class="nav-item" href="clubs.html" data-nav="clubs.html">
+          <span class="icon">🏛️</span>
+          <span>My Clubs</span>
+        </a>
+        <a class="nav-item" href="account-setting.html" data-nav="account-setting.html">
+    <span class="icon">👤</span>
+    <span>Profile</span>
+  </a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="mini-user">
+          <div class="mini-avatar" aria-hidden="true"></div>
+          <div class="mini-meta">
+            <div class="mini-name" id="miniName"></div>
+            <div class="mini-role">Student</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
+          <div class="page-title">
+            <div class="title" id="topbarTitle">Club Details</div>
+            <div class="subtitle">Full club information</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <nav class="top-links">
+            <button class="top-link active-link" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
+            <button class="top-link" type="button">EVE</button>
+            <button class="top-link danger" id="logoutBtn" type="button">Logout</button>
+          </nav>
+        </div>
+      </header>
+
+      <section class="content" id="pageContent">
+        <div style="text-align:center;padding:60px;color:#6b7280;font-weight:700;">Loading club...</div>
+      </section>
+    </main>
+  </div>
+
+  <script src="student-dashboard.js"></script>
+  <script src="clubs-data.js"></script>
+  <script src="club-single.js"></script>
+</body>
+</html>

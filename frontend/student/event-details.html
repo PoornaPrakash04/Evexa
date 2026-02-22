@@ -1,0 +1,116 @@
+<!-- ===========================
+     event-details.html
+     Events Grid Page
+     =========================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Events | EVEXA Student Portal</title>
+  <link rel="stylesheet" href="student-dashboard.css" />
+  <link rel="stylesheet" href="event-details.css" />
+</head>
+
+<body>
+  <div class="app">
+
+<!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      
+      <div class="brand">
+        <div class="brand-logo">S</div>
+        <div class="brand-text">
+          <div class="brand-name">EVEXA<span></span></div>
+          <div class="brand-sub">Student Portal</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        
+        <a class="nav-item" href="student-dashboard.html" data-nav="student-dashboard.html">
+          <span class="icon">🏠</span>
+          <span>Dashboard</span>
+        </a>
+
+        <!-- ✅ Renamed from "Event Details" to "Events" -->
+        <a class="nav-item" href="event-details.html" data-nav="event-details.html">
+          <span class="icon">📅</span>
+          <span>Events</span>
+        </a>
+        <!-- ✅ My Registrations -->
+        <a class="nav-item" href="event-details.html?filter=registered" data-nav="my-registrations">
+          <span class="icon">🎟️</span>
+          <span>My Registrations</span>
+        </a>
+
+        <!-- ✅ My Clubs -->
+        <a class="nav-item" href="clubs.html" data-nav="clubs.html">
+          <span class="icon">🏛️</span>
+          <span>My Clubs</span>
+        </a>
+        <a class="nav-item" href="account-setting.html" data-nav="account-setting.html">
+    <span class="icon">👤</span>
+    <span>Profile</span>
+  </a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="mini-user">
+          <div class="mini-avatar" aria-hidden="true"></div>
+          <div class="mini-meta">
+            <div class="mini-name" id="miniName"></div>
+            <div class="mini-role">Student</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
+          <div class="page-title">
+            <div class="title">Events</div>
+            <div class="subtitle">Browse and register for upcoming events.</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <nav class="top-links">
+            <button class="top-link" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
+            <button class="top-link" type="button">EVE</button>
+            <button class="top-link danger" id="logoutBtn" type="button">Logout</button>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <section class="content">
+
+        <!-- Page head: filters + search -->
+        <div class="events-page-head">
+          <div class="filter-bar" id="filterBar">
+            <button class="filter-btn active" data-filter="all">All Events</button>
+            <button class="filter-btn" data-filter="open">Open</button>
+            <button class="filter-btn" data-filter="registered">Registered</button>
+            <button class="filter-btn" data-filter="upcoming">Upcoming</button>
+          </div>
+          <input class="search" id="searchBox" placeholder="Search events..." />
+        </div>
+
+        <!-- Events Grid -->
+        <div class="events-grid" id="eventsGrid">
+          <!-- Rendered by JS -->
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <script src="student-dashboard.js"></script>
+  <script src="event-details.js"></script>
+</body>
+</html>

@@ -1051,3 +1051,36 @@ body.dark #venueSlotsSubtitle{
   border: 1px solid rgba(255,255,255,0.10);
   color: rgba(255,255,255,0.85);
 }
+/* ========== EXECOM CONTACT LINKS ========== */
+.execom-contact {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.execom-contact .contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.execom-contact .contact-item i {
+  color: var(--primary);
+  width: 14px;
+}
+
+.execom-contact .contact-item a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.execom-contact .contact-item a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}

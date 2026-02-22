@@ -15,7 +15,7 @@
   <div class="topnav-left">
     <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar"><i class="fa fa-bars"></i></button>
     <div class="brand">
-      <span class="brand-logo">E</span>
+      <span class="brand-logo">O</span>
       <span class="brand-name">EVEXA</span>
       <span class="brand-sub">Organizer</span>
     </div>
@@ -74,7 +74,7 @@
       </a>
       <a href="#" class="nav-item" data-page="execom">
         <span class="nav-icon"><i class="fa fa-users"></i></span>
-        <span class="nav-label">Execom</span>
+        <span class="nav-label">Meet the Execom</span>
       </a>
      
       <a href="#" class="nav-item" data-page="settings">
@@ -185,10 +185,10 @@
         </select>
         <select id="filterVenue" onchange="filterEvents()">
           <option value="">All Venues</option>
-          <option>Auditorium</option>
-          <option>Seminar Hall</option>
-          <option>Lab Block</option>
-          <option>Ground</option>
+          <option>Main Seminar Hall</option>
+          <option>PTA Seminar Hall</option>
+          <option>LITAA Seminar Hall</option>
+          <option>Classrooms</option>
         </select>
         <input type="date" id="filterDate" onchange="filterEvents()" />
         <button class="btn btn-outline btn-sm" onclick="clearFilters()">
@@ -296,6 +296,39 @@
         </table>
       </div>
     </div>
+    <!-- Add Announcement Modal -->
+<div class="modal-overlay" id="addAnnouncementModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addAnnouncementModal')"><i class="fa fa-times"></i></button>
+   <h2 class="modal-title" id="annModalTitle"><i class="fa fa-bullhorn"></i> New Announcement</h2>
+
+   <form id="addAnnouncementForm" onsubmit="submitAnnouncement(event)">
+
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="annTitle" placeholder="Announcement title" required />
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="annType">
+          <option>General</option>
+          <option>Urgent</option>
+          <option>Event</option>
+          <option>Result</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Message</label>
+        <textarea rows="4" id="annMessage" placeholder="Write your message…" required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('addAnnouncementModal')">Cancel</button>
+     <button type="submit" class="btn btn-primary">Publish</button>
+
+      </div>
+    </form>
+  </div>
+</div>
 
     <!-- ===== EXECOM PAGE ===== -->
     <div class="page" id="page-execom">
@@ -459,11 +492,10 @@
             <div class="venue-request-row">
               <select>
                 <option value="">Select Venue</option>
-                <option>Auditorium</option>
-                <option>Seminar Hall A</option>
-                <option>Seminar Hall B</option>
-                <option>Lab Block 1</option>
-                <option>Ground</option>
+                <option>Main Seminar Hall</option>
+                <option>PTA Seminar Hall</option>
+                <option>LITAA Seminar Hall</option>
+                <option>Classrooms</option>
               </select>
               <input type="date" />
               <input type="time" />

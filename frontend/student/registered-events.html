@@ -1,0 +1,166 @@
+<!-- ===========================
+     registered-events.html
+     =========================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registered Events | STUHUB</title>
+  <link rel="stylesheet" href="registered-events.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      
+      <div class="brand">
+        <div class="brand-logo">S</div>
+        <div class="brand-text">
+          <div class="brand-name">EVEXA<span></span></div>
+          <div class="brand-sub">Student Portal</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        
+        <a class="nav-item" href="student-dashboard.html" data-nav="student-dashboard.html">
+          <span class="icon">🏠</span>
+          <span>Dashboard</span>
+        </a>
+
+        <!-- ✅ Renamed from "Event Details" to "Events" -->
+        <a class="nav-item" href="event-details.html" data-nav="event-details.html">
+          <span class="icon">📅</span>
+          <span>Events</span>
+        </a>
+        <!-- ✅ My Registrations -->
+        <a class="nav-item" href="event-details.html?filter=registered" data-nav="my-registrations">
+          <span class="icon">🎟️</span>
+          <span>My Registrations</span>
+        </a>
+
+        <!-- ✅ My Clubs -->
+        <a class="nav-item" href="clubs.html" data-nav="clubs.html">
+          <span class="icon">🏛️</span>
+          <span>My Clubs</span>
+        </a>
+        <a class="nav-item" href="account-setting.html" data-nav="account-setting.html">
+    <span class="icon">👤</span>
+    <span>Profile</span>
+  </a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="mini-user">
+          <div class="mini-avatar" aria-hidden="true"></div>
+          <div class="mini-meta">
+            <div class="mini-name" id="miniName"></div>
+            <div class="mini-role">Student</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn" id="menuBtn" aria-label="Toggle Menu" type="button">☰</button>
+          <div class="page-title">
+            <div class="title">Registered Events</div>
+            <div class="subtitle">Track your registrations and status.</div>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+  <nav class="top-links">
+    <button class="top-link" id="clubsBtn" type="button">Current Clubs</button>
+    <button class="top-link" id="eveBtn" type="button">EVE</button>
+    <button class="top-link danger" id="logoutBtn" type="button">Logout</button>
+  </nav>
+</div>
+
+      </header>
+
+      <!-- Content -->
+      <section class="content">
+
+        <!-- Summary strip -->
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Total</div>
+            <div class="stat-value" id="statTotal">7</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Upcoming</div>
+            <div class="stat-value" id="statUpcoming">3</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Completed</div>
+            <div class="stat-value" id="statCompleted">3</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Cancelled</div>
+            <div class="stat-value" id="statCancelled">1</div>
+          </div>
+        </div>
+
+        <!-- Table panel -->
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Your Registrations</div>
+              <div class="panel-sub">Search, filter, and open event details.</div>
+            </div>
+
+            <div class="panel-actions">
+              <input class="search" id="searchBox" placeholder="Search event name..." />
+              <select class="select" id="filterStatus">
+                <option value="all">All Status</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Date</th>
+                  <th>Venue</th>
+                  <th>Status</th>
+                  <th class="right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="rows">
+                <!-- Filled by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-foot" id="emptyState" hidden>
+            <div class="empty">
+              <div class="empty-icon">🫥</div>
+              <div>
+                <div class="empty-title">No events found</div>
+                <div class="empty-sub">Try changing the filter or search keywords.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <script src="registered-events.js"></script>
+</body>
+</html>

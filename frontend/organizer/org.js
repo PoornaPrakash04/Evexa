@@ -296,3 +296,25 @@ clearBtn?.addEventListener("click", () => {
     });
   });
 }
+// ===================== DARK MODE =====================
+function setupDarkMode() {
+  const toggle = document.getElementById('darkModeToggle');
+  if (!toggle) return;
+
+  // ✅ Load saved theme on refresh
+  const savedTheme = localStorage.getItem("evexa_theme"); // "dark" or "light"
+  const isDark = savedTheme === "dark";
+
+  document.body.classList.toggle("dark", isDark);
+  toggle.checked = isDark;
+
+  // ✅ Save theme when user changes
+  toggle.addEventListener('change', function () {
+    const enabled = this.checked;
+
+    document.body.classList.toggle('dark', enabled);
+    localStorage.setItem("evexa_theme", enabled ? "dark" : "light");
+
+    showToast(enabled ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+  });
+}

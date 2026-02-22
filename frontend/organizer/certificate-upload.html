@@ -1,0 +1,58 @@
+<!-- certificate-upload.html (add inside your existing layout) -->
+<section class="content">
+
+  <div class="page-panel">
+    <div class="page-panel-head">
+      <div class="page-panel-title">Generate Certificates</div>
+      <div class="page-panel-sub">Upload a PDF template and Excel participant list</div>
+    </div>
+
+    <div class="page-panel-body" style="max-width: 640px;">
+
+      <!-- Status message -->
+      <div id="statusMsg" class="status-msg" style="display:none;"></div>
+
+      <!-- Template Upload -->
+      <div class="upload-group">
+        <div class="upload-label">PDF Certificate Template</div>
+        <label class="upload-zone" for="templateInput">
+          <div class="upload-icon">📄</div>
+          <div id="templateLabel">Click to upload PDF template</div>
+          <div class="upload-hint">Your designed certificate in PDF format</div>
+          <input type="file" id="templateInput" accept=".pdf" hidden />
+        </label>
+      </div>
+
+      <!-- Excel Upload -->
+      <div class="upload-group">
+        <div class="upload-label">Participant List (Excel)</div>
+        <label class="upload-zone" for="excelInput">
+          <div class="upload-icon">📊</div>
+          <div id="excelLabel">Click to upload Excel file</div>
+          <div class="upload-hint">Column header must be "Name" — one participant per row</div>
+          <input type="file" id="excelInput" accept=".xlsx,.xls" hidden />
+        </label>
+      </div>
+
+      <!-- Excel Preview -->
+      <div id="excelPreview" class="excel-preview" style="display:none;"></div>
+
+      <!-- Sample Excel download -->
+      <div style="margin-bottom: 16px;">
+        <button class="btn ghost small" onclick="downloadSampleExcel()" type="button">
+          ⬇ Download Sample Excel
+        </button>
+      </div>
+
+      <!-- Generate Button -->
+      <button class="btn primary" id="generateBtn" type="button">
+        Generate Certificates
+      </button>
+      <div id="spinner" style="display:none; margin-top:12px; color:var(--muted); font-size:13px;">
+        ⏳ This may take a moment for large lists...
+      </div>
+
+    </div>
+  </div>
+
+</section>

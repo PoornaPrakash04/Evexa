@@ -1,0 +1,361 @@
+<!-- ===========================
+     student-dashboard.html
+     =========================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Dashboard | STUDENT</title>
+  <link rel="stylesheet" href="student-dashboard.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      
+      <div class="brand">
+        <div class="brand-logo">S</div>
+        <div class="brand-text">
+          <div class="brand-name">EVEXA<span></span></div>
+          <div class="brand-sub">Student Portal</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        
+        <a class="nav-item" href="student-dashboard.html" data-nav="student-dashboard.html">
+          <span class="icon">🏠</span>
+          <span>Dashboard</span>
+        </a>
+
+        <a class="nav-item" href="event-details.html" data-nav="event-details.html">
+          <span class="icon">📅</span>
+          <span>Events</span>
+        </a>
+
+        <!-- ✅ My Registrations -->
+        <a class="nav-item" href="event-details.html?filter=registered" data-nav="my-registrations">
+          <span class="icon">🎟️</span>
+          <span>My Registrations</span>
+        </a>
+
+        <!-- ✅ My Clubs -->
+        <a class="nav-item" href="clubs.html" data-nav="clubs.html">
+          <span class="icon">🏛️</span>
+          <span>My Clubs</span>
+        </a>
+
+        <a class="nav-item" href="account-setting.html" data-nav="account-setting.html">
+          <span class="icon">👤</span>
+          <span>Profile</span>
+        </a>
+
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="mini-user">
+          <div class="mini-avatar" aria-hidden="true"></div>
+          <div class="mini-meta">
+            <div class="mini-name" id="miniName"></div>
+            <div class="mini-role">Student</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
+          <div class="page-title">
+            <div class="title">Dashboard</div>
+            <div class="subtitle">Welcome back, here's your student overview.</div>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <nav class="top-links">
+            <button class="top-link" id="clubsBtn" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
+           <button class="top-link" type="button" onclick="window.location.href='eve.html'">EVE</button>
+            <button class="top-link danger" id="logoutBtn" type="button" onclick="logout()">Logout</button>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <section class="content">
+
+        <!-- Summary cards -->
+        <div class="cards-grid">
+          <div class="card accent-purple">
+            <div class="card-icon">📌</div>
+            <div class="card-info">
+              <div class="card-value" id="totalClubs">4</div>
+              <div class="card-label">Joined Clubs</div>
+            </div>
+          </div>
+
+          <div class="card accent-pink">
+            <div class="card-icon">🗓️</div>
+            <div class="card-info">
+              <div class="card-value" id="upcomingEvents">-</div>
+              <div class="card-label">Upcoming Events</div>
+            </div>
+          </div>
+
+          <div class="card accent-green">
+            <div class="card-icon">✅</div>
+            <div class="card-info">
+              <div class="card-value" id="registeredEventsCount">7</div>
+              <div class="card-label">Registered Events</div>
+            </div>
+          </div>
+        </div>
+
+<!-- ── My Progress Card ─────────────────────────────────────── -->
+<div class="progress-section">
+
+  <div class="progress-card">
+    <div class="progress-card-header">
+      <div>
+        <div class="progress-card-title">🎯 My Progress</div>
+        <div class="progress-card-sub">Your participation journey</div>
+      </div>
+      <div class="streak-badge" id="streakBadge">🔥 <span id="streakCount">0</span> day streak</div>
+    </div>
+
+    <div class="progress-stats">
+      <div class="pstat">
+        <div class="pstat-icon" style="background:rgba(109,94,252,.12);color:#6d5efc;">🎟</div>
+        <div class="pstat-value" id="attendedCount">0</div>
+        <div class="pstat-label">Events Attended</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-icon" style="background:rgba(245,158,11,.12);color:#f59e0b;">🏆</div>
+        <div class="pstat-value" id="pointsCount">0</div>
+        <div class="pstat-label">Points Earned</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-icon" style="background:rgba(16,185,129,.12);color:#10b981;">📊</div>
+        <div class="pstat-value" id="attendancePct">0%</div>
+        <div class="pstat-label">Attendance Rate</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-icon" style="background:rgba(239,68,68,.12);color:#ef4444;">🔥</div>
+        <div class="pstat-value" id="currentStreak">0</div>
+        <div class="pstat-label">Day Streak</div>
+      </div>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-label">
+        <span>Level Progress</span>
+        <span id="levelLabel">Beginner → Explorer</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="levelBar" style="width:0%"></div>
+      </div>
+      <div class="progress-bar-sub" id="levelSub">Attend 5 events to reach Explorer level</div>
+    </div>
+  </div>
+
+</div>
+        <!-- Middle layout -->
+        <div class="middle-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Student</div>
+              <div class="panel-sub">Quick profile access</div>
+            </div>
+
+            <div class="student-box">
+              <div class="student-photo-wrap">
+                <img
+                  class="student-photo"
+                  id="studentPhoto"
+                  src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&auto=format&fit=crop&q=60"
+                  alt="Student Photo"
+                />
+              </div>
+
+              <div class="student-meta">
+                <div class="student-name" id="studentName"></div>
+                <div class="student-id"><span id="studentReg"></span></div>
+
+                <div class="student-tags">
+                  <span class="tag"></span>
+                  <span class="tag"></span>
+                  <span class="tag"></span>
+                </div>
+
+                <div class="actions">
+                  <button class="btn primary" id="openProfileBtn" type="button" onclick="window.location.href='account-setting.html'">Profile</button>
+                  <button class="btn ghost" id="editQuickBtn" type="button">Quick Edit</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Announcements</div>
+              <div class="panel-sub">Recent updates</div>
+            </div>
+
+            <div class="list" id="activityList">
+              <div class="list-item">
+                <div class="dot dot-purple"></div>
+                <div class="li-text">
+                  <div class="li-title">Registered for "Robo Race 2026"</div>
+                  <div class="li-sub">Today • Event Registration</div>
+                </div>
+                <a class="mini-btn" href="event-details.html">View</a>
+              </div>
+
+              <div class="list-item">
+                <div class="dot dot-green"></div>
+                <div class="li-text">
+                  <div class="li-title">Certificate generated: "Web Workshop"</div>
+                  <div class="li-sub">Yesterday • Certificates</div>
+                </div>
+                <a class="mini-btn" href="certificate-generated.html">Open</a>
+              </div>
+
+              <div class="list-item">
+                <div class="dot dot-orange"></div>
+                <div class="li-text">
+                  <div class="li-title">New club announcement</div>
+                  <div class="li-sub">2 days ago • Clubs</div>
+                </div>
+                <button class="mini-btn" type="button">Read</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+<div class="explore-section">
+
+  <!-- Mini Calendar -->
+  <div class="explore-card">
+    <div class="explore-head">
+      <div class="explore-title">📅 Event Calendar</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="cal-nav-btn" id="calPrev">‹</button>
+        <span class="cal-month-label" id="calMonthLabel"></span>
+        <button class="cal-nav-btn" id="calNext">›</button>
+      </div>
+    </div>
+
+    <div class="mini-calendar" id="miniCalendar"></div>
+
+    <div class="cal-event-detail" id="calEventDetail" style="display:none;">
+      <div class="cal-event-detail-title" id="calDetailTitle"></div>
+      <div class="cal-event-detail-meta" id="calDetailMeta"></div>
+      <a class="cal-event-detail-link" id="calDetailLink" href="#">View Event →</a>
+    </div>
+  </div>
+
+  <!-- Recommended Events -->
+  <div class="explore-card">
+    <div class="explore-head">
+      <div class="explore-title">🎯 Recommended For You</div>
+      <span class="explore-sub">Based on your profile</span>
+    </div>
+    <div id="recommendedList">
+      <p class="no-events">Loading recommendations...</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Keep your existing Upcoming Events below -->
+<div class="explore-section" style="margin-top:14px;">
+  <div class="explore-card">
+    <div class="explore-head">
+      <div class="explore-title">🗓️ Today's Events</div>
+      <span class="explore-sub">Happening today</span>
+    </div>
+    <div id="todayEventsList">
+      <p class="no-events">No events today.</p>
+    </div>
+  </div>
+
+  <div class="explore-card">
+    <div class="explore-head">
+      <div class="explore-title">🗓️ Upcoming Events</div>
+      <span class="explore-sub">Next 30 days</span>
+    </div>
+    <div id="upcomingEventsList">
+      <p class="no-events">No upcoming events.</p>
+    </div>
+  </div>
+</div>
+  <!-- Profile Drawer -->
+  <div class="overlay" id="overlay"></div>
+
+  <aside class="drawer" id="profileDrawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title">Student Profile</div>
+        <div class="drawer-sub">Full details</div>
+      </div>
+      <button class="icon-btn" id="closeProfileBtn" aria-label="Close Profile" type="button">✕</button>
+    </div>
+
+    <div class="drawer-body">
+      <div class="profile-top">
+        <img
+          class="profile-photo"
+          id="profilePhoto"
+          src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&auto=format&fit=crop&q=60"
+          alt="Profile Photo"
+        />
+        <div class="profile-meta">
+          <div class="profile-name" id="profileName">Arjun Kumar</div>
+          <div class="profile-line">Reg No: <span id="profileReg">STU-2026-019</span></div>
+          <div class="profile-line">Email: <span id="profileEmail">arjun@example.com</span></div>
+          <div class="profile-line">Phone: <span id="profilePhone">+91 90000 00000</span></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="grid-2">
+        <div class="info-card">
+          <div class="info-title">Academic</div>
+          <div class="info-row"><span>Department</span><span id="profileDept">CSE</span></div>
+          <div class="info-row"><span>Year</span><span id="profileYear">2nd</span></div>
+          <div class="info-row"><span>College</span><span id="profileCollege">Your College</span></div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-title">Membership</div>
+          <div class="info-row"><span>Club</span><span>IEEE</span></div>
+          <div class="info-row"><span>Status</span><span class="pill ok">Active</span></div>
+          <div class="info-row"><span>Role</span><span>Member</span></div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-title">About</div>
+        <p class="about" id="profileAbout">
+          Passionate about tech events, hackathons, and building projects. Interested in UI/UX and web development.
+        </p>
+      </div>
+
+      <div class="drawer-actions">
+        <button class="btn primary" id="editProfileBtn" type="button">Edit Profile</button>
+        <button class="btn ghost" id="downloadCertBtn" type="button">Download Certificates</button>
+      </div>
+    </div>
+  </aside>
+
+  <script src="student-dashboard.js"></script>
+</body>
+</html>

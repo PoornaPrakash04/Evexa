@@ -766,7 +766,6 @@ if (nextMonthBtn) {
 }
 
 // ===================== ANNOUNCEMENTS =====================
-// ===================== ANNOUNCEMENTS =====================
 async function loadAnnouncements() {
   console.log("Loading announcements...");
   const token = localStorage.getItem("authToken");
@@ -815,11 +814,26 @@ function renderAnnouncements() {
       <td><span class="type-badge type-${a.type.toLowerCase()}">${a.type}</span></td>
       <td><span class="event-status ${a.status === 'Published' ? 'status-approved' : a.status === 'Draft' ? 'status-draft' : 'status-past'}">${a.status}</span></td>
       <td style="display:flex;gap:6px">
-        <button class="btn btn-sm btn-outline" onclick="showToast('✏️ Editing...')"><i class="fa fa-edit"></i></button>
+       <button class="btn btn-sm btn-outline" onclick="openEditAnnouncement(${a.id})">
+  <i class="fa fa-edit"></i>
+</button>
+
         <button class="btn btn-sm btn-danger" onclick="deleteAnnouncement(${a.id})"><i class="fa fa-trash"></i></button>
       </td>
     </tr>
   `).join('');
+}
+function openEditAnnouncement(id) {
+  const ann = announcements.find(a => a.id === id);
+  if (!ann) return;
+
+  document.getElementById("annTitle").value = ann.title || "";
+  document.getElementById("annType").value = ann.type || "General";
+  document.getElementById("annMessage").value = ann.message || "";
+
+  document.getElementById("addAnnouncementForm").dataset.editId = id;
+
+  openModal("addAnnouncementModal");
 }
 
 async function deleteAnnouncement(id) {
