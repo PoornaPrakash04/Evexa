@@ -45,127 +45,181 @@ const container = document.getElementById("detailContainer");
 if(!e){
   container.innerHTML = `<div style="padding:18px"><b>Event not found.</b><p class="p-muted">Go back and try again.</p></div>`;
 } else {
-const posterBg = {
-  Workshop: "#6c63ff",
-  Seminar: "#ff6584",
-  Hackathon: "#43d9a2",
-  Cultural: "#f4a261",
-  Sports: "#ffd166",
-};
-const bg = posterBg[e.type] || "#6c63ff";
+  const posterBg = {
+    Workshop: "#6c63ff",
+    Seminar: "#ff6584",
+    Hackathon: "#43d9a2",
+    Cultural: "#f4a261",
+    Sports: "#ffd166",
+  };
+  const bg = posterBg[e.type] || "#6c63ff";
 
-const posterContent = e.poster
-  ? `<img src="http://localhost:5000/uploads/${e.poster}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;" />`
-  : `<div class="poster-emoji">${e.emoji || "🎫"}</div>`;
-  // ✅ 1) Put ALL HTML inside ONE template string
+  // ✅ These MUST be normal JS (NOT inside the HTML string)
+  const bannerImg = e.poster ? `http://localhost:5000/uploads/${e.poster}` : null;
+
+  const seatsLeft = Math.max((Number(e.capacity) || 0) - (Number(e.registered) || 0), 0);
+  const pct = (Number(e.capacity) > 0)
+    ? Math.min(100, Math.round((Number(e.registered || 0) / Number(e.capacity)) * 100))
+    : 0;
+
+  // ✅ Only HTML inside template string
   container.innerHTML = `
-  
+    <!-- ===== HERO BANNER ===== -->
     <div class="hero">
-      <div class="hero-grid">
-        <div class="poster" style="background:linear-gradient(135deg,${bg}88,${bg});">
-  ${posterContent}
-</div>
-        <div>
-          <div class="title">${e.title}</div>
+      <div class="hero-banner">
+        ${
+          bannerImg
+            ? `<img src="${bannerImg}" alt="${e.title}" />`
+            : `<div style="height:100%;width:100%;background:linear-gradient(135deg,${bg},#ff6584);"></div>`
+        }
+      </div>
+    </div>
 
-          <div class="badges">
-            <span class="badge primary">${e.type}</span>
-            <span class="badge soft">${e.club || "No Club"}</span>
-            <span class="badge">${capitalize(e.status)}</span>
-            <span class="badge">${e.registration_fee > 0 ? "₹" + e.registration_fee : "Free"}</span>
+    <!-- ===== BELOW BANNER: 2 COLUMN PAGE ===== -->
+    <div class="page">
+
+      <!-- LEFT: MAIN CONTENT -->
+      <div class="main-card">
+        <div class="head-row">
+          <div>
+            <div class="title">${e.title}</div>
+
+            <div class="badges">
+              <span class="badge primary">${e.type}</span>
+              <span class="badge soft">${e.club || "No Club"}</span>
+              <span class="badge">${capitalize(e.status)}</span>
+              <span class="badge">${e.registration_fee > 0 ? "₹" + e.registration_fee : "Free"}</span>
+            </div>
+
+            <div class="meta">
+              <span><i class="fa fa-calendar"></i>${formatDate(e.date)}</span>
+              <span><i class="fa fa-clock"></i>${formatTime(e.time)}</span>
+              <span><i class="fa fa-map-marker-alt"></i>${e.venue}</span>
+              <span><i class="fa fa-users"></i>${e.registered ?? 0}/${e.capacity}</span>
+            </div>
           </div>
 
-          <div class="meta">
-            <span><i class="fa fa-calendar"></i>${formatDate(e.date)}</span>
-            <span><i class="fa fa-clock"></i>${formatTime(e.time)}</span>
-            <span><i class="fa fa-map-marker-alt"></i>${e.venue}</span>
-            <span><i class="fa fa-users"></i>${e.registered ?? 0}/${e.capacity}</span>
-          </div>
+          <span class="status-pill">${capitalize(e.status || "Open")}</span>
+        </div>
 
+        <!-- TABS -->
+        <div class="tabs">
+          <button class="tab active" data-tab="info">Description</button>
          
+          <button class="tab" data-tab="qr">QR / Attendance</button>
+          <button class="tab" data-tab="res">Resources</button>
         </div>
-      </div>
-    </div>
 
-    <div class="tabs">
-      <button class="tab active" data-tab="info">Description</button>
-      <button class="tab" data-tab="regs">Registrations</button>
-      <button class="tab" data-tab="qr">QR / Attendance</button>
-      <button class="tab" data-tab="res">Resources</button>
-    </div>
-
-    <div class="tab-content active" id="tab-info">
-      <div class="section-card">
-        <p class="p-muted">${e.description || "No description added."}</p>
-      </div>
-    </div>
-
-    <div class="tab-content" id="tab-regs">
-      <div class="section-card">
-        <div class="grid-2">
-          <div class="kpi">
-            <div class="kicon"><i class="fa fa-users"></i></div>
-            <div><b>${e.registered}</b><small>Registered</small></div>
-          </div>
-          <div class="kpi">
-            <div class="kicon"><i class="fa fa-chair"></i></div>
-            <div><b>${e.capacity}</b><small>Capacity</small></div>
+        <!-- TAB CONTENTS -->
+        <div class="tab-content active" id="tab-info">
+          <div class="section-card">
+            <p class="p-muted">${e.description || "No description added."}</p>
           </div>
         </div>
-        <div class="hr"></div>
-        <p class="p-muted">Later you can load real participants from database and show them as a table here.</p>
+
+        <div class="tab-content" id="tab-regs style="display:none;">
+          <div class="section-card">
+            <div class="grid-2">
+              <div class="kpi">
+                <div class="kicon"><i class="fa fa-users"></i></div>
+                <div><b>${e.registered ?? 0}</b><small>Registered</small></div>
+              </div>
+              <div class="kpi">
+                <div class="kicon"><i class="fa fa-chair"></i></div>
+                <div><b>${e.capacity ?? 0}</b><small>Capacity</small></div>
+              </div>
+            </div>
+            <div class="hr"></div>
+            <p class="p-muted">Later you can load real participants from database and show them as a table here.</p>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-qr">
+          <div class="section-card">
+            <p class="p-muted">Use QR scanner for attendance.</p>
+            <div class="hr"></div>
+            <button class="btn btn-primary"><i class="fa fa-camera"></i> Start Scanner</button>
+            <button class="btn btn-outline" style="margin-left:10px">
+              <i class="fa fa-download"></i> Download Sheet
+            </button>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-res">
+          <div class="section-card">
+            <p class="p-muted">Upload / download event files (poster, brochure, ppt, etc.).</p>
+
+            <div class="res-upload">
+              <label class="res-label">Upload file</label>
+              <div class="res-row">
+                <input type="file" id="resFile" class="res-input" />
+                <button class="btn btn-primary" id="uploadBtn">
+                  <i class="fa fa-upload"></i> Upload
+                </button>
+              </div>
+              <small class="p-muted">Supported: PDF, PPT, Images</small>
+            </div>
+
+            <div class="hr"></div>
+
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <b>Uploaded files</b>
+                <button class="btn btn-outline" id="clearFilesBtn">
+                  <i class="fa fa-trash"></i> Clear
+                </button>
+              </div>
+
+              <div id="filesList" class="files-list" style="margin-top:12px;"></div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <!-- RIGHT: REGISTRATION SIDEBAR -->
+      <aside class="side-card">
+        <b style="font-size:16px;">Registration</b>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+          <span class="p-muted">${seatsLeft} seats left</span>
+          <span class="p-muted">${e.registered ?? 0} / ${e.capacity ?? 0}</span>
+        </div>
+
+        <div class="progress">
+  <div style="width:${pct}%"></div>
+</div>
+
+<!-- ✅ Registrations content moved to RIGHT -->
+<div class="section-card" style="margin-top:14px;">
+  <div class="grid-2">
+    <div class="kpi">
+      <div class="kicon"><i class="fa fa-users"></i></div>
+      <div><b>${e.registered ?? 0}</b><small>Registered</small></div>
     </div>
-
-    <div class="tab-content" id="tab-qr">
-      <div class="section-card">
-        <p class="p-muted">Use QR scanner for attendance.</p>
-        <div class="hr"></div>
-        <button class="btn btn-primary"><i class="fa fa-camera"></i> Start Scanner</button>
-        <button class="btn btn-outline" style="margin-left:10px">
-          <i class="fa fa-download"></i> Download Sheet
-        </button>
-      </div>
-    </div>
-
-    <div class="tab-content" id="tab-res">
-  <div class="section-card">
-    <p class="p-muted">Upload / download event files (poster, brochure, ppt, etc.).</p>
-
-    <div class="res-upload">
-      <label class="res-label">Upload file</label>
-      <div class="res-row">
-        <input type="file" id="resFile" class="res-input" />
-        <button class="btn btn-primary" id="uploadBtn">
-          <i class="fa fa-upload"></i> Upload
-        </button>
-      </div>
-      <small class="p-muted">Supported: PDF, PPT, Images (you can restrict later)</small>
-    </div>
-
-    <div class="hr"></div>
-
-    <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <b>Uploaded files</b>
-        <button class="btn btn-outline" id="clearFilesBtn">
-          <i class="fa fa-trash"></i> Clear
-        </button>
-      </div>
-
-      <div id="filesList" class="files-list" style="margin-top:12px;"></div>
+    <div class="kpi">
+      <div class="kicon"><i class="fa fa-chair"></i></div>
+      <div><b>${e.capacity ?? 0}</b><small>Capacity</small></div>
     </div>
   </div>
+
+  <div class="hr"></div>
+  <p class="p-muted">Later you can load real participants from database and show them as a table here.</p>
 </div>
 
+</aside>
+
+    </div>
   `;
 
+  // Optional register action
+
+  // ✅ Keep your resources + tabs code BELOW this exactly as it is
   // ✅ 2) NOW bind buttons AFTER HTML is inserted
   document.getElementById("editTopBtn")?.addEventListener("click", () => {
     window.location.href = `org.html?id=${id}`; // change org.html to your edit page
   });
 
-  document.getElementById("shareBtn")?.addEventListener("click", async () => {
+  document.getElementById("topShareBtn")?.addEventListener("click", async () => {
     const url = window.location.href;
     try {
       await navigator.share?.({ title: e.title, url });
@@ -282,7 +336,7 @@ clearBtn?.addEventListener("click", () => {
   const tabs = container.querySelectorAll(".tab");
   const contents = {
     info: container.querySelector("#tab-info"),
-    regs: container.querySelector("#tab-regs"),
+    
     qr: container.querySelector("#tab-qr"),
     res: container.querySelector("#tab-res"),
   };
@@ -294,27 +348,5 @@ clearBtn?.addEventListener("click", () => {
       btn.classList.add("active");
       contents[btn.dataset.tab].classList.add("active");
     });
-  });
-}
-// ===================== DARK MODE =====================
-function setupDarkMode() {
-  const toggle = document.getElementById('darkModeToggle');
-  if (!toggle) return;
-
-  // ✅ Load saved theme on refresh
-  const savedTheme = localStorage.getItem("evexa_theme"); // "dark" or "light"
-  const isDark = savedTheme === "dark";
-
-  document.body.classList.toggle("dark", isDark);
-  toggle.checked = isDark;
-
-  // ✅ Save theme when user changes
-  toggle.addEventListener('change', function () {
-    const enabled = this.checked;
-
-    document.body.classList.toggle('dark', enabled);
-    localStorage.setItem("evexa_theme", enabled ? "dark" : "light");
-
-    showToast(enabled ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
   });
 }

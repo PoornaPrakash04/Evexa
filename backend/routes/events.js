@@ -1,4 +1,3 @@
-//events.js
 const express = require("express");
 const db = require("../db");
 const authorize = require("../middleware/authMiddleware");
@@ -8,8 +7,8 @@ const nodemailer = require("nodemailer");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "Poorna@gmail.com",     
-    pass: "poorna@123"    
+    user: "Poorna@gmail.com",
+    pass: "poorna@123"
   }
 });
 
@@ -48,20 +47,77 @@ router.get("/my", authorize(), (req, res) => {
   );
 });
 
-// ── Get all events (admin) ────────────────────────────
+// ── Get all events ────────────────────────────────────
 router.get("/all", authorize(), (req, res) => {
-  console.log("📋 Getting all events");
   db.query("SELECT * FROM events ORDER BY date DESC", (err, result) => {
-    if (err) {
-      console.error("Error fetching all events:", err);
-      return res.status(500).json({ message: "Server error" });
-    }
-    console.log(`✅ Found ${result.length} total events`);
+    if (err) return res.status(500).json({ message: "Server error" });
     res.json(result);
   });
 });
 
-// ── Get approved events (students) ───────────────────
+// ── Get organizer issues (for organizer dashboard) ────
+// ⚠️ MUST be before /:id routes
+router.get("/issues", authorize(), (req, res) => {
+  console.log("GET /issues hit | organizer id:", req.user.id);
+  db.query(
+    `SELECT i.*, e.title as event_title, s.name as student_name, s.roll_no
+     FROM issues i
+     JOIN events e ON e.id = i.event_id
+     JOIN students s ON s.id = i.student_id
+     WHERE e.organizer_id = ?
+     ORDER BY i.created_at DESC`,
+    [req.user.id],
+    (err, results) => {
+      if (err) {
+        console.error("GET /issues DB error:", err);
+        return res.status(500).json({ message: "Server error" });
+      }
+      res.json(results);
+    }
+  );
+});
+
+// ── Get student's own issues ──────────────────────────
+// ⚠️ MUST be before /:id routes
+router.get("/my-issues", authorize(), (req, res) => {
+  console.log("GET /my-issues hit | student id:", req.user.id, "| role:", req.user.role);
+  db.query(
+    `SELECT i.*, e.title as event_title, e.date as event_date
+     FROM issues i
+     JOIN events e ON e.id = i.event_id
+     WHERE i.student_id = ?
+     ORDER BY i.created_at DESC`,
+    [req.user.id],
+    (err, results) => {
+      if (err) {
+        console.error("GET /my-issues DB error:", err);
+        return res.status(500).json({ message: "Server error" });
+      }
+      console.log("GET /my-issues found:", results.length, "issues");
+      res.json(results);
+    }
+  );
+});
+
+// ── Update issue status ───────────────────────────────
+// ⚠️ MUST be before /:id routes
+router.put("/issues/:id", authorize(), (req, res) => {
+  const { status } = req.body;
+  console.log("PUT /issues/:id | id:", req.params.id, "| status:", status);
+  db.query(
+    "UPDATE issues SET status = ? WHERE id = ?",
+    [status, req.params.id],
+    (err) => {
+      if (err) {
+        console.error("PUT /issues/:id DB error:", err);
+        return res.status(500).json({ message: "Server error" });
+      }
+      res.json({ message: "Issue updated" });
+    }
+  );
+});
+
+// ── Get approved events (students, public) ────────────
 router.get("/", (req, res) => {
   db.query(
     "SELECT * FROM events WHERE status = 'Approved' ORDER BY date DESC",
@@ -75,9 +131,24 @@ router.get("/", (req, res) => {
 // ── Approve event ─────────────────────────────────────
 router.put("/:id/approve", authorize(), (req, res) => {
   db.query(
-    "UPDATE events SET status='Approved' WHERE id=?",
+    "UPDATE events SET status = 'Approved' WHERE id = ?",
     [req.params.id],
-    () => res.json({ message: "Event approved" })
+    (err) => {
+      if (err) return res.status(500).json({ message: "Server error" });
+      res.json({ message: "Event approved" });
+    }
+  );
+});
+
+// ── Reject event ──────────────────────────────────────
+router.put("/:id/reject", authorize(), (req, res) => {
+  db.query(
+    "UPDATE events SET status = 'Rejected' WHERE id = ?",
+    [req.params.id],
+    (err) => {
+      if (err) return res.status(500).json({ message: "Server error" });
+      res.json({ message: "Event rejected" });
+    }
   );
 });
 
@@ -95,7 +166,6 @@ router.put("/:id/poster", authorize(), upload.single("poster"), (req, res) => {
 });
 
 // ── Get organizer contact for an event ───────────────
-// ⚠️ Must be BEFORE /:id route
 router.get("/:id/organizer", (req, res) => {
   db.query(
     `SELECT o.name, o.email, o.phone 
@@ -111,7 +181,6 @@ router.get("/:id/organizer", (req, res) => {
 });
 
 // ── Submit issue for an event ─────────────────────────
-// ⚠️ Must be BEFORE /:id route
 router.post("/:id/issues", authorize(), (req, res) => {
   const { message } = req.body;
   const eventId = req.params.id;
@@ -131,7 +200,7 @@ router.post("/:id/issues", authorize(), (req, res) => {
       const { title, organizer_email, organizer_name } = result[0];
 
       db.query(
-        "INSERT INTO issues (student_id, event_id, message, created_at) VALUES (?, ?, ?, NOW())",
+        "INSERT INTO issues (student_id, event_id, message) VALUES (?, ?, ?)",
         [req.user.id, eventId, message],
         (err2) => {
           if (err2) {
@@ -140,14 +209,13 @@ router.post("/:id/issues", authorize(), (req, res) => {
           }
 
           transporter.sendMail({
-            from: "EVEXA <your@gmail.com>",
+            from: "EVEXA <Poorna@gmail.com>",
             to: organizer_email,
             subject: `New Issue Raised – ${title}`,
             html: `
               <h3>Hi ${organizer_name},</h3>
               <p>A student has raised an issue for your event <strong>${title}</strong>:</p>
               <blockquote>${message}</blockquote>
-              <p>From: ${req.user.name} (${req.user.email})</p>
               <p>Please resolve it via the EVEXA dashboard.</p>
             `
           });
@@ -165,10 +233,7 @@ router.delete("/:id", authorize(), (req, res) => {
     "DELETE FROM events WHERE id = ? AND organizer_id = ?",
     [req.params.id, req.user.id],
     (err, result) => {
-      if (err) {
-        console.error("DB error:", err);
-        return res.status(500).json({ message: "Server error" });
-      }
+      if (err) return res.status(500).json({ message: "Server error" });
       if (result.affectedRows === 0)
         return res.status(404).json({ message: "Event not found or unauthorized" });
       res.json({ message: "Event deleted" });
@@ -177,7 +242,7 @@ router.delete("/:id", authorize(), (req, res) => {
 });
 
 // ── Get single event ──────────────────────────────────
-// ⚠️ Always keep this LAST among /:id routes
+// ⚠️ Always keep LAST among all GET routes
 router.get("/:id", (req, res) => {
   db.query(
     "SELECT * FROM events WHERE id = ? AND status = 'Approved'",

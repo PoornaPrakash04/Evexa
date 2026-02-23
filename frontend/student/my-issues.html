@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Issues | EVEXA</title>
+  <link rel="stylesheet" href="student-dashboard.css"/>
+  <link rel="stylesheet" href="my-issues.css"/>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">S</div>
+      <div class="brand-text">
+        <div class="brand-name">EVEXA</div>
+        <div class="brand-sub">Student Portal</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a class="nav-item" href="student-dashboard.html">
+        <span class="icon">🏠</span><span>Dashboard</span>
+      </a>
+      <a class="nav-item" href="event-details.html">
+        <span class="icon">📅</span><span>Events</span>
+      </a>
+      <a class="nav-item" href="event-details.html?filter=registered">
+        <span class="icon">🎟️</span><span>My Registrations</span>
+      </a>
+      <a class="nav-item" href="clubs.html?view=mine">
+  <span class="icon">🏛️</span><span>My Clubs</span>
+</a>
+      <a class="nav-item active" href="my-issues.html">
+        <span class="icon">🚩</span><span>My Issues</span>
+      </a>
+      <a class="nav-item" href="account-setting.html">
+        <span class="icon">👤</span><span>Profile</span>
+      </a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="mini-user">
+        <div class="mini-avatar" aria-hidden="true"></div>
+        <div class="mini-meta">
+          <div class="mini-name" id="miniName"></div>
+          <div class="mini-role">Student</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
+        <div class="page-title">
+          <div class="title">My Issues</div>
+          <div class="subtitle">Track issues you've raised for events.</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="top-link danger" id="logoutBtn" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="content">
+      <div class="issues-list" id="issuesList">
+        <div class="no-issues">
+          <div class="no-issues-spinner"></div>
+          <div>Loading your issues...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="student-dashboard.js"></script>
+<script src="my-issues.js"></script>
+</body>
+</html>

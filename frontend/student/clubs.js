@@ -2,34 +2,51 @@
 //  clubs.js — connected to backend
 // ===========================
 
-
-
 let allClubs      = [];
 let joinedClubIds = new Set();
 let currentFilter = "all";
 let currentSearch = "";
 
-// ── Category colors ───────────────────────────────────────
+// ── Detect view mode from URL ─────────────────────────
+const isMyClubs = new URLSearchParams(window.location.search).get("view") === "mine";
+
+// ── Update page title based on view ──────────────────
+if (isMyClubs) {
+  const title    = document.querySelector(".title");
+  const subtitle = document.querySelector(".subtitle");
+  if (title)    title.textContent    = "My Clubs";
+  if (subtitle) subtitle.textContent = "Clubs you've joined.";
+} else {
+  const title    = document.querySelector(".title");
+  const subtitle = document.querySelector(".subtitle");
+  if (title)    title.textContent    = "Discover Clubs";
+  if (subtitle) subtitle.textContent = "Explore and join student clubs.";
+}
+
+// ── Highlight correct sidebar nav item ───────────────
+document.querySelectorAll(".nav-item").forEach(item => {
+  const href = item.getAttribute("href") || "";
+  if (isMyClubs && href.includes("view=mine")) {
+    item.classList.add("active");
+  } else if (!isMyClubs && href === "clubs.html") {
+    item.classList.add("active");
+  } else {
+    item.classList.remove("active");
+  }
+});
+
+// ── Category colors ───────────────────────────────────
 const categoryColors = {
-  Technical: "#6d5efc",
-  Social:    "#f59e0b",
-  Science:   "#3b82f6",
-  Creative:  "#ec4899",
-  Sports:    "#10b981",
-  Cultural:  "#f97316",
+  Technical:       "#6d5efc",
+  "Non-Technical": "#f59e0b",
 };
 
-// ── Category emoji icons (fallback if no logo) ────────────
 const categoryIcons = {
-  Technical: "⚙️",
-  Social:    "🤝",
-  Science:   "🚀",
-  Creative:  "🎨",
-  Sports:    "⚽",
-  Cultural:  "🎭",
+  Technical:       "⚙️",
+  "Non-Technical": "🎭",
 };
 
-// ── Fetch all clubs + joined clubs ────────────────────────
+// ── Fetch all clubs + joined clubs ────────────────────
 async function loadClubs() {
   const grid = document.getElementById("clubsGrid");
   if (grid) grid.innerHTML = `<div class="no-results">Loading clubs...</div>`;
@@ -62,10 +79,10 @@ async function loadClubs() {
   }
 }
 
-// ── Build one club card ───────────────────────────────────
+// ── Build one club card ───────────────────────────────
 function renderCard(c) {
   const color    = categoryColors[c.club_category] || "#6d5efc";
-  const icon     = c.club_logo || categoryIcons[c.club_category] || "🏫";
+  const icon = categoryIcons[c.club_category] || "🏫";
   const isJoined = joinedClubIds.has(c.club_id);
   const desc     = (c.short_description || "").slice(0, 110);
   const year     = c.year_of_establishment || "—";
@@ -104,9 +121,12 @@ function renderCard(c) {
   `;
 }
 
-// ── Filter + search ───────────────────────────────────────
+// ── Filter + search ───────────────────────────────────
 function getFiltered() {
   return allClubs.filter(c => {
+    // On My Clubs view — only show joined clubs
+    if (isMyClubs && !joinedClubIds.has(c.club_id)) return false;
+
     const matchFilter = currentFilter === "all" || c.club_category === currentFilter;
     const q = currentSearch.toLowerCase();
     const matchSearch = !q ||
@@ -117,13 +137,26 @@ function getFiltered() {
   });
 }
 
-// ── Render grid ───────────────────────────────────────────
+// ── Render grid ───────────────────────────────────────
 function renderGrid() {
   const grid     = document.getElementById("clubsGrid");
   const filtered = getFiltered();
 
   if (!filtered.length) {
-    grid.innerHTML = `<div class="no-results">No clubs found. Try a different filter or search.</div>`;
+    // Different empty state for My Clubs vs Discover
+    if (isMyClubs) {
+      grid.innerHTML = `
+        <div class="no-results">
+          <div style="font-size:40px;margin-bottom:12px">🏛️</div>
+          <div>You haven't joined any clubs yet.</div>
+          <a href="clubs.html" style="color:#6d5efc;font-weight:700;
+             text-decoration:none;margin-top:10px;display:inline-block;">
+            Discover Clubs →
+          </a>
+        </div>`;
+    } else {
+      grid.innerHTML = `<div class="no-results">No clubs found. Try a different filter or search.</div>`;
+    }
     return;
   }
 
@@ -145,7 +178,7 @@ function renderGrid() {
   });
 }
 
-// ── Load member count per club ────────────────────────────
+// ── Load member count per club ────────────────────────
 async function loadMemberCount(clubId) {
   try {
     const res = await fetch(`${API_BASE}/clubs/${clubId}/members`);
@@ -156,7 +189,7 @@ async function loadMemberCount(clubId) {
   } catch (_) {}
 }
 
-// ── Filter buttons ────────────────────────────────────────
+// ── Filter buttons ────────────────────────────────────
 document.getElementById("filterBar")?.querySelectorAll(".filter-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
@@ -166,13 +199,13 @@ document.getElementById("filterBar")?.querySelectorAll(".filter-btn").forEach(bt
   });
 });
 
-// ── Search ────────────────────────────────────────────────
+// ── Search ────────────────────────────────────────────
 document.getElementById("searchBox")?.addEventListener("input", e => {
   currentSearch = e.target.value;
   renderGrid();
 });
 
-// ── Logout ────────────────────────────────────────────────
+// ── Logout ────────────────────────────────────────────
 document.getElementById("logoutBtn")?.addEventListener("click", () => {
   if (confirm("Do you want to logout?")) {
     localStorage.removeItem("authToken");
@@ -181,5 +214,5 @@ document.getElementById("logoutBtn")?.addEventListener("click", () => {
   }
 });
 
-// ── Boot ──────────────────────────────────────────────────
+// ── Boot ─────────────────────────────────────────────
 loadClubs();

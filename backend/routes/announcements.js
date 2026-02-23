@@ -71,6 +71,25 @@ router.post("/", authorize(), (req, res) => {
     }
   );
 });
+router.put("/:id", authorize(), (req, res) => {
+  const { id } = req.params;
+  const { title, message, type } = req.body;
+
+  db.query(
+    "UPDATE announcements SET title = ?, message = ?, type = ? WHERE id = ?",
+    [title, message, type, id],
+    (err, result) => {
+      if (err) {
+        console.error("DB error:", err);
+        return res.status(500).json({ message: "Server error" });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Announcement not found" });
+      }
+      res.json({ message: "Announcement updated" });
+    }
+  );
+});
 
 // Delete announcement
 router.delete("/:id", authorize(), (req, res) => {

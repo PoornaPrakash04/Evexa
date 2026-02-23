@@ -10,15 +10,10 @@
 </head>
 <body>
 
-<!-- UPDATED TOP NAVBAR - Remove hardcoded values -->
+<!-- TOP NAVBAR -->
 <nav class="topnav">
   <div class="topnav-left">
     <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar"><i class="fa fa-bars"></i></button>
-    <div class="brand">
-      <span class="brand-logo">O</span>
-      <span class="brand-name">EVEXA</span>
-      <span class="brand-sub">Organizer</span>
-    </div>
   </div>
   <div class="topnav-right">
     <button class="nav-icon-btn" id="notifBtn" title="Notifications">
@@ -55,6 +50,17 @@
 
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
+    <!-- Brand inside sidebar -->
+    <div style="padding: 20px 20px 16px; border-bottom: 1px solid var(--border);">
+      <div class="brand">
+        <div class="brand-logo">O</div>
+        <div>
+          <div class="brand-name">EVEXA</div>
+          <div class="brand-sub">Organizer Portal</div>
+        </div>
+      </div>
+    </div>
+
     <nav class="sidebar-nav">
       <a href="#" class="nav-item" data-page="dashboard">
         <span class="nav-icon"><i class="fa fa-th-large"></i></span>
@@ -76,12 +82,19 @@
         <span class="nav-icon"><i class="fa fa-users"></i></span>
         <span class="nav-label">Meet the Execom</span>
       </a>
-     
-      <a href="#" class="nav-item" data-page="settings">
-        <span class="nav-icon"><i class="fa fa-cog"></i></span>
-        <span class="nav-label">Settings</span>
-      </a>
+
     </nav>
+
+    <!-- Profile at bottom of sidebar (like reference image) -->
+    <div style="padding: 16px; border-top: 1px solid var(--border); margin-top: auto;" id="sidebarProfile">
+      <div class="profile-pill" id="profilePillBtn2" style="border-radius: 12px; padding: 10px 12px; cursor: pointer;" data-page="profile">
+        <img src="https://api.dicebear.com/7.x/initials/svg?seed=User&backgroundColor=6c63ff" alt="Profile" class="profile-avatar" style="width:36px;height:36px;" />
+        <div class="profile-info" style="flex:1;">
+          <span class="profile-name" style="font-size:0.85rem;">Loading...</span>
+          <span class="profile-role" style="font-size:0.72rem;">Organizer</span>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- MAIN CONTENT -->
@@ -107,7 +120,6 @@
             <span class="stat-num">24</span>
             <span class="stat-label">Total Events</span>
           </div>
-          <div class="stat-chart"><canvas id="chartTotal"></canvas></div>
         </div>
         <div class="stat-card" style="--accent:#ff6584">
           <div class="stat-icon"><i class="fa fa-history"></i></div>
@@ -116,7 +128,7 @@
             <span class="stat-label">Past Events</span>
           </div>
         </div>
-        <div class="stat-card" style="--accent:#43d9a2">
+        <div class="stat-card" style="--accent:#22c55e">
           <div class="stat-icon"><i class="fa fa-rocket"></i></div>
           <div class="stat-info">
             <span class="stat-num">6</span>
@@ -144,7 +156,7 @@
       <div class="section-card">
         <div class="section-card-header">
           <h2><i class="fa fa-calendar"></i> Our Events</h2>
-          <button class="btn btn-outline" onclick="viewAllClubEvents()">View All</button>
+          <button class="btn btn-outline btn-sm" onclick="viewAllClubEvents()">View All</button>
         </div>
         <div class="event-cards-grid" id="dashEventGrid"></div>
       </div>
@@ -152,16 +164,34 @@
 
     <!-- ===== EVENTS PAGE ===== -->
     <div class="page" id="page-events">
-      <div class="page-header">
-        <div>
-          <h1>Events</h1>
-          <p class="page-sub">Browse and manage all club events</p>
+      <div class="page-header events-header">
+  <div>
+    <h1>Events</h1>
+    <p class="page-sub">Browse and manage all club events</p>
+  </div>
+
+  <div class="events-header-actions">
+    <div class="dash-search header-search">
+      <i class="fa fa-search"></i>
+      <input id="dashSearch" type="text" placeholder="Search events..." />
+    </div>
+
+    <button class="btn btn-primary" onclick="openModal('createEventModal')">
+      <i class="fa fa-plus"></i> Create Event
+    </button>
+  </div>
+</div>
+      <div class="dash-controls">
+        <div class="pill-tabs">
+          <button class="pill active" data-filter="all">All</button>
+          <button class="pill" data-filter="upcoming">Upcoming</button>
+          <button class="pill" data-filter="pending">Pending</button>
+          <button class="pill" data-filter="past">Past</button>
         </div>
-        <button class="btn btn-primary" onclick="openModal('createEventModal')">
-          <i class="fa fa-plus"></i> Create Event
-        </button>
+      
       </div>
-      <!-- Search & Filter Bar -->
+
+      <!-- Filter Bar -->
       <div class="filter-bar">
         <div class="filter-search">
           <i class="fa fa-search"></i>
@@ -192,81 +222,57 @@
         </select>
         <input type="date" id="filterDate" onchange="filterEvents()" />
         <button class="btn btn-outline btn-sm" onclick="clearFilters()">
-  <i class="fa fa-times"></i> Clear
-</button>
+          <i class="fa fa-times"></i> Clear
+        </button>
       </div>
       <div class="event-cards-grid" id="eventsGrid"></div>
-  </div> <!-- END page-events -->
-
+    </div>
 
     <!-- ===== VENUE PAGE ===== -->
     <div class="page" id="page-venue">
-  <div class="page-header">
-    <div>
-      <h1>Venue Management</h1>
-      <p class="page-sub">Check availability and book venues</p>
-    </div>
-  </div>
-
-  <div class="venue-layout">
-
-    <div class="venue-sidebar-panel">
-      <h3>Venues</h3>
-      <div class="venue-list" id="venueList"></div>
-    </div>
-
-    <div class="venue-calendar-panel">
-      <div class="calendar-container">
-
-        <div class="calendar-header">
-          <button class="btn btn-icon" id="prevMonth">
-            <i class="fa fa-chevron-left"></i>
-          </button>
-
-          <div class="calendar-title">
-            <h3 id="calendarTitle"></h3>
-          </div>
-
-          <button class="btn btn-icon" id="nextMonth">
-            <i class="fa fa-chevron-right"></i>
-          </button>
+      <div class="page-header">
+        <div>
+          <h1>Venue Management</h1>
+          <p class="page-sub">Check availability and book venues</p>
         </div>
-
-        <div class="calendar-grid" id="calendarGrid"></div>
-
+      </div>
+      <div class="venue-layout">
+        <div class="venue-sidebar-panel">
+          <h3>Venues</h3>
+          <div class="venue-list" id="venueList"></div>
+        </div>
+        <div class="venue-calendar-panel">
+          <div class="calendar-container">
+            <div class="calendar-header">
+              <button class="btn btn-icon" id="prevMonth"><i class="fa fa-chevron-left"></i></button>
+              <div class="calendar-title"><h3 id="calendarTitle"></h3></div>
+              <button class="btn btn-icon" id="nextMonth"><i class="fa fa-chevron-right"></i></button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+        </div>
       </div>
     </div>
 
-  </div>
-</div>
-<!-- Venue Slots Modal -->
-<div class="modal-overlay" id="venueSlotsModal">
-  <div class="modal modal-large">
-    <button class="modal-close" onclick="closeModal('venueSlotsModal')">
-      <i class="fa fa-times"></i>
-    </button>
-
-    <h2 class="modal-title">
-      <i class="fa fa-clock"></i> Available Slots
-    </h2>
-
-    <p id="venueSlotsSubtitle"
-       style="margin-bottom:14px;color:var(--text-muted);font-weight:600;">
-    </p>
-
-    <div class="table-card">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Date (MM/DD/YYYY)</th>
-            <th>Time</th>
-          </tr>
-        </thead>
-        <tbody id="venueSlotsBody"></tbody>
-      </table>
+    <!-- Venue Slots Modal -->
+    <div class="modal-overlay" id="venueSlotsModal">
+      <div class="modal modal-large">
+        <button class="modal-close" onclick="closeModal('venueSlotsModal')"><i class="fa fa-times"></i></button>
+        <h2 class="modal-title"><i class="fa fa-clock"></i> Available Slots</h2>
+        <p id="venueSlotsSubtitle" style="margin-bottom:14px;color:var(--text-muted);font-weight:600;"></p>
+        <div class="table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date (MM/DD/YYYY)</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="venueSlotsBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
     <!-- ===== ANNOUNCEMENTS PAGE ===== -->
     <div class="page" id="page-announcements">
@@ -275,9 +281,9 @@
           <h1>Announcements</h1>
           <p class="page-sub">Manage club communications</p>
         </div>
-        <button class="btn btn-primary" onclick="openModal('addAnnouncementModal')">
-          <i class="fa fa-plus"></i> New Announcement
-        </button>
+        <button class="btn btn-primary" onclick="openNewAnnouncementModal()">
+  <i class="fa fa-plus"></i> New Announcement
+</button>
       </div>
       <div class="table-card">
         <table class="data-table" id="announcementTable">
@@ -296,39 +302,37 @@
         </table>
       </div>
     </div>
+
     <!-- Add Announcement Modal -->
-<div class="modal-overlay" id="addAnnouncementModal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('addAnnouncementModal')"><i class="fa fa-times"></i></button>
-   <h2 class="modal-title" id="annModalTitle"><i class="fa fa-bullhorn"></i> New Announcement</h2>
-
-   <form id="addAnnouncementForm" onsubmit="submitAnnouncement(event)">
-
-      <div class="form-group">
-        <label>Title</label>
-        <input type="text" id="annTitle" placeholder="Announcement title" required />
+    <div class="modal-overlay" id="addAnnouncementModal">
+      <div class="modal">
+        <button class="modal-close" onclick="closeModal('addAnnouncementModal')"><i class="fa fa-times"></i></button>
+        <h2 class="modal-title" id="annModalTitle"><i class="fa fa-bullhorn"></i> New Announcement</h2>
+        <form id="addAnnouncementForm" onsubmit="submitAnnouncement(event)">
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="annTitle" placeholder="Announcement title" required />
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="annType">
+              <option>General</option>
+              <option>Urgent</option>
+              <option>Event</option>
+              <option>Result</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Message</label>
+            <textarea rows="4" id="annMessage" placeholder="Write your message…" required></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('addAnnouncementModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Publish</button>
+          </div>
+        </form>
       </div>
-      <div class="form-group">
-        <label>Type</label>
-        <select id="annType">
-          <option>General</option>
-          <option>Urgent</option>
-          <option>Event</option>
-          <option>Result</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Message</label>
-        <textarea rows="4" id="annMessage" placeholder="Write your message…" required></textarea>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-outline" onclick="closeModal('addAnnouncementModal')">Cancel</button>
-     <button type="submit" class="btn btn-primary">Publish</button>
-
-      </div>
-    </form>
-  </div>
-</div>
+    </div>
 
     <!-- ===== EXECOM PAGE ===== -->
     <div class="page" id="page-execom">
@@ -341,93 +345,66 @@
       <div class="execom-grid" id="execomGrid"></div>
     </div>
 
-    <!-- UPDATED PROFILE PAGE - Remove hardcoded values -->
-<div class="page" id="page-profile">
-  <div class="page-header">
-    <h1>Organizer Profile</h1>
-  </div>
-  <div class="profile-layout">
-    <div class="profile-card-main">
-      <div class="profile-banner"></div>
-      <div class="profile-avatar-wrap">
-        <img src="https://api.dicebear.com/7.x/initials/svg?seed=User&backgroundColor=6c63ff" alt="Avatar" />
-      </div>
-      <div class="profile-details">
-        <h2>Loading...</h2>
-        <p class="profile-position">Organizer</p>
-        <div class="profile-fields">
-          <div class="pf-row">
-            <span class="pf-label"><i class="fa fa-id-badge"></i> Roll No</span>
-            <span class="pf-val" id="pfRollNo">-</span>
-          </div>
-          <div class="pf-row">
-            <span class="pf-label"><i class="fa fa-hashtag"></i> Admission No</span>
-            <span class="pf-val" id="pfAdmissionNo">-</span>
-          </div>
-          <div class="pf-row">
-            <span class="pf-label"><i class="fa fa-graduation-cap"></i> Class</span>
-            <span class="pf-val" id="pfClass">-</span>
-          </div>
-          <div class="pf-row">
-            <span class="pf-label"><i class="fa fa-users"></i> Club</span>
-            <span class="pf-val" id="pfClub">Loading...</span>
-          </div>
-          <div class="pf-row">
-            <span class="pf-label"><i class="fa fa-envelope"></i> Email</span>
-            <span class="pf-val" id="pfEmail">Loading...</span>
-          </div>
-          <div class="pf-row">
-            <span class="pf-label"><i class="fa fa-phone"></i> Phone</span>
-            <span class="pf-val" id="pfPhone">Loading...</span>
-          </div>
-          <div class="profile-actions">
-  <button id="profileLogoutBtn" class="logout-btn" type="button">
-    <i class="fa fa-right-from-bracket"></i> Logout
-  </button>
-</div>
-        </div>
-      </div>
-    </div>
-    <div class="profile-stats-side">
-      <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Events Organized</span></div><br>
-      <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Pending Requests</span></div>
-    </div>
-  </div>
-</div>
-
-    <!-- ===== SETTINGS PAGE ===== -->
-    
-    <div class="page" id="page-settings">
+    <!-- ===== PROFILE PAGE ===== -->
+    <div class="page" id="page-profile">
       <div class="page-header">
-        <h1>Settings</h1>
+        <h1>Organizer Profile</h1>
       </div>
-    <center>
-      <div class="settings-layout">
-        <div class="settings-section">
-          <h3>Notifications</h3>
-          <div class="setting-row"><span>Email Notifications</span><label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label></div>
-          <div class="setting-row"><span>Push Notifications</span><label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label></div>
-          <div class="setting-row"><span>Event Reminders</span><label class="toggle"><input type="checkbox" /></span></label></div>
+      <div class="profile-layout">
+        <div class="profile-card-main">
+          <div class="profile-banner"></div>
+          <div class="profile-avatar-wrap">
+            <img src="https://api.dicebear.com/7.x/initials/svg?seed=User&backgroundColor=6c63ff" alt="Avatar" />
+          </div>
+          <div class="profile-details">
+            <h2>Loading...</h2>
+            <p class="profile-position">Organizer</p>
+            <div class="profile-fields">
+              <div class="pf-row">
+                <span class="pf-label"><i class="fa fa-id-badge"></i> Roll No</span>
+                <span class="pf-val" id="pfRollNo">-</span>
+              </div>
+              <div class="pf-row">
+                <span class="pf-label"><i class="fa fa-hashtag"></i> Admission No</span>
+                <span class="pf-val" id="pfAdmissionNo">-</span>
+              </div>
+              <div class="pf-row">
+                <span class="pf-label"><i class="fa fa-graduation-cap"></i> Class</span>
+                <span class="pf-val" id="pfClass">-</span>
+              </div>
+              <div class="pf-row">
+                <span class="pf-label"><i class="fa fa-users"></i> Club</span>
+                <span class="pf-val" id="pfClub">Loading...</span>
+              </div>
+              <div class="pf-row">
+                <span class="pf-label"><i class="fa fa-envelope"></i> Email</span>
+                <span class="pf-val" id="pfEmail">Loading...</span>
+              </div>
+              <div class="pf-row">
+                <span class="pf-label"><i class="fa fa-phone"></i> Phone</span>
+                <span class="pf-val" id="pfPhone">Loading...</span>
+              </div>
+            </div>
+            <div class="profile-actions">
+              <button id="profileLogoutBtn" class="logout-btn" type="button">
+                <i class="fa fa-right-from-bracket"></i> Logout
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="settings-section">
-          <h3>Privacy</h3>
-          <div class="setting-row"><span>Show Profile Publicly</span><label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label></div>
-          <div class="setting-row"><span>Allow Event Suggestions</span><label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label></div>
-        </div>
-        <div class="settings-section">
-          <h3>Theme</h3>
-          <div class="setting-row"><span>Dark Mode</span><label class="toggle"><input type="checkbox" id="darkModeToggle" /><span class="slider"></span></label></div>
+        <div class="profile-stats-side">
+          <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Events Organized</span></div>
+          <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Pending Requests</span></div>
         </div>
       </div>
     </div>
-  </main>
-</div>
-</center>
+
+    
 <!-- ======= MODALS ======= -->
 
 <!-- Event Detail Modal -->
 <div class="modal-overlay" id="eventDetailModal">
-  <div class="modal ">
+  <div class="modal modal-large">
     <button class="modal-close" onclick="closeModal('eventDetailModal')"><i class="fa fa-times"></i></button>
     <div id="eventDetailContent"></div>
   </div>
@@ -477,14 +454,7 @@
         </div>
         <div class="form-group full-width">
           <label>Facilities Needed</label>
-          <div class="checkbox-group">
-            <label><input type="checkbox" /> Projector</label>
-            <label><input type="checkbox" /> PA System</label>
-            <label><input type="checkbox" /> Laptop</label>
-            <label><input type="checkbox" /> Mics</label>
-            <label><input type="checkbox" /> Chairs</label>
-            <label><input type="checkbox" /> Tables</label>
-          </div>
+          <textarea rows="3" placeholder="Describe the event…" required></textarea>
         </div>
         <div class="form-group full-width">
           <label>Venue Request</label>
@@ -501,7 +471,7 @@
               <input type="time" />
             </div>
           </div>
-          <button type="button" class="btn btn-outline btn-sm" onclick="addVenueRow()">
+          <button type="button" class="btn btn-outline btn-sm" onclick="addVenueRow()" style="margin-top:8px;">
             <i class="fa fa-plus"></i> Add Another Venue
           </button>
         </div>
@@ -509,41 +479,11 @@
           <label>Event Poster</label>
           <input type="file" accept="image/*" />
         </div>
+        
       </div>
       <div class="form-actions">
         <button type="button" class="btn btn-outline" onclick="closeModal('createEventModal')">Cancel</button>
         <button type="submit" class="btn btn-primary">Send Request</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Add Announcement Modal -->
-<div class="modal-overlay" id="addAnnouncementModal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('addAnnouncementModal')"><i class="fa fa-times"></i></button>
-    <h2 class="modal-title"><i class="fa fa-bullhorn"></i> New Announcement</h2>
-    <form onsubmit="submitAnnouncement(event)">
-      <div class="form-group">
-        <label>Title</label>
-        <input type="text" id="annTitle" placeholder="Announcement title" required />
-      </div>
-      <div class="form-group">
-        <label>Type</label>
-        <select id="annType">
-          <option>General</option>
-          <option>Urgent</option>
-          <option>Event</option>
-          <option>Result</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Message</label>
-        <textarea rows="4" id="annMessage" placeholder="Write your message…" required></textarea>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-outline" onclick="closeModal('addAnnouncementModal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Publish</button>
       </div>
     </form>
   </div>

@@ -45,10 +45,10 @@
         </a>
 
         <!-- ✅ My Clubs -->
-        <a class="nav-item" href="clubs.html" data-nav="clubs.html">
-          <span class="icon">🏛️</span>
-          <span>My Clubs</span>
-        </a>
+        <a class="nav-item" href="clubs.html?view=mine">
+  <span class="icon">🏛️</span><span>My Clubs</span>
+</a>
+        <a class="nav-item" href="my-issues.html">🚩 <span>My Issues</span></a>
         <a class="nav-item" href="account-setting.html" data-nav="account-setting.html">
     <span class="icon">👤</span>
     <span>Profile</span>
@@ -91,10 +91,8 @@
         <div class="clubs-page-head">
           <div class="filter-bar" id="filterBar">
             <button class="filter-btn active" data-filter="all">All</button>
-            <button class="filter-btn" data-filter="Technical">Technical</button>
-            <button class="filter-btn" data-filter="Social">Social</button>
-            <button class="filter-btn" data-filter="Science">Science</button>
-            <button class="filter-btn" data-filter="Creative">Creative</button>
+<button class="filter-btn" data-filter="Technical">Technical</button>
+<button class="filter-btn" data-filter="Non-Technical">Non-Technical</button>
           </div>
           <input class="search" id="searchBox" placeholder="Search clubs..." />
         </div>
@@ -108,5 +106,6 @@
 
   <script src="student-dashboard.js"></script>
   <script src="clubs.js"></script>
+  <script src="club-single.js"></script>
 </body>
 </html>

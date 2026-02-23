@@ -65,39 +65,49 @@ await loadAnnouncements();
 
 function updateOrganizerProfile(organizer) {
   console.log("Updating UI with:", organizer);
-  // Store organizer data for later use
-  localStorage.setItem('organizerData', JSON.stringify(organizer));
-  // Update navbar profile name
-  const profileName = document.querySelector(".profile-name");
-  if (profileName) {
-    profileName.textContent = organizer.name;
-  }
 
-  // Update profile role
-  const profileRole = document.querySelector(".profile-role");
-  if (profileRole && organizer.club) {
-    profileRole.textContent = `${organizer.club} Organizer`;
-  }
+  localStorage.setItem("organizerData", JSON.stringify(organizer));
 
-  // Update avatars
-  const avatars = document.querySelectorAll(".profile-avatar, .profile-avatar-wrap img");
-  const seed = organizer.name.replace(/ /g, '+');
-  avatars.forEach(avatar => {
-    avatar.src = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=6c63ff`;
+  // ✅ Update ALL profile names (top + sidebar + anywhere)
+  document.querySelectorAll(".profile-name").forEach(el => {
+    el.textContent = organizer.name || "Organizer";
   });
 
-  // Update profile page
+  // ✅ Update ALL profile roles (top + sidebar + anywhere)
+  const roleText = organizer.club ? `${organizer.club} Organizer` : "Organizer";
+  document.querySelectorAll(".profile-role").forEach(el => {
+    el.textContent = roleText;
+  });
+
+  // ✅ Update avatars (supports <img> avatars and <div> initials avatars)
+  const initials = (organizer.name || "O")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join("");
+
+  const seed = (organizer.name || "Organizer").replace(/ /g, "+");
+  const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=6c63ff`;
+
+  document.querySelectorAll(".profile-avatar, .profile-avatar-wrap img, .sidebar-avatar, .sidebar-profile .avatar")
+    .forEach(el => {
+      if (el.tagName === "IMG") {
+        el.src = avatarUrl;
+      } else {
+        // if it's a div/span avatar
+        el.textContent = initials;
+      }
+    });
+
+  // Profile page title
   const profilePageTitle = document.querySelector("#page-profile h2");
-  if (profilePageTitle) {
-    profilePageTitle.textContent = organizer.name;
-  }
+  if (profilePageTitle) profilePageTitle.textContent = organizer.name || "Organizer";
 
   const profilePosition = document.querySelector(".profile-position");
-  if (profilePosition && organizer.club) {
-    profilePosition.textContent = `Organizer – ${organizer.club}`;
-  }
+  if (profilePosition) profilePosition.textContent = organizer.club ? `Organizer – ${organizer.club}` : "Organizer";
 
-  // Update profile fields
+  // Profile fields
   const fields = {
     pfClub: organizer.club,
     pfEmail: organizer.email,
@@ -109,14 +119,11 @@ function updateOrganizerProfile(organizer) {
 
   Object.entries(fields).forEach(([id, value]) => {
     const element = document.getElementById(id);
-    if (element) {
-      element.textContent = value || "N/A";
-    }
+    if (element) element.textContent = value || "N/A";
   });
-  
+
   console.log("✅ UI updated successfully");
 }
-
 // ============================================
 // LOAD EVENTS FROM BACKEND
 // ============================================
@@ -176,14 +183,23 @@ function updateDashboardStats() {
   const stats = document.querySelectorAll(".stat-num");
   if (stats.length < 4) return;
 
-  const total = events.length;
-  const approved = events.filter(e => e.status === "Approved").length;
-  const draft = events.filter(e => e.status === "Draft").length;
+  // Use the same list used to render the Events page
+  const list = filteredEvents.length ? filteredEvents : allEvents;
 
-  stats[0].textContent = total;
-  stats[1].textContent = approved;
-  stats[2].textContent = draft;
-  stats[3].textContent = draft;
+  const total = list.length;
+
+  // If you really want past/upcoming, do it by date:
+  const now = new Date();
+  const past = list.filter(e => new Date(e.date) < now).length;
+  const upcoming = list.filter(e => new Date(e.date) >= now).length;
+
+  // If you want pending approvals based on status:
+  const pending = list.filter(e => ["Draft", "Pending"].includes(e.status)).length;
+
+  stats[0].textContent = total;     // Total Events
+  stats[1].textContent = past;      // Past Events
+  stats[2].textContent = upcoming;  // Upcoming Events
+  stats[3].textContent = pending;   // Pending Approvals
 }
 
 // ============================================
@@ -254,10 +270,13 @@ function setupSidebar() {
     if (isMobile) {
       sidebar.classList.toggle('open');
       overlay.classList.toggle('active');
-    } else {
-      sidebar.classList.toggle('collapsed');
-      mainContent.classList.toggle('expanded');
-    }
+   } else {
+  sidebar.classList.toggle('collapsed');
+  mainContent.classList.toggle('expanded');
+
+  // ✅ add this line
+  document.body.classList.toggle("sidebar-hidden");
+}
   });
 
   overlay.addEventListener('click', () => {
@@ -437,15 +456,12 @@ function createEventCard(e) {
   const organizerData = JSON.parse(localStorage.getItem('organizerData') || '{}');
   const clubName = e.club || organizerData.club || "Club not specified";
 
-  const posterUrl = e.poster
-    ? `http://localhost:5000/uploads/${e.poster}`
-    : "https://via.placeholder.com/600x300?text=No+Poster";
-
+  const posterUrl = e.posterUrl || "600x300?text=No+Poster";
   return `
     <div class="event-card">
-      <div class="event-card-poster">
-        <img src="${posterUrl}" alt="${e.title}" />
-      </div>
+     <div class="event-card-poster">
+  <img src="${posterUrl}" alt="" />
+</div>
       <div class="event-card-body">
         <div class="event-card-title">${e.title}</div>
         <div class="event-card-meta">
@@ -470,17 +486,31 @@ function createEventCard(e) {
             ${clubName}
           </div>
         </div>
-        <div class="event-card-footer">
-          <span class="event-type-badge">
-            ${e.type || "General"}
-          </span>
-          <span class="event-status status-${(e.status || 'draft').toLowerCase()}">
-            ${e.status || "Draft"}
-          </span>
-          <span class="fee-badge ${e.registration_fee > 0 ? 'fee-paid' : 'fee-free'}">
-            ${e.registration_fee > 0 ? "₹" + e.registration_fee : "Free"}
-          </span>
-        </div>
+       ${(() => {
+  const capacity = Number(e.capacity || 0);
+  const registered = Number(e.registered || e.registered_count || e.registrations || 0);
+  const seatsLeft = Math.max(0, capacity - registered);
+  const percent = capacity > 0 ? (registered / capacity) * 100 : 0;
+
+  return `
+    <div class="event-card-footer seat-footer">
+
+      <div class="seat-text">
+        <span class="seat-left">${seatsLeft} seats left</span>
+        <span class="seat-total">/ ${capacity} total</span>
+      </div>
+
+      <div class="seat-progress">
+        <div class="seat-progress-bar" style="width:${percent}%"></div>
+      </div>
+
+      <a class="view-details" href="org.html?id=${e.id}" onclick="event.stopPropagation()">
+        View details →
+      </a>
+
+    </div>
+  `;
+})()}
       </div>
     </div>
   `;
@@ -831,11 +861,25 @@ function openEditAnnouncement(id) {
   document.getElementById("annType").value = ann.type || "General";
   document.getElementById("annMessage").value = ann.message || "";
 
-  document.getElementById("addAnnouncementForm").dataset.editId = id;
+  const form = document.getElementById("addAnnouncementForm");
+  form.dataset.editId = id;
+
+  // ✅ change modal title (optional)
+  const titleEl = document.getElementById("annModalTitle");
+  if (titleEl) titleEl.innerHTML = `<i class="fa fa-edit"></i> Edit Announcement`;
 
   openModal("addAnnouncementModal");
 }
+function openNewAnnouncementModal() {
+  const form = document.getElementById("addAnnouncementForm");
+  form.reset();
+  delete form.dataset.editId;
 
+  const titleEl = document.getElementById("annModalTitle");
+  if (titleEl) titleEl.innerHTML = `<i class="fa fa-bullhorn"></i> New Announcement`;
+
+  openModal("addAnnouncementModal");
+}
 async function deleteAnnouncement(id) {
   if (!confirm('Delete this announcement?')) return;
   
@@ -860,30 +904,52 @@ async function deleteAnnouncement(id) {
 
 async function submitAnnouncement(e) {
   e.preventDefault();
-  
-  const title = document.getElementById('annTitle').value;
-  const type = document.getElementById('annType').value;
-  const message = document.getElementById('annMessage').value;
+
+  const form = e.target;
+
+  const raw = form.dataset.editId;              // string or undefined
+  const editId = raw && raw !== "undefined" ? Number(raw) : null;
+
+  const title = document.getElementById("annTitle").value.trim();
+  const type = document.getElementById("annType").value;
+  const message = document.getElementById("annMessage").value.trim();
+
   const token = localStorage.getItem("authToken");
-  
+
   try {
-    const response = await fetch('http://localhost:5000/api/announcements', {
-      method: 'POST',
+    const url = editId
+      ? `http://localhost:5000/api/announcements/${editId}`
+      : `http://localhost:5000/api/announcements`;
+
+    const method = editId ? "PUT" : "POST";
+
+    const response = await fetch(url, {
+      method,
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({ title, message, type })
     });
-    
-    if (response.ok) {
-      showToast('📢 Announcement published!');
-      closeModal('addAnnouncementModal');
-      loadAnnouncements();
-      e.target.reset();
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      console.log("❌ failed:", response.status, url, data);
+      showToast("❌ " + (data.message || `Failed (${response.status})`));
+      return;
     }
-  } catch (error) {
-    console.error("Submit error:", error);
+
+    showToast(editId ? "✅ Announcement updated!" : "📢 Announcement published!");
+    closeModal("addAnnouncementModal");
+
+    form.reset();
+    delete form.dataset.editId;
+
+    await loadAnnouncements();
+  } catch (err) {
+    console.error(err);
+    showToast("❌ Something went wrong");
   }
 }
 // ===================== EXECOM =====================
@@ -1008,11 +1074,17 @@ async function submitCreateEvent(e) {
   const organizerData = JSON.parse(localStorage.getItem('organizerData') || '{}');
   formData.append("club", organizerData.club || "");
 
-  const fileInput = form.querySelector('input[type="file"]');
-  if (fileInput?.files.length > 0) {
-    formData.append("poster", fileInput.files[0]);
-  }
+ // Poster
+const posterInput = form.querySelector('input[type="file"][accept*="image"]');
+if (posterInput?.files?.length > 0) {
+  formData.append("poster", posterInput.files[0]);
+}
 
+// Request Upload (PDF/Image)
+const requestInput = document.getElementById("requestFile");
+if (requestInput?.files?.length > 0) {
+  formData.append("request_upload", requestInput.files[0]); // field name for backend
+}
   const token = localStorage.getItem("authToken");
 
   try {

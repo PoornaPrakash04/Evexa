@@ -273,3 +273,127 @@ body{
   color: var(--primary);
   font-size: 14px;
 }
+/* =========================
+   NEW LAYOUT (like 2nd pic)
+   Paste at BOTTOM to override
+========================= */
+
+/* remove the card look if you want full page look */
+.detail-card{
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* Full-width banner */
+.hero{
+  padding: 0;
+  background: transparent;
+}
+
+.hero-banner{
+  height: 260px;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  background: #ddd;
+}
+.hero-banner img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Page below banner */
+.page{
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr; /* left bigger, right smaller */
+  gap: 18px;
+  align-items: start;
+}
+
+/* Left main card + right sidebar card */
+.main-card,
+.side-card{
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.main-card{ padding: 16px; }
+.side-card{ padding: 16px; position: sticky; top: 92px; }
+
+/* Title row area */
+.head-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap: 14px;
+}
+.title{
+  font-size: 34px;
+  margin: 0 0 10px;
+}
+
+/* status pill like "Open" */
+.status-pill{
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: #ecfdf3;
+  color: #16a34a;
+}
+
+/* make meta horizontal if needed */
+.meta{
+  margin-top: 10px;
+}
+
+/* Registration progress */
+.progress{
+  height: 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  overflow: hidden;
+  margin: 10px 0 14px;
+}
+.progress > div{
+  height: 100%;
+  width: 60%; /* JS can set this inline */
+  background: linear-gradient(135deg, var(--primary), #ff6584);
+  border-radius: 999px;
+}
+
+/* Register button */
+.register-btn{
+  width: 100%;
+  justify-content: center;
+  padding: 14px 16px;
+  font-size: 15px;
+  border-radius: 16px;
+  border: none;
+  color: #fff;
+  font-weight: 950;
+  background: linear-gradient(135deg, var(--primary), #ff6584);
+  box-shadow: var(--shadow2);
+}
+
+/* Tabs should sit inside main-card */
+.tabs{
+  padding: 0;
+  margin-top: 14px;
+}
+
+/* Mobile */
+@media (max-width: 900px){
+  .hero-banner{ height: 200px; }
+  .page{ grid-template-columns: 1fr; }
+  .side-card{ position: static; }
+}

@@ -1,14 +1,66 @@
-// event-details.js — connected to backend
+// ===========================
+//  event-details.js — connected to backend
+// ===========================
 
-let allEvents = [];
-let currentFilter = "all";
-let currentSearch = "";
+let allEvents         = [];
+let registeredEventIds = [];
+let currentFilter     = "all";
+let currentSearch     = "";
+
+// ── Detect filter from URL ────────────────────────────
+const urlFilter = new URLSearchParams(window.location.search).get("filter");
+if (urlFilter) {
+  currentFilter = urlFilter;
+}
+
+// ── Update page title based on view ──────────────────
+if (currentFilter === "registered") {
+  const title    = document.querySelector(".title");
+  const subtitle = document.querySelector(".subtitle");
+  if (title)    title.textContent    = "My Registrations";
+  if (subtitle) subtitle.textContent = "Events you've registered for.";
+}
+
+// ── Highlight correct filter button if present ───────
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.classList.toggle("active", btn.dataset.filter === currentFilter);
+});
+
+// ── Highlight correct sidebar nav item ───────────────
+document.querySelectorAll(".nav-item").forEach(item => {
+  const href = item.getAttribute("href") || "";
+  if (currentFilter === "registered" && href.includes("filter=registered")) {
+    item.classList.add("active");
+  } else if (currentFilter !== "registered" && href === "event-details.html") {
+    item.classList.add("active");
+  } else {
+    item.classList.remove("active");
+  }
+});
+
+// ── Fetch registered event IDs ────────────────────────
+async function loadRegisteredIds() {
+  const token = localStorage.getItem("authToken");
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_BASE}/attendance/my-registrations`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      registeredEventIds = data.map(r => String(r.event_id));
+    }
+  } catch (err) {
+    console.error("Failed to load registrations:", err);
+  }
+}
 
 // ── Fetch events from backend ─────────────────────────
 async function loadEvents() {
   try {
-    const res = await fetch(`${API_BASE}/events`); // public, no token needed
+    const res = await fetch(`${API_BASE}/events`);
     allEvents = await res.json();
+    await loadRegisteredIds();
     renderGrid();
   } catch (err) {
     console.error("Failed to load events:", err);
@@ -17,21 +69,20 @@ async function loadEvents() {
   }
 }
 
-// ── Map backend status to your badge labels ───────────
+// ── Map backend status to badge labels ────────────────
 function getStatus(event) {
-  const now = new Date();
+  const now       = new Date();
   const eventDate = new Date(event.date);
   if (event.capacity && event.registered_count >= event.capacity) return "full";
   if (eventDate > now) return "open";
   return "upcoming";
 }
 
-// ── Build one card ────────────────────────────────────
+// ── Build one event card ──────────────────────────────
 function renderCard(e) {
-  // In your renderCard function, update the poster line:
-const poster = (e.poster && e.poster !== 'default.jpg')
-  ? `http://localhost:5000/uploads/${e.poster}`
-  : `https://placehold.co/600x200/6d5efc/ffffff?text=${encodeURIComponent(e.title)}`;
+  const poster = (e.poster && e.poster !== "default.jpg")
+    ? `http://localhost:5000/uploads/${e.poster}`
+    : `https://placehold.co/600x200/6d5efc/ffffff?text=${encodeURIComponent(e.title)}`;
 
   const eventDate = e.date
     ? new Date(e.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
@@ -41,6 +92,7 @@ const poster = (e.poster && e.poster !== 'default.jpg')
   const statusMap = { open: "Open", full: "Full", upcoming: "Upcoming" };
   const fee       = e.registration_fee > 0 ? `₹${e.registration_fee}` : "Free";
   const capacity  = e.capacity || 0;
+  const isRegistered = registeredEventIds.includes(String(e.id));
 
   return `
     <div class="event-card" data-id="${e.id}" role="button" tabindex="0" aria-label="View details for ${e.title}">
@@ -52,6 +104,8 @@ const poster = (e.poster && e.poster !== 'default.jpg')
           <div class="event-name">${e.title}</div>
           <span class="status-badge ${status}">${statusMap[status]}</span>
         </div>
+
+        ${isRegistered ? `<div class="registered-tag">🎟️ Registered</div>` : ""}
 
         <div class="event-meta">
           <div class="meta-row">
@@ -97,7 +151,12 @@ const poster = (e.poster && e.poster !== 'default.jpg')
 function getFiltered() {
   return allEvents.filter(e => {
     const status = getStatus(e);
-    const matchFilter = currentFilter === "all" || status === currentFilter;
+
+    let matchFilter = false;
+    if (currentFilter === "all")        matchFilter = true;
+    else if (currentFilter === "registered") matchFilter = registeredEventIds.includes(String(e.id));
+    else                                matchFilter = status === currentFilter;
+
     const q = currentSearch.toLowerCase();
     const matchSearch =
       !q ||
@@ -105,17 +164,30 @@ function getFiltered() {
       e.club?.toLowerCase().includes(q) ||
       e.venue?.toLowerCase().includes(q) ||
       e.type?.toLowerCase().includes(q);
+
     return matchFilter && matchSearch;
   });
 }
 
 // ── Render grid ───────────────────────────────────────
 function renderGrid() {
-  const grid = document.getElementById("eventsGrid");
+  const grid     = document.getElementById("eventsGrid");
   const filtered = getFiltered();
 
   if (!filtered.length) {
-    grid.innerHTML = `<div class="no-results">No events found. Try a different filter or search.</div>`;
+    if (currentFilter === "registered") {
+      grid.innerHTML = `
+        <div class="no-results">
+          <div style="font-size:40px;margin-bottom:12px">🎟️</div>
+          <div>You haven't registered for any events yet.</div>
+          <a href="event-details.html" style="color:#6d5efc;font-weight:700;
+             text-decoration:none;margin-top:10px;display:inline-block;">
+            Browse Events →
+          </a>
+        </div>`;
+    } else {
+      grid.innerHTML = `<div class="no-results">No events found. Try a different filter or search.</div>`;
+    }
     return;
   }
 
@@ -139,6 +211,18 @@ document.getElementById("filterBar")?.querySelectorAll(".filter-btn").forEach(bt
     document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     currentFilter = btn.dataset.filter;
+
+    // Update page title when switching filters
+    const title    = document.querySelector(".title");
+    const subtitle = document.querySelector(".subtitle");
+    if (currentFilter === "registered") {
+      if (title)    title.textContent    = "My Registrations";
+      if (subtitle) subtitle.textContent = "Events you've registered for.";
+    } else {
+      if (title)    title.textContent    = "Events";
+      if (subtitle) subtitle.textContent = "Discover and register for upcoming events.";
+    }
+
     renderGrid();
   });
 });
@@ -157,60 +241,6 @@ document.getElementById("logoutBtn")?.addEventListener("click", () => {
     window.location.href = "stsignin.html";
   }
 });
-let registeredEventIds = [];
 
-// Add this function
-async function loadRegisteredIds() {
-  const token = localStorage.getItem("authToken");
-  if (!token) return;
-  try {
-    const res = await fetch(`${API_BASE}/attendance/my-registrations`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      registeredEventIds = data.map(r => String(r.event_id));
-    }
-  } catch (err) {
-    console.error("Failed to load registrations:", err);
-  }
-}
-
-// Update getFiltered()
-function getFiltered() {
-  return allEvents.filter(e => {
-    const status = getStatus(e);
-
-    let matchFilter = false;
-    if (currentFilter === "all") matchFilter = true;
-    else if (currentFilter === "registered") matchFilter = registeredEventIds.includes(String(e.id));
-    else matchFilter = status === currentFilter;
-
-    const q = currentSearch.toLowerCase();
-    const matchSearch =
-      !q ||
-      e.title?.toLowerCase().includes(q) ||
-      e.club?.toLowerCase().includes(q) ||
-      e.venue?.toLowerCase().includes(q) ||
-      e.type?.toLowerCase().includes(q);
-
-    return matchFilter && matchSearch;
-  });
-}
-
-// Update loadEvents() to also fetch registrations
-async function loadEvents() {
-  try {
-    const res = await fetch(`${API_BASE}/events`);
-    allEvents = await res.json();
-    await loadRegisteredIds(); // ← add this
-    renderGrid();
-  } catch (err) {
-    console.error("Failed to load events:", err);
-    document.getElementById("eventsGrid").innerHTML =
-      `<div class="no-results">Failed to load events. Is the server running?</div>`;
-  }
-}
-
-// ── Boot ──────────────────────────────────────────────
+// ── Boot ─────────────────────────────────────────────
 loadEvents();

@@ -55,7 +55,8 @@ router.get("/slots", auth(["ORGANIZER"]), (req, res) => {
   );
 });
 // GET all venues from venues table
-router.get("/", auth(["ORGANIZER"]), (req, res) => {
+router.get("/", auth(["ORGANIZER", "STUDENT"]), (req, res) => {
+
   db.query("SELECT id, name, capacity, location FROM venues", (err, results) => {
     if (err) return res.status(500).json(err);
     res.json(results);
@@ -83,7 +84,7 @@ router.post("/book", auth(["ORGANIZER"]), (req, res) => {
   });
 });
 
-router.get("/calendar", auth(["ORGANIZER"]), (req, res) => {
+router.get("/calendar", auth(["ORGANIZER", "STUDENT"]), (req, res) => {
   const { venue_name, year, month } = req.query;
   
   console.log("Calendar request:", venue_name, year, month); // DEBUG
