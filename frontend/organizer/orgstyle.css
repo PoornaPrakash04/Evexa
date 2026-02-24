@@ -278,7 +278,10 @@ body.sidebar-hidden .main-content{
 
 /* ========== PAGES ========== */
 .page { display: none; animation: fadeUp 0.25s ease; }
-.page.active { display: block; }
+.page.active { 
+  display: flex;        /* or grid, whatever your page uses */
+  flex-direction: column;
+}
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }

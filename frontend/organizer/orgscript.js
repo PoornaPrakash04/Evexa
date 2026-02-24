@@ -1,63 +1,66 @@
-document.addEventListener("DOMContentLoaded", async function() {
-  console.log("=== DASHBOARD LOADING ===");
-  const token = localStorage.getItem("authToken");
-  console.log("Token found:", !!token);
-  console.log("Token value:", token);
-  
-  if (!token) {
-  console.log("❌ No token - redirecting to login");
-  window.location.href = "http://127.0.0.1:5501/frontend/organizer/ogsignin.html";
-  return;
-}
+if (window.__EVEXA_INITIALIZED__) {
+  console.warn("EVEXA already initialized - skipping duplicate init");
+} else {
+  window.__EVEXA_INITIALIZED__ = true;
 
-  try {
-    console.log("Sending request to backend...");
-    const response = await fetch("http://localhost:5000/api/auth/me", {
-      headers: {
-        "Authorization": `Bearer ${token}`
+  document.addEventListener("DOMContentLoaded", async function () {
+    console.log("=== DASHBOARD LOADING ===");
+
+    const token = localStorage.getItem("authToken");
+    console.log("Token found:", !!token);
+
+    if (!token) {
+      console.log("❌ No token - redirecting to login");
+      window.location.href = "http://127.0.0.1:5501/frontend/organizer/ogsignin.html";
+      return;
+    }
+
+    try {
+      console.log("Sending request to backend...");
+      const response = await fetch("http://localhost:5000/api/auth/me", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        console.error("❌ Token verification failed");
+        localStorage.removeItem("authToken");
+        window.location.href = "http://127.0.0.1:5501/frontend/organizer/ogsignin.html";
+        return;
       }
-    });
 
-    console.log("Response status:", response.status);
-    console.log("Response ok:", response.ok);
+      const organizer = await response.json();
+      console.log("✅ Organizer loaded:", organizer);
+      updateOrganizerProfile(organizer);
 
-    if (!response.ok) {
-  console.error("❌ Token verification failed");
-  localStorage.removeItem("authToken");
-  window.location.href = "http://127.0.0.1:5501/frontend/organizer/ogsignin.html";
-  return;
+    } catch (error) {
+      console.error("❌ Auth error:", error);
+      localStorage.removeItem("authToken");
+      window.location.href = "http://127.0.0.1:5501/frontend/organizer/ogsignin.html";
+      return;
+    }
+
+    // Initialize UI components
+    setupSidebar();
+    setupNotifications();
+    setupDarkMode();
+    setupProfile();
+
+    await loadExecom();
+    await loadVenues();
+
+    // ✅ only call this ONE time
+    await loadAnnouncements();
+
+    // Restore last visited page
+    let savedPage = localStorage.getItem("currentPage") || "dashboard";
+    switchPage(savedPage);
+
+    // Load events from backend
+    await loadEvents();
+
+    console.log("✅ Dashboard initialized successfully");
+  });
 }
-
-    const organizer = await response.json();
-    console.log("✅ Organizer loaded:", organizer);
-    
-    updateOrganizerProfile(organizer);
-    
-  } catch (error) {
-  console.error("❌ Auth error:", error);
-  localStorage.removeItem("authToken");
-  window.location.href = "http://127.0.0.1:5501/frontend/organizer/ogsignin.html";
-  return;
-}
-  // Initialize UI components
-  setupSidebar();
-  setupNotifications();
-  setupDarkMode();
-  setupProfile();
-  await loadExecom();
-  await loadVenues();
-  renderAnnouncements();
-// After other initializations
-await loadAnnouncements();
-  // Restore last visited page
-  let savedPage = localStorage.getItem("currentPage") || "dashboard";
-  switchPage(savedPage);
-
-  // Load events from backend
-  await loadEvents();
-
-  console.log("✅ Dashboard initialized successfully");
-});
 
 // ============================================
 // UPDATE PROFILE UI

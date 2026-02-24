@@ -119,7 +119,6 @@ if (nameEl) nameEl.value = user.name || "";
         },
         body: JSON.stringify({
           name:  fullName,
-          email: document.getElementById("profileEmail")?.value || "",
           phone: document.getElementById("profilePhone")?.value || "",
         })
       });
