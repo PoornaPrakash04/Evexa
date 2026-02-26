@@ -141,14 +141,6 @@ if (nameEl) nameEl.value = user.name || "";
     }
   });
 
-  // Reset button — re-fetches from DB
-  const resetBtn = document.getElementById("resetProfileBtn");
-  if (resetBtn) {
-    resetBtn.addEventListener("click", function() {
-      loadUserProfile();
-      showToast("↩️ Profile reset to saved values.");
-    });
-  }
 })();
 
 // ── Photo upload ──────────────────────────────────────────────────────────

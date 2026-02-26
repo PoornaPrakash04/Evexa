@@ -6,6 +6,7 @@ let allClubs      = [];
 let joinedClubIds = new Set();
 let currentFilter = "all";
 let currentSearch = "";
+const STATIC_BASE = API_BASE.replace("/api", "");
 
 // ── Detect view mode from URL ─────────────────────────
 const isMyClubs = new URLSearchParams(window.location.search).get("view") === "mine";
@@ -82,7 +83,13 @@ async function loadClubs() {
 // ── Build one club card ───────────────────────────────
 function renderCard(c) {
   const color    = categoryColors[c.club_category] || "#6d5efc";
-  const icon = categoryIcons[c.club_category] || "🏫";
+  const fallbackIcon = categoryIcons[c.club_category] || "🏫";
+const icon = c.club_logo
+  ? `<img src="${STATIC_BASE}/${c.club_logo}"
+       alt=""
+       onerror="this.outerHTML='<span style=\\'font-size:40px;\\'>${fallbackIcon}</span>'"
+       style="width:80px;height:80px;object-fit:contain;border-radius:10px;" />`
+  : `<span style="font-size:40px;">${fallbackIcon}</span>`;
   const isJoined = joinedClubIds.has(c.club_id);
   const desc     = (c.short_description || "").slice(0, 110);
   const year     = c.year_of_establishment || "—";

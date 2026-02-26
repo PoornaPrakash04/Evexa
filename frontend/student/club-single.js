@@ -1,13 +1,14 @@
 // ===========================
 //  club-single.js — connected to backend
 // ===========================
-
+{
+const STATIC_BASE = API_BASE.replace("/api", "");
 const urlParams  = new URLSearchParams(window.location.search);
 const urlId      = urlParams.get("id");
 const ssId       = sessionStorage.getItem("selectedClubId");
 const selectedId = parseInt(urlId || ssId || "1", 10);
 
-const content = document.getElementById("pageContent");
+
 
 // ── Category colors (same as clubs.js) ───────────────────
 const categoryColors = {
@@ -30,16 +31,17 @@ const categoryIcons = {
 
 // ── Main loader ───────────────────────────────────────────
 async function loadClubDetail() {
+  const content = document.getElementById("pageContent");
+  if (!content) { console.error("pageContent not found"); return; }
+
   try {
     const token   = localStorage.getItem("authToken");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-    // 1. Fetch club details
     const res = await fetch(`${API_BASE}/clubs/${selectedId}`, { headers });
     if (!res.ok) throw new Error("Club not found");
     const club = await res.json();
 
-    // 2. Fetch member count
     let memberCount = club.member_count ?? "—";
     try {
       const mRes = await fetch(`${API_BASE}/clubs/${selectedId}/members`);
@@ -49,7 +51,6 @@ async function loadClubDetail() {
       }
     } catch (_) {}
 
-    // 3. Check if already joined
     let isJoined = false;
     if (token) {
       try {
@@ -61,17 +62,18 @@ async function loadClubDetail() {
       } catch (_) {}
     }
 
-    // 4. Fetch upcoming events for this club (if endpoint exists)
     let events = [];
     try {
       const evRes = await fetch(`${API_BASE}/clubs/${selectedId}/events`, { headers });
       if (evRes.ok) events = await evRes.json();
     } catch (_) {}
 
-    renderClub(club, memberCount, isJoined, events);
+    // ✅ pass content as last argument
+    renderClub(club, memberCount, isJoined, events, content);
 
   } catch (err) {
     console.error("Failed to load club:", err);
+    // ✅ content is defined here too
     content.innerHTML = `
       <div style="text-align:center;padding:60px 20px;">
         <div style="font-size:48px;margin-bottom:14px;">🔎</div>
@@ -81,9 +83,8 @@ async function loadClubDetail() {
       </div>`;
   }
 }
-
 // ── Render the club page ──────────────────────────────────
-function renderClub(club, memberCount, isJoined, events = []) {
+function renderClub(club, memberCount, isJoined, events = [], content) {
 
   // Map API fields → display values
   const name        = club.club_name        || "Unnamed Club";
@@ -94,7 +95,12 @@ function renderClub(club, memberCount, isJoined, events = []) {
   const schedule    = club.meeting_schedule || club.meet_schedule || "—";
   const tagline     = club.tagline          || club.short_description || "";
   const color       = categoryColors[category] || "#6d5efc";
-  const icon        = club.club_logo        || categoryIcons[category] || "🏫";
+  const icon = club.club_logo
+  ? `<img src="${STATIC_BASE}/${club.club_logo}"
+       alt="${name} logo"
+       onerror="this.style.display='none'"
+       style="width:80px;height:80px;object-fit:contain;border-radius:12px;" />`
+  : (categoryIcons[category] || "🏫");
 
   // Goals — backend may return array or comma string
   let goals = [];
@@ -345,4 +351,7 @@ document.getElementById("logoutBtn")?.addEventListener("click", () => {
 });
 
 // ── Boot ──────────────────────────────────────────────────
-loadClubDetail();
+document.addEventListener("DOMContentLoaded", () => {
+  loadClubDetail();
+});
+}

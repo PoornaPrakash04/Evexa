@@ -963,8 +963,18 @@ async function loadExecom() {
   console.log("Loading execom...");
   const token = localStorage.getItem("authToken");
 
+  // ✅ get organizer club (already saved in updateOrganizerProfile)
+  const organizerData = JSON.parse(localStorage.getItem("organizerData") || "{}");
+  const club = organizerData.club;
+
+  if (!club) {
+    console.warn("⚠️ Organizer club not found, cannot filter execom.");
+    return;
+  }
+
   try {
-    const response = await fetch("http://localhost:5000/api/execom", {
+    // ✅ fetch only that club’s execom
+    const response = await fetch(`http://localhost:5000/api/execom/club/${encodeURIComponent(club)}`, {
       headers: {
         "Authorization": `Bearer ${token}`
       }

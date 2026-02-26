@@ -13,6 +13,13 @@ async function apiFetch(endpoint) {
     window.location.href = "stsignin.html";
     return null;
   }
+
+  // ✅ Add this — return null for any error status
+  if (!res.ok) {
+    console.warn(`apiFetch ${endpoint} failed with ${res.status}`);
+    return null;
+  }
+
   return res.json();
 }
 

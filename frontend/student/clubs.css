@@ -104,7 +104,42 @@
   justify-content: center;
   position: relative;
 }
-.club-logo-big { font-size: 52px; }
+/* ── Club logo (card banner) ── */
+.club-logo-big {
+  font-size: 52px;          /* fallback emoji size */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.club-logo-big img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(17,24,39,.12);
+}
+
+/* ── Club hero logo (detail page) ── */
+.club-hero-logo {
+  font-size: 64px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+}
+
+.club-hero-logo img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(17,24,39,.15);
+}
 .club-category-tag {
   position: absolute;
   top: 12px;
@@ -192,6 +227,13 @@
   margin-bottom: 22px;
   box-shadow: 0 8px 28px rgba(17,24,39,.08);
   flex-wrap: wrap;
+}
+.club-hero-banner {
+  background-image: url(...);
+  min-height: 200px;          /* use min-height instead */
+  background-size: contain;   /* shows full image without cropping */
+  background-repeat: no-repeat;
+  background-position: center;
 }
 .club-hero-logo { font-size: 64px; flex-shrink: 0; }
 .club-hero-name { font-size: 28px; font-weight: 900; color: #111827; }

@@ -617,6 +617,13 @@ body{
 .app.sidebar-collapsed .main {
   margin-left: 0;
 }
+.main {
+  transition: margin-left 0.3s ease;
+}
+
+.app.sidebar-collapsed .main {
+  margin-left: 70px; /* ✅ match the collapsed sidebar width */
+}
 
 /* ── Explore Section ── */
 .explore-section {

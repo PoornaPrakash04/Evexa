@@ -24,7 +24,7 @@ function authorize(roles = []) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Check if role is allowed (if roles specified)
-      if (roles.length && !roles.includes(decoded.role)) {
+      if (roles.length && !roles.map(r => r.toLowerCase()).includes((decoded.role || "").toLowerCase())) {
         return res.status(403).json({ message: "Access denied" });
       }
 
