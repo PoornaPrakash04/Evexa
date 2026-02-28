@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Organizer Sign In</title>
-<link rel="stylesheet" href="ogsignin.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Organizer Sign In | EVEXA</title>
+  <link rel="stylesheet" href="ogsignin.css">
 </head>
 
 <body>
@@ -19,18 +20,19 @@
 <!-- Sign In Card -->
 <div class="signin-container">
 
-    <h1>Organizer <span>Sign In</span></h1>
-    <p class="subtitle">Access your organizer dashboard</p>
+  <h1>Organizer <span>Sign In</span></h1>
+  <p class="subtitle">Access your organizer dashboard</p>
 
-    <form class="signin-form" id="loginForm">
-    <input type="text" id="email" placeholder="Organizer Email" required>
-    <input type="password" id="password" placeholder="Password" required>
-
+  <form class="signin-form" id="loginForm">
+    <input type="text"     id="admission_no" placeholder="Admission Number" required autocomplete="username"/>
+    <input type="password" id="password"     placeholder="Password"          required autocomplete="current-password"/>
     <button type="submit" class="signin-btn">Sign In</button>
-</form>
-    <p class="extra">Forgot password?</p>
+  </form>
+
+  <p class="extra">Forgot password?</p>
 
 </div>
+
 <script src="organizer-signin.js"></script>
 </body>
 </html>

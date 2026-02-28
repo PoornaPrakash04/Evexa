@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Faculty Dashboard | EVEXA</title>
+  <link rel="stylesheet" href="faculty-dashboard.css"/>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="brand">
+      <div class="brand-logo">F</div>
+      <div class="brand-text">
+        <div class="brand-name">EVEXA<span></span></div>
+        <div class="brand-sub">Faculty Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" id="sideNav">
+
+      <div class="section-label">Main</div>
+      <a class="nav-item active" href="#" data-page="dashboard">
+        <span class="icon">🏠</span><span>Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-page="pending">
+        <span class="icon">⏳</span><span>Pending Approvals</span>
+        <span class="nav-badge orange" id="badge-pending">5</span>
+      </a>
+      <a class="nav-item" href="#" data-page="notif-history">
+        <span class="icon">🔔</span><span>Notifications</span>
+        <span class="nav-badge red" id="badge-notif">3</span>
+      </a>
+
+      <div class="section-label">Events</div>
+      <a class="nav-item" href="#" data-page="proposals">
+        <span class="icon">📋</span><span>Event Proposals</span>
+        <span class="nav-badge" id="badge-proposals">4</span>
+      </a>
+      <a class="nav-item" href="#" data-page="event-list">
+        <span class="icon">📅</span><span>Event List</span>
+      </a>
+      <a class="nav-item" href="#" data-page="calendar">
+        <span class="icon">🗓️</span><span>Approval Calendar</span>
+      </a>
+
+      <div class="section-label">Certificates</div>
+      <a class="nav-item" href="#" data-page="certificates">
+        <span class="icon">🎓</span><span>Certificate Approvals</span>
+        <span class="nav-badge green" id="badge-certs">12</span>
+      </a>
+
+      <div class="section-label">Clubs & Reports</div>
+      <a class="nav-item" href="#" data-page="clubs">
+        <span class="icon">🏷️</span><span>Club Oversight</span>
+      </a>
+      <a class="nav-item" href="#" data-page="analytics">
+        <span class="icon">📊</span><span>Analytics</span>
+      </a>
+      <a class="nav-item" href="#" data-page="feedback">
+        <span class="icon">💬</span><span>Feedback</span>
+      </a>
+
+    </nav>
+
+    <div class="sidebar-bottom">
+      <a class="nav-item" href="#">
+        <span class="icon">⚙️</span><span>Settings</span>
+      </a>
+      <div class="mini-user">
+        <div class="mini-avatar">DR</div>
+        <div class="mini-meta">
+          <div class="mini-name">Dr. Ramesh Nair</div>
+          <div class="mini-role">Faculty Advisor · ECE</div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════ MAIN ═══════════ -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="sidebarToggle">☰</button>
+        <div class="page-title">
+          <div class="title" id="pageTitle">Dashboard</div>
+          <div class="subtitle" id="pageSub">Welcome back, Dr. Ramesh — here's your faculty overview.</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="role-pill">Faculty Advisor</span>
+        <button class="icon-btn" id="notifBtn" title="Notifications">
+          🔔<div class="notif-dot" id="notifDot"></div>
+        </button>
+        <button class="icon-btn" id="profileBtn" title="Profile">👤</button>
+        <button class="top-link danger" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <section class="content" id="content">
+
+      <!-- ─────────────────────────────────────
+           PAGE: DASHBOARD
+      ───────────────────────────────────── -->
+      <div id="pg-dashboard">
+
+        <!-- Summary stats -->
+        <div class="cards-grid">
+          <div class="card accent-orange">
+            <div class="card-icon">⏳</div>
+            <div class="card-info"><div class="card-value">5</div><div class="card-label">Pending Approvals</div></div>
+          </div>
+          <div class="card accent-green">
+            <div class="card-icon">✅</div>
+            <div class="card-info"><div class="card-value">28</div><div class="card-label">Events Approved</div></div>
+          </div>
+          <div class="card accent-purple">
+            <div class="card-icon">🎓</div>
+            <div class="card-info"><div class="card-value">12</div><div class="card-label">Certs Pending</div></div>
+          </div>
+          <div class="card accent-pink">
+            <div class="card-icon">🏷️</div>
+            <div class="card-info"><div class="card-value">6</div><div class="card-label">Clubs Overseen</div></div>
+          </div>
+          <div class="card accent-blue">
+            <div class="card-icon">💬</div>
+            <div class="card-info"><div class="card-value">4.6</div><div class="card-label">Avg Feedback</div></div>
+          </div>
+          <div class="card accent-red">
+            <div class="card-icon">❗</div>
+            <div class="card-info"><div class="card-value">3</div><div class="card-label">Urgent Items</div></div>
+          </div>
+        </div>
+
+        <!-- Middle row -->
+        <div class="two-col">
+
+          <!-- Pending quick view -->
+          <div class="panel">
+            <div class="panel-header">
+              <div><div class="panel-title">Pending Approvals</div><div class="panel-sub">Requires your attention</div></div>
+              <button class="btn ghost sm" onclick="navigateTo('proposals')">View All</button>
+            </div>
+            <div class="list" id="dashPendingList"></div>
+          </div>
+
+          <!-- Recent notifications -->
+          <div class="panel">
+            <div class="panel-header">
+              <div><div class="panel-title">Recent Notifications</div><div class="panel-sub">Latest activity</div></div>
+              <button class="btn ghost sm" onclick="navigateTo('notif-history')">View All</button>
+            </div>
+            <div class="list" id="dashNotifList"></div>
+          </div>
+
+        </div>
+
+        <!-- Announcement board -->
+        <div class="panel">
+          <div class="panel-header">
+            <div><div class="panel-title">📢 Announcement Board</div><div class="panel-sub">Messages from Admin</div></div>
+          </div>
+          <div class="panel-body" id="announcementBoard"></div>
+        </div>
+
+      </div>
+
+      <!-- ─────────────────────────────────────
+           PAGE: EVENT PROPOSALS
+      ───────────────────────────────────── -->
+      <div id="pg-proposals" style="display:none">
+
+        <div class="panel">
+          <div class="panel-header">
+            <div><div class="panel-title">Event Proposal Review</div><div class="panel-sub">Review and approve or reject submitted proposals</div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <input class="search" placeholder="Search proposals…" id="proposalSearch" style="width:190px"/>
+              <select class="search select-input" id="proposalFilter" style="width:130px">
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="review">Under Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox" class="cb" id="chkAllProposals"/></th>
+                  <th>Event Name</th><th>Organizer</th><th>Date</th>
+                  <th>Category</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="proposalsBody"></tbody>
+            </table>
+          </div>
+          <div style="padding:12px 20px;display:flex;gap:8px;border-top:1px solid rgba(229,231,235,.7);flex-wrap:wrap;">
+            <button class="btn success sm" id="bulkApproveBtn">✅ Approve Selected</button>
+            <button class="btn danger sm" id="bulkRejectBtn">❌ Reject Selected</button>
+          </div>
+        </div>
+
+        <!-- Event detail view -->
+        <div class="panel" id="proposalDetail" style="display:none">
+          <div class="panel-header">
+            <div><div class="panel-title" id="detailName">Event Details</div><div class="panel-sub">Full proposal information</div></div>
+            <button class="btn ghost sm" id="closeDetail">✕ Close</button>
+          </div>
+          <div class="panel-body" id="detailBody"></div>
+        </div>
+
+      </div>
+
+      <!-- ─────────────────────────────────────
+           PAGE: EVENT LIST
+      ───────────────────────────────────── -->
+      <div id="pg-event-list" style="display:none">
+        <div class="panel">
+          <div class="panel-header">
+            <div><div class="panel-title">All Events</div><div class="panel-sub">Complete list across all clubs</div></div>
+            <input class="search" placeholder="Search events…" id="eventListSearch" style="width:200px"/>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event Name</th><th>Organizer</th><th>Date</th>
+                  <th>Venue</th><th>Category</th><th>Participants</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="eventListBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────
+           PAGE: CALENDAR
+      ───────────────────────────────────── -->
+      <div id="pg-calendar" style="display:none">
+        <div class="panel">
+          <div class="panel-header">
+            <div><div class="panel-title">Approval Calendar</div><div class="panel-sub">Events scheduled for review</div></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn ghost sm" id="calPrev">← Prev</button>
+              <span id="calMonthLabel" style="font-weight:900;font-size:14px;align-self:center;min-width:120px;text-align:center;"></span>
+              <button class="btn ghost sm" id="calNext">Next →</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="cal-grid" id="calGrid"></div>
+            <div class="divider"></div>
+            <div id="calEventsList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────
+           PAGE: CERTIFICATES
+      ───────────────────────────────────── -->
+      <div id="pg-certificates" style="display:none">
+        <div class="panel">
+          <div class="panel-header">
+            <div><div class="panel-title">Certificate Approvals</div><div class="panel-sub">Verify attendance and issue certificates</div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <input class="search" placeholder="Search student / event…" id="certSearch" style="width:210px"/>
+              <button class="btn success sm" id="bulkCertBtn">✅ Bulk Approve</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox" class="cb" id="chkAllCerts"/></th>
+                  <th>Student Name</th><th>Reg No</th><th>Event</th>
+                  <th>Attendance</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="certsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────
+           PAGE: CLUBS
+      ───────────────────────────────────── -->
+      <div id="pg-clubs" style="display:none">
+        <div class="panel" style="margin-bottom:18px;">
+          <div class="panel-header">
+            <div><div class="panel-title">Club & Academic Oversight</div><div class="panel-sub">View club reports and monitor activity</div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;" id="clubsGrid"></div>
+      </div>
+
+      <!-- ─────────────────────────────────────
+           PAGE: ANALYTICS
+      ───────────────────────────────────── -->
+      <div id="pg-analytics" style="display:none">
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">📊 Events Per Month</div><div class="panel-sub">Academic year 2025–26</div></div></div>
+            <div class="panel-body chart-box"><canvas id="eventsChart"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">👥 Student Participation</div><div class="panel-sub">Students per month</div></div></div>
+            <div class="panel-body chart-box"><canvas id="participationChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div><div class="panel-title">🎓 Academic vs Non-Academic</div><div class="panel-sub">Distribution this semester</div></div></div>
+          <div class="panel-body" style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;">
+            <div style="width:200px;height:200px;flex-shrink:0;"><canvas id="typeChart"></canvas></div>
+            <div id="typeChartLegend"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ─────────────────────────────────────
+           PAGE: FEEDBACK
+      ───────────────────────────────────── -->
+      <div id="pg-feedback" style="display:none">
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">⭐ Feedback Ratings</div><div class="panel-sub">Average per event</div></div></div>
+            <div class="panel-body chart-box"><canvas id="feedbackChart"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">📈 Rating Breakdown</div><div class="panel-sub">Overall distribution</div></div></div>
+            <div class="panel-body" id="ratingBreakdown"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div><div class="panel-title">💬 Student Comments</div><div class="panel-sub">Recent feedback</div></div></div>
+          <div class="panel-body" id="commentsBody"></div>
+        </div>
+
+      </div>
+
+      <!-- ─────────────────────────────────────
+           PAGE: NOTIFICATION HISTORY
+      ───────────────────────────────────── -->
+      <div id="pg-notif-history" style="display:none">
+        <div class="panel">
+          <div class="panel-header">
+            <div><div class="panel-title">Notification History</div><div class="panel-sub">All alerts and updates</div></div>
+            <button class="btn ghost sm" id="markAllReadBtn">Mark all read</button>
+          </div>
+          <div class="list" id="notifHistoryList"></div>
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────
+           PAGE: PENDING APPROVALS
+      ───────────────────────────────────── -->
+      <div id="pg-pending" style="display:none">
+        <div class="panel">
+          <div class="panel-header">
+            <div><div class="panel-title">All Pending Approvals</div><div class="panel-sub">Events and certificates needing action</div></div>
+          </div>
+          <div class="list" id="pendingList"></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<!-- Notification drawer -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="notifDrawer">
+  <div class="drawer-head">
+    <div><div class="drawer-title">🔔 Notifications</div><div class="drawer-sub">Recent alerts</div></div>
+    <button class="icon-btn" id="closeDrawer">✕</button>
+  </div>
+  <div class="drawer-body" id="notifDrawerBody"></div>
+</aside>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="faculty-dashboard.js"></script>
+</body>
+</html>

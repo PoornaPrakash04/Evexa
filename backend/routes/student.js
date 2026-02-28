@@ -15,7 +15,6 @@ router.get("/my-registrations", authorize(["STUDENT"]), (req, res) => {
   );
 });
 
-module.exports = router;
 // Only the logged-in student can see their own registrations
 router.get("/my-registrations", authorize(["STUDENT"]), (req, res) => {
   db.query(

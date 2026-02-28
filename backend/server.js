@@ -14,6 +14,8 @@ const execomRoutes       = require("./routes/execom");
 const ticketRoutes       = require("./routes/tickets");
 
 const app = express();
+const facultyRoutes = require("./routes/faculty");
+
 
 app.use(cors());
 app.use(express.json());
@@ -31,7 +33,7 @@ app.use("/api/execom",        execomRoutes);
 app.use("/api/student",       studentRoutes);
 app.use("/api/clubs",         clubRoutes);
 app.use("/api/tickets",       ticketRoutes);
-
+app.use("/api/faculty", require("./routes/faculty"));
 app.get("/", (req, res) => res.send("EVEXA Backend is running"));
 
 // ✅ app.listen LAST

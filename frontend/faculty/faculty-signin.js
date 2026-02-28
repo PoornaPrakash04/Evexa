@@ -1,10 +1,13 @@
 // ===========================
-//  stsignin.js
+//  faculty-signin.js
 // ===========================
 
 const API_BASE = "http://localhost:5000/api";
 
-const form = document.getElementById("loginForm");
+const form    = document.querySelector(".signin-form");
+const idInput = form.querySelector('input[type="text"]');
+const pwInput = form.querySelector('input[type="password"]');
+const btn     = form.querySelector(".signin-btn");
 
 // ── Show inline error ─────────────────────────────────
 function showError(msg) {
@@ -20,7 +23,6 @@ function showError(msg) {
       margin-bottom: 4px;
       text-align: center;
     `;
-    const btn = form.querySelector(".signin-btn");
     btn.insertAdjacentElement("beforebegin", err);
   }
   err.textContent = msg;
@@ -32,44 +34,47 @@ function clearError() {
 }
 
 // ── Submit ────────────────────────────────────────────
-form.addEventListener("submit", async function (e) {
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearError();
 
-  const admission_no = document.getElementById("admission_no").value.trim();
-  const password     = document.getElementById("password").value;
+  const facultyId = idInput.value.trim();
+  const password  = pwInput.value;
 
-  if (!admission_no || !password) {
-    showError("Please enter your Admission Number and password.");
+  if (!facultyId || !password) {
+    showError("Please enter your Faculty ID and password.");
     return;
   }
 
-  const btn = form.querySelector(".signin-btn");
   btn.textContent = "Signing in...";
   btn.disabled    = true;
 
   try {
-    const res = await fetch(`${API_BASE}/auth/student-login`, {
+    const res = await fetch(`${API_BASE}/auth/faculty-login`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ admission_no, password }),
+      body: JSON.stringify({ faculty_no: facultyId, password }),
     });
 
     const data = await res.json();
 
-    if (res.ok && data.token) {
-      localStorage.setItem("authToken", data.token);
-      localStorage.setItem("userRole",  "STUDENT");
-      window.location.href = "student-dashboard.html";
-    } else {
-      showError(data.message || "Login failed. Please try again.");
+    if (!res.ok) {
+      showError(data.message || "Invalid credentials. Please try again.");
       btn.textContent = "Sign In";
       btn.disabled    = false;
+      return;
     }
+
+    // ── Store token + role ────────────────────────────
+    localStorage.setItem("authToken", data.token);
+    localStorage.setItem("userRole",  "faculty");
+
+    // ── Redirect to faculty dashboard ─────────────────
+    window.location.href = "faculty-dashboard.html";
 
   } catch (err) {
     console.error("Login error:", err);
-    showError("Cannot connect to server. Is it running on port 5000?");
+    showError("Server error. Please try again.");
     btn.textContent = "Sign In";
     btn.disabled    = false;
   }

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Faculty Sign In</title>
-<link rel="stylesheet" href="fcsignin.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Faculty Sign In | EVEXA</title>
+  <link rel="stylesheet" href="fcsignin.css">
 </head>
 
 <body>
@@ -19,17 +20,16 @@
 <!-- Sign In Card -->
 <div class="signin-container">
 
-    <h1>Faculty <br><span>Sign In</span><br></h1>
-    <p class="subtitle">Access your faculty dashboard</p>
+  <h1>Faculty <br><span>Sign In</span></h1>
+  <p class="subtitle">Access your faculty dashboard</p>
 
-    <form class="signin-form">
-        <input type="text" placeholder="Faculty ID" required>
-        <input type="password" placeholder="Password" required>
+  <form class="signin-form" id="signinForm">
+    <input type="text"     id="facultyId" placeholder="Faculty ID" required autocomplete="username"/>
+    <input type="password" id="password"  placeholder="Password"   required autocomplete="current-password"/>
+    <button type="submit" class="signin-btn">Sign In</button>
+  </form>
 
-        <button type="submit" class="signin-btn">Sign In</button>
-    </form>
-
-    <p class="extra">Forgot password?</p>
+  <p class="extra">Forgot password?</p>
 
 </div>
 
