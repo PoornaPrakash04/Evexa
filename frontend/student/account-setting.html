@@ -39,12 +39,7 @@
         <a class="nav-item" href="clubs.html?view=mine">
   <span class="icon">🏛️</span><span>My Clubs</span>
 </a>
-        <a class="nav-item" href="my-issues.html">🚩 <span>My Issues</span></a>
-        <a class="nav-item active" href="account-setting.html" data-nav="account-setting.html">
-          <span class="icon">👤</span>
-          <span>Profile</span>
-        </a>
-        
+        <a class="nav-item" href="my-issues.html">🚩 <span>My Issues</span></a>        
       </nav>
 
       <div class="sidebar-bottom">
@@ -70,10 +65,29 @@
         </div>
         <div class="topbar-right">
           <nav class="top-links">
-            <button class="top-link" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
-            <button class="top-link" type="button" onclick="window.location.href='eve.html'">EVE</button>
-            <button class="top-link danger" id="logoutBtn" type="button">Logout</button>
-          </nav>
+  <button class="icon-btn theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Switch to Light Mode">🌙</button>
+
+  <!-- Notification Bell -->
+  <div class="notif-wrap">
+    <button class="icon-btn notif-btn" id="notifBtn" title="Notifications">
+      🔔
+      <span class="notif-dot" id="notifDot"></span>
+    </button>
+    <div class="notif-dropdown" id="notifDropdown">
+      <div class="notif-dropdown-head">
+  <span class="notif-dropdown-title" id="notifDropdownTitle">Notifications</span>
+  <button class="notif-clear" id="notifClear">Clear all</button>
+</div>
+      <div class="notif-dropdown-list" id="notifList">
+        <div class="notif-empty">No notifications yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="top-link" id="clubsBtn" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
+  <button class="top-link" type="button" onclick="window.location.href='eve.html'">EVE</button>
+  <button class="top-link danger" id="logoutBtn" type="button" onclick="logout()">Logout</button>
+</nav>
         </div>
       </header>
 
@@ -94,8 +108,8 @@
             <button class="stab" data-tab="notifications">
               <span class="stab-icon">🔔</span> Notifications
             </button>
-            <button class="stab" data-tab="appearance">
-              <span class="stab-icon">🎨</span> Appearance
+            <button class="stab" data-tab="progress">
+            <span class="stab-icon">🎯</span> Progress
             </button>
           </aside>
 
@@ -267,7 +281,87 @@
                 </div>
               </div>
             </div>
+            <!-- PROGRESS -->
+<div class="spanel" id="tab-progress">
+  <div class="spanel-head">
+    <div class="spanel-title">My Progress</div>
+    <div class="spanel-sub">Your participation level and journey.</div>
+  </div>
 
+  <!-- Level Badge -->
+  <div class="level-badge-wrap" id="levelBadgeWrap">
+    <div class="level-icon" id="levelIcon">🌱</div>
+    <div class="level-info">
+      <div class="level-title" id="levelTitle">Newcomer</div>
+      <div class="level-sub" id="levelSubText">Register for your first event!</div>
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="level-bar-wrap">
+    <div class="level-bar-labels">
+      <span id="levelCurrent">Newcomer</span>
+      <span id="levelNext">Beginner</span>
+    </div>
+    <div class="level-bar-bg">
+      <div class="level-bar-fill" id="levelBarFill" style="width:0%"></div>
+    </div>
+    <div class="level-bar-hint" id="levelHint">Register for your first event!</div>
+  </div>
+
+  <!-- Stats grid -->
+  <div class="level-stats">
+    <div class="lstat">
+      <div class="lstat-value" id="lstatAttended">0</div>
+      <div class="lstat-label">Events Attended</div>
+    </div>
+    <div class="lstat">
+      <div class="lstat-value" id="lstatUpcoming">0</div>
+      <div class="lstat-label">Upcoming</div>
+    </div>
+    <div class="lstat">
+      <div class="lstat-value" id="lstatPoints">0</div>
+      <div class="lstat-label">Points</div>
+    </div>
+    <div class="lstat">
+      <div class="lstat-value" id="lstatTotal">0</div>
+      <div class="lstat-label">Total Registered</div>
+    </div>
+  </div>
+
+  <!-- Level roadmap -->
+  <div class="level-roadmap">
+    <div class="road-item" id="road-newcomer">
+      <div class="road-icon">🌱</div>
+      <div class="road-label">Newcomer</div>
+      <div class="road-req">0 events</div>
+    </div>
+    <div class="road-arrow">→</div>
+    <div class="road-item" id="road-beginner">
+      <div class="road-icon">⭐</div>
+      <div class="road-label">Beginner</div>
+      <div class="road-req">1+ events</div>
+    </div>
+    <div class="road-arrow">→</div>
+    <div class="road-item" id="road-explorer">
+      <div class="road-icon">🔭</div>
+      <div class="road-label">Explorer</div>
+      <div class="road-req">5+ events</div>
+    </div>
+    <div class="road-arrow">→</div>
+    <div class="road-item" id="road-achiever">
+      <div class="road-icon">🚀</div>
+      <div class="road-label">Achiever</div>
+      <div class="road-req">15+ events</div>
+    </div>
+    <div class="road-arrow">→</div>
+    <div class="road-item" id="road-champion">
+      <div class="road-icon">🏆</div>
+      <div class="road-label">Champion</div>
+      <div class="road-req">30+ events</div>
+    </div>
+  </div>
+</div>
             <!-- APPEARANCE -->
             <div class="spanel" id="tab-appearance">
               <div class="spanel-head">
@@ -275,37 +369,9 @@
                 <div class="spanel-sub">Customize how the portal looks for you.</div>
               </div>
 
-              <div class="appear-section">
-                <div class="appear-label">Theme</div>
-                <div class="theme-options">
-                  <div class="theme-card selected" data-theme="light">
-                    <div class="theme-preview light-preview"></div>
-                    <div class="theme-name">Light</div>
-                  </div>
-                  <div class="theme-card" data-theme="dark">
-                    <div class="theme-preview dark-preview"></div>
-                    <div class="theme-name">Dark</div>
-                  </div>
-                  <div class="theme-card" data-theme="system">
-                    <div class="theme-preview system-preview"></div>
-                    <div class="theme-name">System</div>
-                  </div>
-                </div>
-              </div>
-
               <div class="divider"></div>
 
-              <div class="appear-section">
-                <div class="appear-label">Accent Color</div>
-                <div class="color-options">
-                  <button class="color-dot active" data-color="#6d5efc" style="background:#6d5efc"></button>
-                  <button class="color-dot" data-color="#3b82f6" style="background:#3b82f6"></button>
-                  <button class="color-dot" data-color="#10b981" style="background:#10b981"></button>
-                  <button class="color-dot" data-color="#f59e0b" style="background:#f59e0b"></button>
-                  <button class="color-dot" data-color="#ef4444" style="background:#ef4444"></button>
-                  <button class="color-dot" data-color="#ec4899" style="background:#ec4899"></button>
-                </div>
-              </div>
+              
 
               <div class="divider"></div>
 
@@ -329,7 +395,8 @@
 
   <!-- Toast -->
   <div class="toast" id="toast"></div>
-  
+
+  <script src="theme.js"></script> 
   <script src="student-dashboard.js"></script>
   <script src="account-setting.js"></script>
 </body>

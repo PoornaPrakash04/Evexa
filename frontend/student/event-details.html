@@ -44,10 +44,7 @@
   <span class="icon">🏛️</span><span>My Clubs</span>
 </a>
         <a class="nav-item" href="my-issues.html">🚩 <span>My Issues</span></a>
-        <a class="nav-item" href="account-setting.html" data-nav="account-setting.html">
-    <span class="icon">👤</span>
-    <span>Profile</span>
-  </a>
+        
       </nav>
 
       <div class="sidebar-bottom">
@@ -75,10 +72,29 @@
         </div>
         <div class="topbar-right">
           <nav class="top-links">
-            <button class="top-link" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
-            <button class="top-link" type="button">EVE</button>
-            <button class="top-link danger" id="logoutBtn" type="button">Logout</button>
-          </nav>
+  <button class="icon-btn theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Switch to Light Mode">🌙</button>
+
+  <!-- Notification Bell -->
+  <div class="notif-wrap">
+    <button class="icon-btn notif-btn" id="notifBtn" title="Notifications">
+      🔔
+      <span class="notif-dot" id="notifDot"></span>
+    </button>
+    <div class="notif-dropdown" id="notifDropdown">
+      <div class="notif-dropdown-head">
+  <span class="notif-dropdown-title" id="notifDropdownTitle">Notifications</span>
+  <button class="notif-clear" id="notifClear">Clear all</button>
+</div>
+      <div class="notif-dropdown-list" id="notifList">
+        <div class="notif-empty">No notifications yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="top-link" id="clubsBtn" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
+  <button class="top-link" type="button" onclick="window.location.href='eve.html'">EVE</button>
+  <button class="top-link danger" id="logoutBtn" type="button" onclick="logout()">Logout</button>
+</nav>
         </div>
       </header>
 
@@ -104,6 +120,7 @@
       </section>
     </main>
   </div>
+  <script src="theme.js"></script>
   <script src="student-dashboard.js"></script>
   <script src="event-details.js"></script>
 </body>

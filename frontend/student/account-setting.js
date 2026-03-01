@@ -1,8 +1,4 @@
-// ===========================
 //  account-setting.js
-//  Uses /api/auth/me endpoint
-// ===========================
-
 // ── Toast ─────────────────────────────────────────────────────────────────
 function showToast(msg, type) {
   const toast = document.getElementById("toast");
@@ -281,17 +277,35 @@ if (nameEl) nameEl.value = user.name || "";
 
 // ── Theme selector ────────────────────────────────────────────────────────
 (function() {
+  const saved = localStorage.getItem("theme") || "dark";
+
+  // Mark correct card as selected on load
+  document.querySelectorAll(".theme-card").forEach(function(card) {
+    card.classList.toggle("selected", card.getAttribute("data-theme") === saved);
+  });
+
+  function applyTheme(theme) {
+    if (theme === "light") {
+      document.body.classList.add("light");
+    } else if (theme === "dark") {
+      document.body.classList.remove("light");
+    } else if (theme === "system") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.body.classList.toggle("light", !prefersDark);
+    }
+    localStorage.setItem("theme", theme);
+  }
+
   document.querySelectorAll(".theme-card").forEach(function(card) {
     card.addEventListener("click", function() {
-      document.querySelectorAll(".theme-card").forEach(function(c) {
-        c.classList.remove("selected");
-      });
+      const theme = card.getAttribute("data-theme");
+      document.querySelectorAll(".theme-card").forEach(c => c.classList.remove("selected"));
       card.classList.add("selected");
-      showToast("🎨 Theme set to " + card.getAttribute("data-theme") + ".");
+      applyTheme(theme);
+      showToast("🎨 Theme set to " + theme + "!", "success");
     });
   });
 })();
-
 // ── Accent color picker ───────────────────────────────────────────────────
 (function() {
   document.querySelectorAll(".color-dot").forEach(function(dot) {
@@ -319,6 +333,89 @@ if (nameEl) nameEl.value = user.name || "";
     });
   }
 })();
+// ── Progress / Level ──────────────────────────────────────────────────────
+async function loadProgressTab() {
+  const token = localStorage.getItem("authToken");
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/attendance/my-registrations`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const registered = await res.json();
+
+    const now          = new Date();
+    const pastEvents   = registered.filter(r => new Date(r.date) < now);
+    const futureEvents = registered.filter(r => new Date(r.date) >= now);
+    const attended     = pastEvents.length;
+    const total        = registered.length;
+    const points       = attended * 10;
+
+    // Level config
+    const levels = [
+      { key: "newcomer",  label: "Newcomer",  icon: "🌱", min: 0,  max: 1  },
+      { key: "beginner",  label: "Beginner",  icon: "⭐", min: 1,  max: 5  },
+      { key: "explorer",  label: "Explorer",  icon: "🔭", min: 5,  max: 15 },
+      { key: "achiever",  label: "Achiever",  icon: "🚀", min: 15, max: 30 },
+      { key: "champion",  label: "Champion",  icon: "🏆", min: 30, max: Infinity },
+    ];
+
+    // Find current level
+    let current = levels[0];
+    let next    = levels[1];
+    for (let i = 0; i < levels.length; i++) {
+      if (attended >= levels[i].min) {
+        current = levels[i];
+        next    = levels[i + 1] || null;
+      }
+    }
+
+    // Bar percentage
+    let pct = 0;
+    let hint = "";
+    if (!next) {
+      pct  = 100;
+      hint = "🏆 You've reached the highest level!";
+    } else {
+      pct  = Math.round(((attended - current.min) / (next.min - current.min)) * 100);
+      hint = `${next.min - attended} more event${next.min - attended !== 1 ? "s" : ""} to reach ${next.label}`;
+    }
+
+    // Update DOM
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set("levelIcon",     current.icon);
+    set("levelTitle",    current.label);
+    set("levelSubText",  hint);
+    set("levelCurrent",  current.label);
+    set("levelNext",     next ? next.label : "Champion ✓");
+    set("levelHint",     hint);
+    set("lstatAttended", attended);
+    set("lstatUpcoming", futureEvents.length);
+    set("lstatPoints",   points);
+    set("lstatTotal",    total);
+
+    // Animate bar
+    setTimeout(() => {
+      const bar = document.getElementById("levelBarFill");
+      if (bar) bar.style.width = pct + "%";
+    }, 300);
+
+    // Highlight current level in roadmap
+    levels.forEach(l => {
+      const el = document.getElementById("road-" + l.key);
+      if (el) {
+        el.classList.remove("road-active", "road-done");
+        if (l.key === current.key) el.classList.add("road-active");
+        else if (attended >= l.min) el.classList.add("road-done");
+      }
+    });
+
+  } catch (err) {
+    console.error("Progress tab error:", err);
+  }
+}
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 loadUserProfile();
+loadProgressTab();

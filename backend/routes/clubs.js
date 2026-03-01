@@ -40,27 +40,16 @@ router.get("/:id/members", (req, res) => {
 
 // GET /api/clubs/:id/events — upcoming events for a club
 router.get("/:id/events", (req, res) => {
-  // Step 1: get the club name from club_id
   db.query(
-    "SELECT club_name FROM clubs WHERE club_id = ?",
+    `SELECT events.*, clubs.club_name AS club, clubs.club_logo
+     FROM events
+     LEFT JOIN clubs ON events.club_id = clubs.club_id
+     WHERE events.club_id = ? AND events.date >= CURDATE()
+     ORDER BY events.date ASC`,
     [req.params.id],
-    (err, clubs) => {
+    (err, results) => {
       if (err) return res.status(500).json({ message: "Server error" });
-      if (!clubs.length) return res.json([]);
-
-      const clubName = clubs[0].club_name;
-
-      // Step 2: find events matching that club name
-      db.query(
-        `SELECT * FROM events 
-         WHERE club = ? AND date >= CURDATE() 
-         ORDER BY date ASC`,
-        [clubName],
-        (err2, results) => {
-          if (err2) return res.status(500).json({ message: "Server error" });
-          res.json(results);
-        }
-      );
+      res.json(results);
     }
   );
 });

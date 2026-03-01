@@ -38,7 +38,10 @@ router.post("/", authorize(), upload.single("poster"), (req, res) => {
 // ── Get organizer's own events ────────────────────────
 router.get("/my", authorize(), (req, res) => {
   db.query(
-    "SELECT * FROM events WHERE organizer_id = ? ORDER BY date DESC",
+    `SELECT events.*, clubs.club_name AS club, clubs.club_logo 
+ FROM events 
+ LEFT JOIN clubs ON events.club_id = clubs.club_id
+ WHERE events.organizer_id = ? ORDER BY events.date DESC`,
     [req.user.id],
     (err, result) => {
       if (err) return res.status(500).json({ message: "Server error" });
@@ -120,7 +123,10 @@ router.put("/issues/:id", authorize(), (req, res) => {
 // ── Get approved events (students, public) ────────────
 router.get("/", (req, res) => {
   db.query(
-    "SELECT * FROM events WHERE status = 'Approved' ORDER BY date DESC",
+    `SELECT events.*, clubs.club_name AS club, clubs.club_logo 
+     FROM events 
+     LEFT JOIN clubs ON events.club_id = clubs.club_id
+     WHERE events.status = 'Approved' ORDER BY events.date DESC`,
     (err, result) => {
       if (err) return res.status(500).json({ message: "Server error" });
       res.json(result);
@@ -245,7 +251,10 @@ router.delete("/:id", authorize(), (req, res) => {
 // ⚠️ Always keep LAST among all GET routes
 router.get("/:id", (req, res) => {
   db.query(
-    "SELECT * FROM events WHERE id = ? AND status = 'Approved'",
+    `SELECT events.*, clubs.club_name AS club, clubs.club_logo 
+ FROM events 
+ LEFT JOIN clubs ON events.club_id = clubs.club_id
+ WHERE events.id = ? AND events.status = 'Approved'`,
     [req.params.id],
     (err, result) => {
       if (err) return res.status(500).json({ message: "Server error" });

@@ -2,6 +2,7 @@
    account-settings.css
    =========================== */
 
+   
 /* ── Layout ── */
 .settings-layout {
   display: grid;
@@ -285,6 +286,143 @@
   color: #6b7280;
   border-color: #e5e7eb;
 }
+/* ── Dark Mode overrides for account-setting.css ── */
+/* ================================================================
+   LIGHT MODE for account-setting.css
+   Replace the existing body:not(.light) blocks with these
+   ================================================================ */
+
+/* ── account-setting.css dark mode (body:not(.light)) ── */
+body:not(.light) .settings-tabs {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.08);
+  box-shadow: none;
+}
+body:not(.light) .stab { color: rgba(200,205,255,.7); }
+body:not(.light) .stab:hover { background: rgba(139,92,246,.12); color: #fff; }
+body:not(.light) .stab.active {
+  background: rgba(139,92,246,.22);
+  border-color: rgba(139,92,246,.45);
+  color: #fff;
+}
+body:not(.light) .spanel-title { color: var(--text); }
+body:not(.light) .spanel-sub   { color: var(--text-3); }
+body:not(.light) .avatar-name  { color: var(--text); }
+body:not(.light) .avatar-reg   { color: var(--text-3); }
+body:not(.light) .form-label   { color: var(--text-2); }
+body:not(.light) .form-input {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.10);
+  color: var(--text);
+}
+body:not(.light) .form-input:focus {
+  border-color: rgba(139,92,246,.5);
+  box-shadow: 0 0 0 3px rgba(139,92,246,.12);
+}
+body:not(.light) .form-input[readonly] {
+  background: rgba(255,255,255,.03);
+  color: var(--text-3);
+  border-color: rgba(255,255,255,.06);
+}
+body:not(.light) .notif-row {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.08);
+}
+body:not(.light) .notif-label { color: var(--text); }
+body:not(.light) .notif-sub   { color: var(--text-3); }
+body:not(.light) .pwd-rules {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.08);
+}
+body:not(.light) .danger-label { color: var(--text); }
+body:not(.light) .danger-sub   { color: var(--text-3); }
+body:not(.light) .divider      { background: rgba(255,255,255,.08); }
+body:not(.light) .appear-label { color: var(--text); }
+body:not(.light) .toast {
+  background: rgba(20,24,40,.95);
+  border: 1px solid rgba(255,255,255,.1);
+}
+body:not(.light) .toast.success { background: #16a34a; }
+body:not(.light) .toast.error   { background: #dc2626; }
+
+/* ── account-setting.css LIGHT MODE ── */
+body.light .settings-tabs {
+  background: rgba(255,255,255,.90);
+  border-color: rgba(139,92,246,.12);
+  box-shadow: 0 6px 24px rgba(109,92,246,.08);
+}
+body.light .stab { color: rgba(13,15,30,.60); }
+body.light .stab:hover {
+  background: rgba(139,92,246,.08);
+  color: #4c1d95;
+}
+body.light .stab.active {
+  background: linear-gradient(135deg, rgba(139,92,246,.12), rgba(109,92,246,.06));
+  border-color: rgba(139,92,246,.25);
+  color: #4c1d95;
+}
+body.light .spanel-title { color: #0d0f1e; }
+body.light .spanel-sub   { color: rgba(13,15,30,.45); }
+body.light .avatar-name  { color: #0d0f1e; }
+body.light .avatar-reg   { color: rgba(13,15,30,.45); }
+body.light .avatar-img {
+  border-color: rgba(139,92,246,.20);
+  box-shadow: 0 6px 20px rgba(109,92,246,.10);
+}
+body.light .form-label { color: rgba(13,15,30,.65); }
+body.light .form-input {
+  background: rgba(255,255,255,.95);
+  border-color: rgba(139,92,246,.15);
+  color: #0d0f1e;
+  box-shadow: 0 2px 8px rgba(109,92,246,.04);
+}
+body.light .form-input:focus {
+  border-color: rgba(139,92,246,.40);
+  box-shadow: 0 0 0 4px rgba(139,92,246,.08);
+}
+body.light .form-input[readonly] {
+  background: rgba(139,92,246,.04);
+  color: rgba(13,15,30,.45);
+  border-color: rgba(139,92,246,.08);
+}
+body.light .notif-row {
+  background: rgba(255,255,255,.85);
+  border-color: rgba(139,92,246,.10);
+}
+body.light .notif-label { color: #0d0f1e; }
+body.light .notif-sub   { color: rgba(13,15,30,.45); }
+body.light .toggle-track { background: rgba(139,92,246,.15); }
+body.light .pwd-rules {
+  background: rgba(139,92,246,.04);
+  border-color: rgba(139,92,246,.12);
+}
+body.light .pwd-rule { color: rgba(13,15,30,.40); }
+body.light .pwd-rule.pass { color: #16a34a; }
+body.light .danger-title { color: #dc2626; }
+body.light .danger-row {
+  background: rgba(239,68,68,.03);
+  border-color: rgba(239,68,68,.15);
+}
+body.light .danger-label { color: #0d0f1e; }
+body.light .danger-sub   { color: rgba(13,15,30,.45); }
+body.light .divider      { background: rgba(139,92,246,.10); }
+body.light .appear-label { color: #0d0f1e; }
+body.light .theme-card {
+  background: rgba(255,255,255,.90);
+  border-color: rgba(139,92,246,.12);
+}
+body.light .theme-card:hover { border-color: rgba(139,92,246,.30); }
+body.light .theme-card.selected {
+  border-color: #6d5efc;
+  box-shadow: 0 0 0 3px rgba(109,92,246,.10);
+}
+body.light .theme-name { color: rgba(13,15,30,.65); }
+body.light .toast {
+  background: #0d0f1e;
+  box-shadow: 0 12px 32px rgba(13,15,30,.12);
+}
+body.light .toast.success { background: #16a34a; }
+body.light .toast.error   { background: #dc2626; }
 /* ── Responsive ── */
 @media (max-width: 860px) {
   .settings-layout { grid-template-columns: 1fr; }
@@ -292,3 +430,95 @@
   .stab { flex: 1; min-width: 100px; justify-content: center; }
   .form-row { grid-template-columns: 1fr; }
 }
+/* ── Progress Tab ── */
+.level-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(109,92,252,.10), rgba(138,92,246,.06));
+  border: 1px solid rgba(109,92,252,.18);
+  margin-bottom: 20px;
+}
+.level-icon  { font-size: 40px; line-height: 1; }
+.level-title { font-size: 20px; font-weight: 900; color: #111827; }
+.level-sub   { font-size: 13px; color: #6b7280; margin-top: 4px; }
+
+.level-bar-wrap { margin-bottom: 24px; }
+.level-bar-labels {
+  display: flex; justify-content: space-between;
+  font-size: 12px; font-weight: 700;
+  color: #6b7280; margin-bottom: 8px;
+}
+.level-bar-bg {
+  height: 10px; background: rgba(109,92,252,.10);
+  border-radius: 999px; overflow: hidden; margin-bottom: 6px;
+}
+.level-bar-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  border-radius: 999px;
+  box-shadow: 0 0 12px rgba(139,92,246,.4);
+  transition: width 1.2s cubic-bezier(.4,0,.2,1);
+}
+.level-bar-hint { font-size: 12px; color: #6b7280; }
+
+.level-stats {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 12px; margin-bottom: 28px;
+}
+.lstat {
+  text-align: center; padding: 16px 10px;
+  border-radius: 14px; border: 1px solid rgba(229,231,235,.8);
+  background: rgba(255,255,255,.75);
+}
+.lstat-value { font-size: 26px; font-weight: 900; color: #6d5efc; margin-bottom: 4px; }
+.lstat-label { font-size: 11px; font-weight: 700; color: #9ca3af; }
+
+.level-roadmap {
+  display: flex; align-items: center;
+  gap: 6px; flex-wrap: wrap;
+  padding: 18px; border-radius: 16px;
+  border: 1px solid rgba(229,231,235,.8);
+  background: rgba(255,255,255,.6);
+}
+.road-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid transparent;
+  opacity: .4; transition: .2s ease; flex: 1; min-width: 60px;
+}
+.road-item.road-done {
+  opacity: .7;
+  background: rgba(109,92,252,.06);
+  border-color: rgba(109,92,252,.12);
+}
+.road-item.road-active {
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(109,92,252,.14), rgba(138,92,246,.08));
+  border-color: rgba(109,92,252,.30);
+  box-shadow: 0 4px 16px rgba(109,92,252,.12);
+}
+.road-icon  { font-size: 22px; }
+.road-label { font-size: 12px; font-weight: 800; color: #374151; }
+.road-req   { font-size: 10px; color: #9ca3af; }
+.road-arrow { color: #d1d5db; font-size: 16px; flex-shrink: 0; }
+
+/* Dark mode */
+body:not(.light) .level-title { color: var(--text); }
+body:not(.light) .level-sub   { color: var(--text-3); }
+body:not(.light) .level-badge-wrap { border-color: rgba(139,92,246,.25); }
+body:not(.light) .level-bar-labels { color: var(--text-3); }
+body:not(.light) .level-bar-hint   { color: var(--text-3); }
+body:not(.light) .lstat { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+body:not(.light) .lstat-label { color: var(--text-3); }
+body:not(.light) .level-roadmap { background: rgba(255,255,255,.03); border-color: rgba(255,255,255,.08); }
+body:not(.light) .road-label { color: var(--text-2); }
+body:not(.light) .road-item.road-active { border-color: rgba(139,92,246,.40); }
+body:not(.light) .road-arrow { color: rgba(255,255,255,.15); }
+
+/* Light mode */
+body.light .level-title { color: #0d0f1e; }
+body.light .lstat { background: rgba(255,255,255,.85); border-color: rgba(139,92,246,.10); }
+body.light .lstat-value { color: #6d5efc; }

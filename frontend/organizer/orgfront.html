@@ -1,490 +1,572 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Evexa – Organizer dashboard</title>
-  <link rel="stylesheet" href="orgstyle.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVEXA — Organizer Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="orgstyle.css">
 </head>
 <body>
 
-<!-- TOP NAVBAR -->
-<nav class="topnav">
-  <div class="topnav-left">
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar"><i class="fa fa-bars"></i></button>
-  </div>
-  <div class="topnav-right">
-    <button class="nav-icon-btn" id="notifBtn" title="Notifications">
-      <i class="fa fa-bell"></i>
-      <span class="badge" id="notifBadge">3</span>
-    </button>
-    <div class="profile-pill" id="profilePillBtn">
-      <img src="https://api.dicebear.com/7.x/initials/svg?seed=User&backgroundColor=6c63ff" alt="Profile" class="profile-avatar" />
-      <div class="profile-info">
-        <span class="profile-name">Loading...</span>
-        <span class="profile-role">Organizer</span>
-      </div>
-      <i class="fa fa-chevron-down"></i>
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="logo-area">
+    <div class="logo-mark">EV</div>
+    <div class="logo-text">
+      <h1>EVEXA</h1>
+      <span>Organizer Portal</span>
     </div>
   </div>
-</nav>
 
-<!-- NOTIFICATION PANEL -->
-<div class="notif-panel" id="notifPanel">
-  <div class="notif-header">
-    <h3>Notifications</h3>
-    <div class="notif-tabs">
-      <button class="ntab active" data-tab="history">History</button>
-      <button class="ntab" data-tab="schedule">Scheduled</button>
-      <button class="ntab" data-tab="requests">Requests</button>
+  <nav>
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <a class="nav-item active" data-page="dashboard">
+        <div class="nav-icon">📊</div> Dashboard
+      </a>
+      <a class="nav-item" data-page="events">
+        <div class="nav-icon">📅</div> Events
+        <span class="nav-badge" id="navBadgeEvents">0</span>
+      </a>
+      <a class="nav-item" data-page="registrations">
+        <div class="nav-icon">👥</div> Registrations
+        <span class="nav-badge" id="navBadgeReg">0</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Operations</div>
+      <a class="nav-item" data-page="tickets">
+        <div class="nav-icon">🎫</div> QR &amp; Tickets
+      </a>
+      <a class="nav-item" data-page="venues">
+        <div class="nav-icon">📍</div> Venues
+      </a>
+      <a class="nav-item" data-page="certificates">
+        <div class="nav-icon">📜</div> Certificates
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Communication</div>
+      <a class="nav-item" data-page="announcements">
+        <div class="nav-icon">📢</div> Announcements
+      </a>
+      <a class="nav-item" data-page="notifications">
+        <div class="nav-icon">🔔</div> Notifications
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Team</div>
+      <a class="nav-item" data-page="execom">
+        <div class="nav-icon">⭐</div> Meet the Execom
+      </a>
+      <a class="nav-item" data-page="settings">
+        <div class="nav-icon">⚙️</div> Settings
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-user">
+    <div class="avatar profile-avatar" id="sidebarAvatar">??</div>
+    <div class="user-info">
+      <div class="name profile-name">Loading…</div>
+      <div class="role profile-role">Organizer</div>
     </div>
   </div>
-  <div class="notif-body" id="notifBody"></div>
-</div>
-<div class="overlay" id="overlay"></div>
+</aside>
 
-<!-- LAYOUT WRAPPER -->
-<div class="layout" id="layout">
+<!-- OVERLAY (mobile) -->
+<div id="overlay" class="overlay"></div>
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar" id="sidebar">
-    <!-- Brand inside sidebar -->
-    <div style="padding: 20px 20px 16px; border-bottom: 1px solid var(--border);">
-      <div class="brand">
-        <div class="brand-logo">O</div>
-        <div>
-          <div class="brand-name">EVEXA</div>
-          <div class="brand-sub">Organizer Portal</div>
-        </div>
-      </div>
+<!-- MAIN -->
+<div class="main" id="mainContent">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <button class="icon-btn" id="sidebarToggle" title="Toggle Sidebar">☰</button>
+    <div class="topbar-title" id="topbarTitle">Dashboard</div>
+    <div class="search-bar">
+      <span>🔍</span>
+      <input type="text" id="globalSearch" placeholder="Search events, participants…">
     </div>
-
-    <nav class="sidebar-nav">
-      <a href="#" class="nav-item" data-page="dashboard">
-        <span class="nav-icon"><i class="fa fa-th-large"></i></span>
-        <span class="nav-label">Dashboard</span>
-      </a>
-      <a href="#" class="nav-item" data-page="events">
-        <span class="nav-icon"><i class="fa fa-calendar-alt"></i></span>
-        <span class="nav-label">Events</span>
-      </a>
-      <a href="#" class="nav-item" data-page="venue">
-        <span class="nav-icon"><i class="fa fa-map-marker-alt"></i></span>
-        <span class="nav-label">Venue</span>
-      </a>
-      <a href="#" class="nav-item" data-page="announcements">
-        <span class="nav-icon"><i class="fa fa-bullhorn"></i></span>
-        <span class="nav-label">Announcements</span>
-      </a>
-      <a href="#" class="nav-item" data-page="execom">
-        <span class="nav-icon"><i class="fa fa-users"></i></span>
-        <span class="nav-label">Meet the Execom</span>
-      </a>
-
-    </nav>
-
-    <!-- Profile at bottom of sidebar (like reference image) -->
-    <div style="padding: 16px; border-top: 1px solid var(--border); margin-top: auto;" id="sidebarProfile">
-      <div class="profile-pill" id="profilePillBtn2" style="border-radius: 12px; padding: 10px 12px; cursor: pointer;" data-page="profile">
-        <img src="https://api.dicebear.com/7.x/initials/svg?seed=User&backgroundColor=6c63ff" alt="Profile" class="profile-avatar" style="width:36px;height:36px;" />
-        <div class="profile-info" style="flex:1;">
-          <span class="profile-name" style="font-size:0.85rem;">Loading...</span>
-          <span class="profile-role" style="font-size:0.72rem;">Organizer</span>
-        </div>
+    <div class="topbar-actions">
+      <div class="icon-btn" id="qrScanBtn" title="QR Scanner">📷</div>
+      <div class="icon-btn" id="notifBtn" title="Notifications">
+        🔔<div class="dot" id="notifDot"></div>
       </div>
+      <div class="avatar profile-avatar topbar-avatar" id="topbarAvatar" title="Profile">??</div>
+      <button class="btn-primary" id="addEventBtn">＋ Add Event</button>
     </div>
-  </aside>
+  </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="main-content" id="mainContent">
+  <!-- ═══════════════════════════════════════
+       PAGE: DASHBOARD
+  ═══════════════════════════════════════ -->
+  <div class="page active" id="page-dashboard">
+    <div class="content">
 
-    <!-- ===== DASHBOARD PAGE ===== -->
-    <div class="page active" id="page-dashboard">
-      <div class="page-header">
-        <div>
-          <h1>Dashboard</h1>
-          <p class="page-sub">Welcome back! Here's what's happening.</p>
-        </div>
-        <button class="btn btn-primary" onclick="openModal('createEventModal')">
-          <i class="fa fa-plus"></i> Add Event
-        </button>
-      </div>
-
-      <!-- Stats Row -->
+      <!-- STATS -->
       <div class="stats-grid">
-        <div class="stat-card" style="--accent:#6c63ff">
-          <div class="stat-icon"><i class="fa fa-calendar-check"></i></div>
-          <div class="stat-info">
-            <span class="stat-num">24</span>
-            <span class="stat-label">Total Events</span>
-          </div>
+        <div class="stat-card violet">
+          <div class="stat-icon">📅</div>
+          <div class="stat-num" id="statTotal">—</div>
+          <div class="stat-label">Total Events</div>
+          <span class="stat-delta neutral" id="statTotalDelta">All time</span>
         </div>
-        <div class="stat-card" style="--accent:#ff6584">
-          <div class="stat-icon"><i class="fa fa-history"></i></div>
-          <div class="stat-info">
-            <span class="stat-num">18</span>
-            <span class="stat-label">Past Events</span>
-          </div>
+        <div class="stat-card rose">
+          <div class="stat-icon">👥</div>
+          <div class="stat-num" id="statRegs">—</div>
+          <div class="stat-label">Total Registrations</div>
+          <span class="stat-delta up" id="statRegsDelta">Loading…</span>
         </div>
-        <div class="stat-card" style="--accent:#22c55e">
-          <div class="stat-icon"><i class="fa fa-rocket"></i></div>
-          <div class="stat-info">
-            <span class="stat-num">6</span>
-            <span class="stat-label">Upcoming Events</span>
-          </div>
+        <div class="stat-card emerald">
+          <div class="stat-icon">🚀</div>
+          <div class="stat-num" id="statUpcoming">—</div>
+          <div class="stat-label">Upcoming Events</div>
+          <span class="stat-delta neutral" id="statUpcomingDelta">Loading…</span>
         </div>
-        <div class="stat-card" style="--accent:#f4a261">
-          <div class="stat-icon"><i class="fa fa-clock"></i></div>
-          <div class="stat-info">
-            <span class="stat-num">3</span>
-            <span class="stat-label">Pending Approvals</span>
-          </div>
+        <div class="stat-card amber">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-num" id="statPending">—</div>
+          <div class="stat-label">Pending Approvals</div>
+          <span class="stat-delta stat-delta--alert" id="statPendingDelta">Loading…</span>
         </div>
       </div>
 
-      <!-- Pending Approvals -->
-      <div class="section-card">
-        <div class="section-card-header">
-          <h2><i class="fa fa-tasks"></i> Pending Approvals</h2>
+      <!-- QUICK ACTIONS -->
+      <div class="section-title">Quick Actions</div>
+      <div class="quick-actions">
+        <div class="quick-btn" data-action="newEvent">
+          <div class="quick-icon"><span>➕</span></div>
+          <p>New Event</p>
         </div>
-        <div class="approval-list" id="approvalList"></div>
+        <div class="quick-btn" data-action="scanQR">
+          <div class="quick-icon"><span>📷</span></div>
+          <p>Scan QR</p>
+        </div>
+        <div class="quick-btn" data-action="genCerts">
+          <div class="quick-icon"><span>📜</span></div>
+          <p>Generate Certs</p>
+        </div>
+        <div class="quick-btn" data-action="exportList">
+          <div class="quick-icon"><span>📤</span></div>
+          <p>Export List</p>
+        </div>
+        <div class="quick-btn" data-action="announcement">
+          <div class="quick-icon"><span>📢</span></div>
+          <p>Announcement</p>
+        </div>
+        <div class="quick-btn" data-action="bookVenue">
+          <div class="quick-icon"><span>📍</span></div>
+          <p>Book Venue</p>
+        </div>
       </div>
 
-      <!-- Upcoming Events Preview -->
-      <div class="section-card">
-        <div class="section-card-header">
-          <h2><i class="fa fa-calendar"></i> Our Events</h2>
-          <button class="btn btn-outline btn-sm" onclick="viewAllClubEvents()">View All</button>
+      <!-- TWO COL -->
+      <div class="two-col">
+
+        <!-- MY EVENTS -->
+        <div class="card">
+          <div class="card-header">
+            <h3>📅 My Events</h3>
+            <a id="viewAllEventsLink">View All →</a>
+          </div>
+          <div id="dashEventList">
+            <div class="empty-state"><span>⏳</span><p>Loading events…</p></div>
+          </div>
         </div>
-        <div class="event-cards-grid" id="dashEventGrid"></div>
+
+        <!-- ACTIVITY FEED -->
+        <div class="card">
+          <div class="card-header">
+            <h3>🕐 Recent Activity</h3>
+            <a id="clearActivityBtn">Clear</a>
+          </div>
+          <div id="activityFeed">
+            <div class="empty-state"><span>⏳</span><p>Loading activity…</p></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- BOTTOM ROW -->
+      <div class="bottom-row">
+
+        <!-- PENDING APPROVALS -->
+        <div class="card">
+          <div class="card-header">
+            <h3>⏳ Pending Approvals</h3>
+            <span class="pending-badge" id="pendingBadge">0 new</span>
+          </div>
+          <div id="approvalList">
+            <div class="empty-state"><span>✅</span><p>No pending approvals</p></div>
+          </div>
+          <div class="card-footer">
+            <button class="btn-ghost btn-full" id="viewAllApprovalsBtn">View all approvals →</button>
+          </div>
+        </div>
+
+        <!-- CERTIFICATES -->
+        <div class="card">
+          <div class="card-header">
+            <h3>📜 Certificates</h3>
+            <a data-page="certificates">Manage</a>
+          </div>
+          <div id="certList">
+            <div class="empty-state"><span>⏳</span><p>Loading certificates…</p></div>
+          </div>
+        </div>
+
+        <!-- VENUE STATUS -->
+        <div class="card">
+          <div class="card-header">
+            <h3>📍 Venue Status</h3>
+            <a data-page="venues">Book New</a>
+          </div>
+          <div id="venueStatusList">
+            <div class="empty-state"><span>⏳</span><p>Loading venues…</p></div>
+          </div>
+        </div>
+
       </div>
     </div>
+  </div><!-- /page-dashboard -->
 
-    <!-- ===== EVENTS PAGE ===== -->
-    <div class="page" id="page-events">
-      <div class="page-header events-header">
-  <div>
-    <h1>Events</h1>
-    <p class="page-sub">Browse and manage all club events</p>
-  </div>
- 
-
-    <button class="btn btn-primary" onclick="openModal('createEventModal')">
-      <i class="fa fa-plus"></i> Create Event
-    </button>
-  </div>
-      <div class="dash-controls">
-        <div class="pill-tabs">
-          <button class="pill active" data-filter="all">All</button>
-          <button class="pill" data-filter="upcoming">Upcoming</button>
-          <button class="pill" data-filter="pending">Pending</button>
-          <button class="pill" data-filter="past">Past</button>
-        </div>
-      
+  <!-- ═══════════════════════════════════════
+       PAGE: EVENTS
+  ═══════════════════════════════════════ -->
+  <div class="page" id="page-events">
+    <div class="content">
+      <div class="section-title">
+        All Events
+        <button class="btn-primary" id="createEventPageBtn">＋ Create Event</button>
       </div>
 
-      <!-- Filter Bar -->
-      <div class="filter-bar">
-        <div class="filter-search">
-          <i class="fa fa-search"></i>
-          <input type="text" id="eventSearch" placeholder="Search by event name…" oninput="filterEvents()" />
-        </div>
-        <select id="filterType" name="filterType" onchange="filterEvents()">
+      <!-- Filters -->
+      <div class="card filter-bar">
+        <input type="text"  id="eventSearch"  class="filter-input" placeholder="🔍 Search events…">
+        <select id="filterType"  class="filter-select">
           <option value="">All Types</option>
-          <option value="Workshop">Workshop</option>
-          <option value="Seminar">Seminar</option>
-          <option value="Hackathon">Hackathon</option>
-          <option value="Cultural">Cultural</option>
-          <option value="Sports">Sports</option>
+          <option>Workshop</option><option>Hackathon</option><option>Seminar</option>
+          <option>Bootcamp</option><option>Ideathon</option><option>Other</option>
         </select>
-        <select id="filterClub" onchange="filterEvents()">
-          <option value="">All Clubs</option>
-          <option>IEEE</option>
-          <option>CSI</option>
-          <option>NSS</option>
-          <option>Cyber Club</option>
-          <option>Robotics Club</option>
-        </select>
-        <select id="filterVenue" onchange="filterEvents()">
-          <option value="">All Venues</option>
-          <option>Main Seminar Hall</option>
-          <option>PTA Seminar Hall</option>
-          <option>LITAA Seminar Hall</option>
-          <option>Classrooms</option>
-        </select>
-        <input type="date" id="filterDate" onchange="filterEvents()" />
-        <button class="btn btn-outline btn-sm" onclick="clearFilters()">
-          <i class="fa fa-times"></i> Clear
-        </button>
+        <select id="filterClub"  class="filter-select"><option value="">All Clubs</option></select>
+        <select id="filterVenue" class="filter-select"><option value="">All Venues</option></select>
+        <input type="date"  id="filterDate"   class="filter-input">
+        <button class="btn-ghost" onclick="clearFilters()">Clear</button>
       </div>
-      <div class="event-cards-grid" id="eventsGrid"></div>
-    </div>
 
-    <!-- ===== VENUE PAGE ===== -->
-    <div class="page" id="page-venue">
-      <div class="page-header">
-        <div>
-          <h1>Venue Management</h1>
-          <p class="page-sub">Check availability and book venues</p>
-        </div>
-      </div>
-      <div class="venue-layout">
-        <div class="venue-sidebar-panel">
-          <h3>Venues</h3>
-          <div class="venue-list" id="venueList"></div>
-        </div>
-        <div class="venue-calendar-panel">
-          <div class="calendar-container">
-            <div class="calendar-header">
-              <button class="btn btn-icon" id="prevMonth"><i class="fa fa-chevron-left"></i></button>
-              <div class="calendar-title"><h3 id="calendarTitle"></h3></div>
-              <button class="btn btn-icon" id="nextMonth"><i class="fa fa-chevron-right"></i></button>
-            </div>
-            <div class="calendar-grid" id="calendarGrid"></div>
-          </div>
-        </div>
+      <div id="eventsGrid" class="events-grid">
+        <div class="empty-state empty-state--full"><span>⏳</span><p>Loading events…</p></div>
       </div>
     </div>
+  </div>
 
-    <!-- Venue Slots Modal -->
-    <div class="modal-overlay" id="venueSlotsModal">
-      <div class="modal modal-large">
-        <button class="modal-close" onclick="closeModal('venueSlotsModal')"><i class="fa fa-times"></i></button>
-        <h2 class="modal-title"><i class="fa fa-clock"></i> Available Slots</h2>
-        <p id="venueSlotsSubtitle" style="margin-bottom:14px;color:var(--text-muted);font-weight:600;"></p>
-        <div class="table-card">
+  <!-- ═══════════════════════════════════════
+       PAGE: REGISTRATIONS
+  ═══════════════════════════════════════ -->
+  <div class="page" id="page-registrations">
+    <div class="content">
+      <div class="section-title">Registrations</div>
+      <div class="card">
+        <div class="card-header">
+          <h3>👥 All Registrations</h3>
+          <button class="btn-ghost" id="exportRegsBtn">📤 Export</button>
+        </div>
+        <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr>
-                <th>Date (MM/DD/YYYY)</th>
-                <th>Time</th>
+              <tr class="table-head-row">
+                <th class="th">#</th>
+                <th class="th">Name</th>
+                <th class="th">Event</th>
+                <th class="th">Date</th>
+                <th class="th">Status</th>
               </tr>
             </thead>
-            <tbody id="venueSlotsBody"></tbody>
+            <tbody id="registrationsBody">
+              <tr><td colspan="5" class="table-empty">Loading…</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
     </div>
-
-    <!-- ===== ANNOUNCEMENTS PAGE ===== -->
-    <div class="page" id="page-announcements">
-      <div class="page-header">
-        <div>
-          <h1>Announcements</h1>
-          <p class="page-sub">Manage club communications</p>
-        </div>
-        <button class="btn btn-primary" onclick="openNewAnnouncementModal()">
-  <i class="fa fa-plus"></i> New Announcement
-</button>
-      </div>
-      <div class="table-card">
-        <table class="data-table" id="announcementTable">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Title</th>
-              <th>Club</th>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="announcementBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Add Announcement Modal -->
-    <div class="modal-overlay" id="addAnnouncementModal">
-      <div class="modal">
-        <button class="modal-close" onclick="closeModal('addAnnouncementModal')"><i class="fa fa-times"></i></button>
-        <h2 class="modal-title" id="annModalTitle"><i class="fa fa-bullhorn"></i> New Announcement</h2>
-        <form id="addAnnouncementForm" onsubmit="submitAnnouncement(event)">
-          <div class="form-group">
-            <label>Title</label>
-            <input type="text" id="annTitle" placeholder="Announcement title" required />
-          </div>
-          <div class="form-group">
-            <label>Type</label>
-            <select id="annType">
-              <option>General</option>
-              <option>Urgent</option>
-              <option>Event</option>
-              <option>Result</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Message</label>
-            <textarea rows="4" id="annMessage" placeholder="Write your message…" required></textarea>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-outline" onclick="closeModal('addAnnouncementModal')">Cancel</button>
-            <button type="submit" class="btn btn-primary">Publish</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- ===== EXECOM PAGE ===== -->
-    <div class="page" id="page-execom">
-      <div class="page-header">
-        <div>
-          <h1>Execom Details</h1>
-          <p class="page-sub">Executive Committee Members</p>
-        </div>
-      </div>
-      <div class="execom-grid" id="execomGrid"></div>
-    </div>
-
-    <!-- ===== PROFILE PAGE ===== -->
-    <div class="page" id="page-profile">
-      <div class="page-header">
-        <h1>Organizer Profile</h1>
-      </div>
-      <div class="profile-layout">
-        <div class="profile-card-main">
-          <div class="profile-banner"></div>
-          <div class="profile-avatar-wrap">
-            <img src="https://api.dicebear.com/7.x/initials/svg?seed=User&backgroundColor=6c63ff" alt="Avatar" />
-          </div>
-          <div class="profile-details">
-            <h2>Loading...</h2>
-            <p class="profile-position">Organizer</p>
-            <div class="profile-fields">
-              <div class="pf-row">
-                <span class="pf-label"><i class="fa fa-id-badge"></i> Roll No</span>
-                <span class="pf-val" id="pfRollNo">-</span>
-              </div>
-              <div class="pf-row">
-                <span class="pf-label"><i class="fa fa-hashtag"></i> Admission No</span>
-                <span class="pf-val" id="pfAdmissionNo">-</span>
-              </div>
-              <div class="pf-row">
-                <span class="pf-label"><i class="fa fa-graduation-cap"></i> Class</span>
-                <span class="pf-val" id="pfClass">-</span>
-              </div>
-              <div class="pf-row">
-                <span class="pf-label"><i class="fa fa-users"></i> Club</span>
-                <span class="pf-val" id="pfClub">Loading...</span>
-              </div>
-              <div class="pf-row">
-                <span class="pf-label"><i class="fa fa-envelope"></i> Email</span>
-                <span class="pf-val" id="pfEmail">Loading...</span>
-              </div>
-              <div class="pf-row">
-                <span class="pf-label"><i class="fa fa-phone"></i> Phone</span>
-                <span class="pf-val" id="pfPhone">Loading...</span>
-              </div>
-            </div>
-            <div class="profile-actions">
-              <button id="profileLogoutBtn" class="logout-btn" type="button">
-                <i class="fa fa-right-from-bracket"></i> Logout
-              </button>
-            </div>
-          </div>
-        </div>
-        <div class="profile-stats-side">
-          <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Events Organized</span></div>
-          <div class="pstat-card"><span class="pstat-num">-</span><span class="pstat-label">Pending Requests</span></div>
-        </div>
-      </div>
-    </div>
-
-    
-<!-- ======= MODALS ======= -->
-
-<!-- Event Detail Modal -->
-<div class="modal-overlay" id="eventDetailModal">
-  <div class="modal modal-large">
-    <button class="modal-close" onclick="closeModal('eventDetailModal')"><i class="fa fa-times"></i></button>
-    <div id="eventDetailContent"></div>
   </div>
-</div>
 
-<!-- Create Event Modal -->
-<div class="modal-overlay" id="createEventModal">
-  <div class="modal modal-large">
-    <button class="modal-close" onclick="closeModal('createEventModal')"><i class="fa fa-times"></i></button>
-    <h2 class="modal-title"><i class="fa fa-plus-circle"></i> Create New Event</h2>
-    <form class="create-event-form" onsubmit="submitCreateEvent(event)">
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Event Name *</label>
-          <input type="text" placeholder="e.g. IoT Workshop 2025" required />
+  <!-- ═══════════════════════════════════════
+       PAGE: VENUES
+  ═══════════════════════════════════════ -->
+  <div class="page" id="page-venues">
+    <div class="content">
+      <div class="section-title">Venues &amp; Availability</div>
+      <div class="venue-layout">
+
+        <!-- Venue list sidebar -->
+        <div class="card venue-sidebar-card">
+          <div class="venue-sidebar-label">Venues</div>
+          <div id="venueList"></div>
         </div>
-        <div class="form-group">
-          <label>Event Type *</label>
-          <select required>
-            <option value="">Select Type</option>
-            <option>Workshop</option>
-            <option>Seminar</option>
-            <option>Hackathon</option>
-            <option>Cultural</option>
-            <option>Sports</option>
-          </select>
+
+        <!-- Calendar -->
+        <div class="card venue-calendar-card">
+          <div class="calendar-nav">
+            <button class="btn-ghost" id="prevMonth">‹</button>
+            <span id="calendarTitle" class="calendar-title"></span>
+            <button class="btn-ghost" id="nextMonth">›</button>
+          </div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+          <div class="calendar-legend">
+            <span class="legend-item"><span class="legend-dot legend-dot--available"></span>Available</span>
+            <span class="legend-item"><span class="legend-dot legend-dot--partial"></span>Partial</span>
+            <span class="legend-item"><span class="legend-dot legend-dot--booked"></span>Booked</span>
+          </div>
         </div>
-        <div class="form-group full-width">
-          <label>Description *</label>
-          <textarea rows="3" placeholder="Describe the event…" required></textarea>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       PAGE: CERTIFICATES
+  ═══════════════════════════════════════ -->
+  <div class="page" id="page-certificates">
+    <div class="content">
+      <div class="section-title">Certificates</div>
+      <div class="card">
+        <div class="card-header"><h3>📜 Certificate Status</h3></div>
+        <div id="certPageList">
+          <div class="empty-state"><span>⏳</span><p>Loading…</p></div>
         </div>
-        <div class="form-group">
-          <label>Date *</label>
-          <input type="date" required />
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       PAGE: ANNOUNCEMENTS
+  ═══════════════════════════════════════ -->
+  <div class="page" id="page-announcements">
+    <div class="content">
+      <div class="section-title">
+        Announcements
+        <button class="btn-primary" onclick="openNewAnnouncementModal()">＋ New Announcement</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr class="table-head-row">
+                <th class="th">#</th>
+                <th class="th">Title</th>
+                <th class="th">Club</th>
+                <th class="th">Date</th>
+                <th class="th">Type</th>
+                <th class="th">Status</th>
+                <th class="th">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="announcementBody">
+              <tr><td colspan="7" class="table-empty">Loading…</td></tr>
+            </tbody>
+          </table>
         </div>
-        <div class="form-group">
-          <label>Time *</label>
-          <input type="time" required />
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       PAGE: NOTIFICATIONS
+  ═══════════════════════════════════════ -->
+  <div class="page" id="page-notifications">
+    <div class="content">
+      <div class="section-title">Notifications</div>
+      <div class="card">
+        <div class="notif-tabs">
+          <button class="ntab btn-ghost active" data-tab="history">History</button>
+          <button class="ntab btn-ghost" data-tab="schedule">Schedule</button>
+          <button class="ntab btn-ghost" data-tab="requests">Requests</button>
         </div>
-        <div class="form-group">
-          <label>Capacity *</label>
-          <input type="number" placeholder="e.g. 100" required />
-        </div>
-        <div class="form-group">
-          <label>Registration Fee (₹)</label>
-          <input type="number" placeholder="0 for free" />
-        </div>
-        <div class="form-group full-width">
-          <label>Facilities Needed</label>
-          <textarea rows="3" placeholder="Describe the event…" required></textarea>
-        </div>
-        <div class="form-group full-width">
-          <label>Venue Request</label>
-          <div class="multi-venue-section" id="venueSection">
-            <div class="venue-request-row">
-              <select>
-                <option value="">Select Venue</option>
-                <option>Main Seminar Hall</option>
-                <option>PTA Seminar Hall</option>
-                <option>LITAA Seminar Hall</option>
-                <option>Classrooms</option>
-              </select>
-              <input type="date" />
-              <input type="time" />
+        <div id="notifBody" class="notif-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       PAGE: EXECOM
+  ═══════════════════════════════════════ -->
+  <div class="page" id="page-execom">
+    <div class="content">
+      <div class="section-title">Meet the Execom</div>
+      <div id="execomGrid" class="execom-grid">
+        <div class="empty-state empty-state--full"><span>⏳</span><p>Loading execom…</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       PAGE: SETTINGS / PROFILE
+  ═══════════════════════════════════════ -->
+  <div class="page" id="page-settings">
+    <div class="content">
+      <div class="section-title">Profile &amp; Settings</div>
+      <div class="settings-layout">
+
+        <!-- Profile card -->
+        <div class="card profile-card">
+          <div class="avatar profile-avatar profile-avatar--lg" id="profilePageAvatar"></div>
+          <div class="profile-card-name profile-name">—</div>
+          <div class="profile-card-role profile-role">—</div>
+          <div class="profile-stats">
+            <div class="profile-stat-row">
+              <span class="profile-stat-label">Events Created</span>
+              <strong class="pstat-num">—</strong>
+            </div>
+            <div class="profile-stat-row profile-stat-row--last">
+              <span class="profile-stat-label">Pending</span>
+              <strong class="pstat-num">—</strong>
             </div>
           </div>
-          <button type="button" class="btn btn-outline btn-sm" onclick="addVenueRow()" style="margin-top:8px;">
-            <i class="fa fa-plus"></i> Add Another Venue
-          </button>
+          <button class="btn-primary btn-logout" onclick="logout()">🚪 Logout</button>
         </div>
-        <div class="form-group">
-          <label>Event Poster</label>
-          <input type="file" accept="image/*" />
+
+        <!-- Account details -->
+        <div class="card account-card">
+          <h3 class="account-section-title">Account Details</h3>
+          <div class="account-fields">
+            <div class="account-field"><span class="field-label">Club</span><span id="pfClub">—</span></div>
+            <div class="account-field"><span class="field-label">Email</span><span id="pfEmail">—</span></div>
+            <div class="account-field"><span class="field-label">Phone</span><span id="pfPhone">—</span></div>
+            <div class="account-field"><span class="field-label">Roll No</span><span id="pfRollNo">—</span></div>
+            <div class="account-field"><span class="field-label">Admission No</span><span id="pfAdmissionNo">—</span></div>
+            <div class="account-field account-field--last"><span class="field-label">Class</span><span id="pfClass">—</span></div>
+          </div>
+
+          <h3 class="account-section-title account-section-title--spaced">Preferences</h3>
+          <div class="pref-row">
+            <span class="pref-label">Dark Mode</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="darkModeToggle">
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
         </div>
-        
+
       </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-outline" onclick="closeModal('createEventModal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Send Request</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       PAGE: QR & TICKETS (stub)
+  ═══════════════════════════════════════ -->
+  <div class="page" id="page-tickets">
+    <div class="content">
+      <div class="section-title">QR &amp; Tickets</div>
+      <div class="card"><div class="empty-state"><span>🎫</span><p>Ticket scanning coming soon</p></div></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ═══════════════════════════════════════
+     MODALS
+═══════════════════════════════════════ -->
+
+<!-- CREATE EVENT MODAL -->
+<div class="modal-overlay" id="createEventModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>📅 Create New Event</h3>
+      <button class="modal-close" onclick="closeModal('createEventModal')">✕</button>
+    </div>
+    <form id="createEventForm" onsubmit="submitCreateEvent(event)" class="modal-form">
+      <input type="text"   name="title"            class="form-input" placeholder="Event Title *" required>
+      <select              name="type"              class="form-select" required>
+        <option value="">Type *</option>
+        <option>Workshop</option><option>Hackathon</option><option>Seminar</option>
+        <option>Bootcamp</option><option>Ideathon</option><option>Other</option>
+      </select>
+      <textarea            name="description"       class="form-textarea" placeholder="Description" rows="3"></textarea>
+      <div class="form-row">
+        <input type="date" name="date"              class="form-input" required>
+        <input type="time" name="time"              class="form-input">
       </div>
+      <div class="form-row">
+        <input type="number" name="capacity"        class="form-input" placeholder="Capacity *" required min="1">
+        <input type="number" name="registration_fee" class="form-input" placeholder="Fee (0 = Free)" min="0" value="0">
+      </div>
+      <div id="venueSection">
+        <select name="venue" class="form-select form-select--full">
+          <option value="">Select Venue</option>
+        </select>
+      </div>
+      <label class="form-label">Event Poster</label>
+      <input type="file" name="poster" accept="image/*" class="form-file">
+      <label class="form-label">Request Document (PDF/Image)</label>
+      <input type="file" id="requestFile" accept=".pdf,image/*" class="form-file">
+      <button type="submit" class="btn-primary btn-submit">Create Event</button>
     </form>
   </div>
 </div>
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+<!-- ANNOUNCEMENT MODAL -->
+<div class="modal-overlay" id="addAnnouncementModal">
+  <div class="modal-box modal-box--sm">
+    <div class="modal-header">
+      <h3 id="annModalTitle">📢 New Announcement</h3>
+      <button class="modal-close" onclick="closeModal('addAnnouncementModal')">✕</button>
+    </div>
+    <form id="addAnnouncementForm" onsubmit="submitAnnouncement(event)" class="modal-form">
+      <input   id="annTitle"   type="text" class="form-input" placeholder="Title *" required>
+      <select  id="annType"                class="form-select">
+        <option value="General">General</option>
+        <option value="Event">Event</option>
+        <option value="Urgent">Urgent</option>
+      </select>
+      <textarea id="annMessage"            class="form-textarea" placeholder="Message *" rows="4" required></textarea>
+      <button type="submit" class="btn-primary btn-submit">Publish</button>
+    </form>
+  </div>
+</div>
+
+<!-- EVENT DETAIL MODAL -->
+<div class="modal-overlay" id="eventDetailModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>📅 Event Details</h3>
+      <button class="modal-close" onclick="closeModal('eventDetailModal')">✕</button>
+    </div>
+    <div id="eventDetailContent" class="modal-body"></div>
+  </div>
+</div>
+
+<!-- VENUE SLOTS MODAL -->
+<div class="modal-overlay" id="venueSlotsModal">
+  <div class="modal-box modal-box--sm">
+    <div class="modal-header">
+      <h3>🕐 Available Slots</h3>
+      <button class="modal-close" onclick="closeModal('venueSlotsModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="venueSlotsSubtitle" class="modal-subtitle"></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr class="table-head-row">
+              <th class="th">Date</th>
+              <th class="th">Time Slot</th>
+            </tr>
+          </thead>
+          <tbody id="venueSlotsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
 
 <script src="orgscript.js"></script>
 </body>
