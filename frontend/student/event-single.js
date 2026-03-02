@@ -53,18 +53,14 @@ async function renderEvent(event) {
     document.getElementById("topbarTitle").textContent = event.title;
 
   const poster = event.poster
-    ? `http://localhost:5000/uploads/${event.poster}`
-    : "https://placehold.co/900x300/6d5efc/ffffff?text=No+Poster";
+  ? `http://localhost:5000/uploads/${event.poster}`
+  : "https://placehold.co/360x640/6d5efc/ffffff?text=No+Poster";
 
   const eventDate = event.date
     ? new Date(event.date).toLocaleDateString("en-IN", { dateStyle: "long" })
     : "TBA";
 
   const fee = event.registration_fee > 0 ? `₹${event.registration_fee}` : "Free";
-
-  // ── Fetch organizer contact info ──────────────────
-  const orgRes = await fetch(`${API_BASE}/events/${event.id}/organizer`);
-  const organizer = orgRes.ok ? await orgRes.json() : null;
 
   // ── Check if already registered ──────────────────
   const alreadyRegistered = await checkRegistration(event.id);
@@ -99,154 +95,156 @@ async function renderEvent(event) {
   content.innerHTML = `
     <a class="back-btn" href="event-details.html">← Back to Events</a>
 
-    <img class="event-hero" src="${poster}" alt="${event.title}"
-         onerror="this.src='https://placehold.co/900x300/6d5efc/ffffff?text=No+Poster'" />
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:20px;align-items:start;">
 
-    <div class="detail-layout">
-
-      <!-- Left column -->
-      <div class="detail-main">
+      <!-- LEFT: Poster + About -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <img src="${poster}" alt="${event.title}"
+             onerror="this.src='https://placehold.co/400x711/6d5efc/ffffff?text=No+Poster'"
+             style="width:100%;aspect-ratio:9/16;object-fit:cover;max-height:500px;
+         border-radius:16px;box-shadow:0 12px 32px rgba(17,24,39,.15);display:block;" />
 
         <div class="detail-section">
-          <div class="detail-title-row">
-            <div class="detail-title">${event.title}</div>
-            <span class="status-badge ${isPast ? "ended" : isFull ? "full" : "open"}">
+          <div class="detail-section-title">📋 About this Event</div>
+          <p class="detail-desc">${event.description || "No description available."}</p>
+        </div>
+      </div>
+
+      <!-- RIGHT: All content -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <!-- Title -->
+        <div class="detail-section">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+            <div style="font-size:20px;font-weight:900;line-height:1.3;color:var(--text, var(--text-1, #111))">${event.title}</div>
+            <span class="status-badge ${isPast ? "ended" : isFull ? "full" : "open"}" style="flex-shrink:0;">
               ${isPast ? "Ended" : isFull ? "Full" : "Open"}
             </span>
           </div>
-          <div class="tag-row">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
             <span class="tag">${event.type || "Event"}</span>
             <span class="tag">${event.club || "—"}</span>
           </div>
         </div>
 
+        <!-- Event Details -->
         <div class="detail-section">
-          <div class="detail-section-title">About this Event</div>
-          <p class="detail-desc">${event.description || "No description available."}</p>
-        </div>
-
-        <div class="detail-section">
-          <div class="detail-section-title">Event Details</div>
-          <div class="info-list">
-            <div class="info-item">
-              <div class="info-icon-box">📅</div>
+          <div style="font-size:13px;font-weight:800;margin-bottom:10px;color:var(--text-1,#111);">Event Details</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div style="width:32px;height:32px;border-radius:10px;background:rgba(109,94,252,.08);
+                          display:grid;place-items:center;font-size:15px;flex-shrink:0;">📅</div>
               <div>
-                <div class="info-item-label">Date &amp; Time</div>
-                <div class="info-item-value">${eventDate} · ${event.time || "TBA"}</div>
+                <div style="font-size:11px;color:#6b7280;font-weight:600;">Date &amp; Time</div>
+                <div style="font-size:13px;font-weight:800;color:var(--text-1,#111);">${eventDate} · ${event.time || "TBA"}</div>
               </div>
             </div>
-            <div class="info-item">
-              <div class="info-icon-box">🏛️</div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div style="width:32px;height:32px;border-radius:10px;background:rgba(109,94,252,.08);
+                          display:grid;place-items:center;font-size:15px;flex-shrink:0;">🏛️</div>
               <div>
-                <div class="info-item-label">Venue</div>
-                <div class="info-item-value">${event.venue || "TBA"}</div>
+                <div style="font-size:11px;color:#6b7280;font-weight:600;">Venue</div>
+                <div style="font-size:13px;font-weight:800;color:var(--text-1,#111);">${event.venue || "TBA"}</div>
               </div>
             </div>
-            <div class="info-item">
-              <div class="info-icon-box">🏷️</div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div style="width:32px;height:32px;border-radius:10px;background:rgba(109,94,252,.08);
+                          display:grid;place-items:center;font-size:15px;flex-shrink:0;">🏷️</div>
               <div>
-                <div class="info-item-label">Organised by</div>
-                <div class="info-item-value">${event.club || "—"}</div>
+                <div style="font-size:11px;color:#6b7280;font-weight:600;">Organised by</div>
+                <div style="font-size:13px;font-weight:800;color:var(--text-1,#111);">${event.club || "—"}</div>
               </div>
             </div>
-            <div class="info-item">
-              <div class="info-icon-box">💰</div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div style="width:32px;height:32px;border-radius:10px;background:rgba(109,94,252,.08);
+                          display:grid;place-items:center;font-size:15px;flex-shrink:0;">💰</div>
               <div>
-                <div class="info-item-label">Registration Fee</div>
-                <div class="info-item-value">${fee}</div>
+                <div style="font-size:11px;color:#6b7280;font-weight:600;">Registration Fee</div>
+                <div style="font-size:13px;font-weight:800;color:var(--text-1,#111);">${fee}</div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="detail-section">
-          <div class="detail-section-title">🏆 Prizes &amp; Recognition</div>
-          <div class="prize-row">
-            <span class="prize-icon">📜</span>
-            <span>Participation Certificate for all</span>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Right sidebar -->
-      <div class="detail-sidebar">
-
-        <!-- Registration Card -->
+        <!-- Registration -->
         <div class="reg-card">
-          <div class="reg-card-title">Registration</div>
+          <div style="font-size:14px;font-weight:900;margin-bottom:10px;">Registration</div>
           ${capacity ? `
-          <div class="seats-label">
+          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:6px;">
             <span>${seatsLeft > 0 ? seatsLeft + " seats left" : "No seats left"}</span>
             <span>${registeredCount} / ${capacity}</span>
           </div>
-          <div class="seats-bar-bg">
+          <div class="seats-bar-bg" style="margin-bottom:12px;">
             <div class="seats-bar-fill" style="width:${pct}%"></div>
-          </div>` : `
-          <div class="seats-label"><span>Open registration</span></div>`}
+          </div>` : `<div style="font-size:12px;margin-bottom:12px;">Open registration</div>`}
           ${ctaBtn}
-          <div class="reg-note">Registration closes 24 hrs before the event</div>
+          <div style="font-size:11px;color:#9ca3af;text-align:center;margin-top:8px;">
+            Registration closes 24 hrs before the event
+          </div>
         </div>
 
-        <!-- Download Certificate (shows only after event ends) -->
         ${isPast ? `
         <div class="reg-card">
-          <div class="reg-card-title">📜 Certificate</div>
-          <p style="font-size:13px;color:#6b7280;margin-bottom:12px;">
-            If you attended this event, your certificate is ready to download.
-          </p>
-          <button class="btn-register" type="button"
-            onclick="downloadCertificate(${event.id})"
+          <div style="font-size:14px;font-weight:900;margin-bottom:8px;">📜 Certificate</div>
+          <p style="font-size:12px;color:#6b7280;margin-bottom:10px;">Your certificate is ready to download.</p>
+          <button class="btn-register" onclick="downloadCertificate(${event.id})" type="button"
             style="background:linear-gradient(135deg,#6d5efc,#8a7bff);color:white;border:none;cursor:pointer;">
             📜 Download Certificate
           </button>
         </div>` : ""}
 
-        <!-- Raise an Issue -->
-        <div class="reg-card">
-          <div class="reg-card-title">🚩 Raise an Issue</div>
-          <p style="font-size:13px;color:#6b7280;margin-bottom:12px;">
-            Facing a problem with registration or the event?
-          </p>
-          <textarea id="issueText" placeholder="Describe your issue..."
-            style="width:100%;padding:10px;border-radius:12px;border:1px solid #e5e7eb;
-                   font-size:13px;resize:vertical;min-height:80px;font-family:inherit;
-                   outline:none;margin-bottom:10px;"></textarea>
-          <button class="btn-register" type="button"
-            onclick="submitIssue(${event.id})"
-            style="background:linear-gradient(135deg,#ef4444,#dc2626);color:white;border:none;cursor:pointer;">
-            🚩 Submit Issue
-          </button>
-          <div id="issueSuccess" style="display:none;margin-top:8px;font-size:12px;
-               color:#10b981;font-weight:700;">✅ Issue submitted successfully!</div>
-        </div>
-
-        <!-- Contact for Queries — uses real organizer data -->
-        <div class="reg-card">
-          <div class="reg-card-title">📞 Contact for Queries</div>
-          <div style="font-size:13px;color:#374151;line-height:1.8;">
-            <div>🏷️ <strong>Organised by:</strong> ${event.club || "—"}</div>
-            <div style="margin-top:8px;">📧 <strong>Email:</strong>
-              <a href="mailto:${organizer?.email || 'events@evexa.in'}"
-                 style="color:#6d5efc;text-decoration:none;">
-                ${organizer?.email || 'events@evexa.in'}
-              </a>
-            </div>
-            <div style="margin-top:4px;">📱 <strong>Phone:</strong> ${organizer?.phone || 'N/A'}</div>
-            <div style="margin-top:8px;padding:10px;background:rgba(109,94,252,.06);
-                 border-radius:12px;border:1px solid rgba(109,94,252,.15);font-size:12px;color:#6b7280;">
-              For urgent queries, contact the club coordinator directly.
-            </div>
-          </div>
-        </div>
-
       </div>
-    </div>`;
+    </div>
 
-  // Register button handler
+  <!-- Floating Raise Issue -->
+  <button onclick="toggleIssueModal()" title="Raise an Issue"
+    style="position:fixed;bottom:28px;right:28px;z-index:500;
+           width:52px;height:52px;border-radius:50%;border:none;
+           background:linear-gradient(135deg,#ef4444,#dc2626);
+           display:flex;align-items:center;justify-content:center;
+           cursor:pointer;box-shadow:0 8px 24px rgba(239,68,68,.4);
+           transition:transform .2s ease,box-shadow .2s ease;"
+    onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 12px 32px rgba(239,68,68,.55)'"
+    onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 8px 24px rgba(239,68,68,.4)'">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+      <line x1="4" y1="22" x2="4" y2="15"/>
+    </svg>
+  </button>
+
+  <div id="issueModalOverlay" onclick="toggleIssueModal()"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);
+           z-index:501;backdrop-filter:blur(3px);"></div>
+
+  <div id="issueModal"
+    style="display:none;position:fixed;bottom:80px;right:28px;z-index:502;
+           width:min(340px,90vw);background:var(--surface,#fff);border-radius:20px;
+           padding:22px;box-shadow:0 20px 50px rgba(0,0,0,0.18);
+           border:1px solid rgba(239,68,68,.15);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:15px;font-weight:700;color:var(--text-1,#111);">🚩 Raise an Issue</div>
+      <button onclick="toggleIssueModal()"
+        style="background:none;border:none;font-size:18px;cursor:pointer;color:#9ca3af;line-height:1;">✕</button>
+    </div>
+    <textarea id="issueText" placeholder="Describe your issue..."
+      style="width:100%;padding:10px;border-radius:12px;border:1px solid #e5e7eb;
+             font-size:13px;resize:vertical;min-height:90px;font-family:inherit;
+             outline:none;box-sizing:border-box;margin-bottom:12px;
+             background:var(--surface-2,#f9fafb);color:var(--text-1,#111);"></textarea>
+    <button onclick="submitIssue(${event.id})"
+      style="width:100%;padding:11px;border-radius:12px;border:none;
+             background:linear-gradient(135deg,#ef4444,#dc2626);
+             color:white;font-size:13px;font-weight:700;cursor:pointer;">
+      Submit Issue
+    </button>
+    <div id="issueSuccess"
+      style="display:none;margin-top:10px;font-size:12px;color:#10b981;font-weight:700;text-align:center;">
+      ✅ Submitted!
+    </div>
+  </div>`;
+
   document.getElementById("registerNowBtn")?.addEventListener("click", () => registerForEvent(event.id));
 }
-
 // ── Register for event ────────────────────────────────
 async function registerForEvent(eventId) {
   const token = localStorage.getItem("authToken");
@@ -326,7 +324,6 @@ async function registerForEvent(eventId) {
   }
 }
 
-// ── Show ticket modal ─────────────────────────────────
 function showTicketModal(data) {
   const { qr, student, event, ticket_id } = data;
 
@@ -352,17 +349,22 @@ function showTicketModal(data) {
   if (modal) {
     modal.classList.add("show");
     modal.removeAttribute("aria-hidden");
+    modal.removeAttribute("inert");
+    setTimeout(() => {
+      modal.querySelector(".ticket-close-btn")?.focus();
+    }, 100);
   }
 }
-
-// ── Close ticket modal ────────────────────────────────
 function closeTicket() {
-  document.getElementById("registerNowBtn")?.focus();
   document.getElementById("ticketOverlay")?.classList.remove("show");
   const modal = document.getElementById("ticketModal");
   if (modal) {
     modal.classList.remove("show");
-    modal.setAttribute("aria-hidden", "true");
+    document.getElementById("registerNowBtn")?.focus() 
+      || document.body.focus();
+    setTimeout(() => {
+      modal.setAttribute("aria-hidden", "true");
+    }, 50);
   }
 }
 
@@ -394,15 +396,6 @@ async function downloadTicket() {
     alert("Download failed. Try right-clicking the ticket and saving.");
   }
 }
-
-// ── Logout ────────────────────────────────────────────
-document.getElementById("logoutBtn")?.addEventListener("click", () => {
-  if (confirm("Do you want to logout?")) {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userRole");
-    window.location.href = "stsignin.html";
-  }
-});
 
 // ── Fetch and show existing ticket ───────────────────
 async function fetchAndShowTicket(eventId) {
@@ -456,7 +449,16 @@ async function downloadCertificate(eventId) {
     alert("Server error. Please try again.");
   }
 }
-
+// ── Toggle Issue Modal ────────────────────────────────
+function toggleIssueModal() {
+  const modal   = document.getElementById("issueModal");
+  const overlay = document.getElementById("issueModalOverlay");
+  if (!modal || !overlay) return;
+  const isOpen = modal.style.display === "block";
+  modal.style.display   = isOpen ? "none" : "block";
+  overlay.style.display = isOpen ? "none" : "block";
+  if (!isOpen) document.getElementById("issueText")?.focus();
+}
 // ── Submit Issue ──────────────────────────────────────
 async function submitIssue(eventId) {
   const token = localStorage.getItem("authToken");

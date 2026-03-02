@@ -147,3 +147,39 @@ font-size:14px;
 color:#777;
 cursor:pointer;
 }
+.back-wrapper {
+  position: absolute;
+  top: 30px;
+  left: 40px;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 18px;
+  border-radius: 30px;
+
+  background: linear-gradient(135deg, #ffeb7a, #ffffff);
+  box-shadow: 0 8px 20px rgba(235, 21, 21, 0.08);
+
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  color: #000000;
+
+  transition: all 0.3s ease;
+}
+
+.back-wrapper .arrow {
+  font-size: 18px;
+  transition: transform 0.3s ease;
+}
+
+.back-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+}
+
+.back-wrapper:hover .arrow {
+  transform: translateX(-4px);
+}

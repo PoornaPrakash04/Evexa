@@ -19,9 +19,8 @@ const facultyRoutes = require("./routes/faculty");
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static("frontend"));
 app.use("/uploads", express.static("uploads"));
-
-// ✅ ALL routes before app.listen
 app.use("/api/auth",          authRoutes);
 app.use("/api/user",          authRoutes);
 app.use("/api/events",        eventRoutes);
@@ -36,7 +35,7 @@ app.use("/api/tickets",       ticketRoutes);
 app.use("/api/faculty", require("./routes/faculty"));
 app.get("/", (req, res) => res.send("EVEXA Backend is running"));
 
-// ✅ app.listen LAST
+
 app.listen(5000, () => {
   console.log("Server running on http://localhost:5000");
   console.log("JWT_SECRET:", process.env.JWT_SECRET);

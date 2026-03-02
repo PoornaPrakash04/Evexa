@@ -81,7 +81,6 @@
     <div class="notif-dropdown" id="notifDropdown">
       <div class="notif-dropdown-head">
   <span class="notif-dropdown-title" id="notifDropdownTitle">Notifications</span>
-  <button class="notif-clear" id="notifClear">Clear all</button>
 </div>
       <div class="notif-dropdown-list" id="notifList">
         <div class="notif-empty">No notifications yet.</div>
@@ -242,18 +241,21 @@
     </div>
   </aside>
   <!-- Upcoming Registered Events Modal -->
-<div class="modal-overlay" id="upcomingModalOverlay" onclick="closeUpcomingModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;backdrop-filter:blur(3px);"></div>
+<div class="modal-overlay" id="upcomingModalOverlay" onclick="closeUpcomingModal()"></div>
 
-<div class="modal-panel" id="upcomingModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1001;background:var(--surface,#fff);border-radius:18px;width:min(560px,92vw);max-height:80vh;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.18);flex-direction:column;">
-  <div style="padding:22px 24px 16px;border-bottom:1px solid var(--border,#eee);display:flex;align-items:center;justify-content:space-between;">
-    <div>
-      <div style="font-size:17px;font-weight:700;color:var(--text-1,#111);">📅 Upcoming Registered Events</div>
-      <div style="font-size:12px;color:var(--text-3,#888);margin-top:2px;">Events you've signed up for</div>
+<div class="modal-panel" id="upcomingModal">
+  <div class="modal-head">
+    <div class="modal-head-left">
+      <div class="modal-icon">📅</div>
+      <div>
+        <div class="modal-title">Upcoming Registered Events</div>
+        <div class="modal-sub">Events you've signed up for</div>
+      </div>
     </div>
-    <button onclick="closeUpcomingModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-3,#888);line-height:1;">✕</button>
+    <button class="modal-close-btn" onclick="closeUpcomingModal()" aria-label="Close">✕</button>
   </div>
-  <div id="upcomingModalList" style="overflow-y:auto;padding:16px 24px 24px;display:flex;flex-direction:column;gap:12px;">
-    <p style="color:var(--text-3,#888);font-size:13px;">Loading...</p>
+  <div class="modal-list" id="upcomingModalList">
+    <p class="modal-empty">Loading...</p>
   </div>
 </div>
   <script src="theme.js"></script>

@@ -320,19 +320,6 @@ if (nameEl) nameEl.value = user.name || "";
   });
 })();
 
-// ── Logout ────────────────────────────────────────────────────────────────
-(function() {
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", function() {
-      if (confirm("Do you want to logout?")) {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userRole");
-        window.location.href = "stsignin.html";
-      }
-    });
-  }
-})();
 // ── Progress / Level ──────────────────────────────────────────────────────
 async function loadProgressTab() {
   const token = localStorage.getItem("authToken");

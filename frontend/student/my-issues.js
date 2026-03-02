@@ -77,14 +77,6 @@ document.getElementById("sidebarToggle")?.addEventListener("click", () => {
   document.getElementById("sidebar")?.classList.toggle("open");
 });
 
-// ── Logout ────────────────────────────────────────────
-document.getElementById("logoutBtn")?.addEventListener("click", () => {
-  if (confirm("Do you want to logout?")) {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userRole");
-    window.location.href = "stsignin.html";
-  }
-});
 
 // ── Boot ──────────────────────────────────────────────
 loadMyIssues();

@@ -295,3 +295,74 @@
   transition: .18s ease;
 }
 .eve-link-btn:hover { background: rgba(109,94,252,.18); }
+/* ════════════════════════════════════════
+   DARK MODE
+   ════════════════════════════════════════ */
+body:not(.light) .eve-header {
+  background: rgba(8,11,20,.8);
+  border-bottom-color: var(--border);
+}
+body:not(.light) .eve-name   { color: var(--text); }
+body:not(.light) .eve-status { color: var(--text-3); }
+body:not(.light) .clear-btn {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-3);
+}
+body:not(.light) .clear-btn:hover {
+  color: var(--pink);
+  border-color: rgba(236,72,153,.3);
+  background: rgba(236,72,153,.06);
+}
+body:not(.light) .eve-bubble .msg-text {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: none;
+}
+body:not(.light) .typing-bubble {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+body:not(.light) .eve-input-area {
+  background: rgba(8,11,20,.8);
+  border-top-color: var(--border);
+}
+body:not(.light) .eve-input-wrap {
+  background: var(--surface-2);
+  border-color: var(--border);
+  box-shadow: none;
+}
+body:not(.light) .eve-input-wrap:focus-within {
+  border-color: rgba(139,92,246,.4);
+  box-shadow: 0 0 0 3px rgba(139,92,246,.12);
+}
+body:not(.light) .eve-input      { color: var(--text); }
+body:not(.light) .eve-disclaimer { color: var(--text-3); }
+body:not(.light) .msg-time       { color: var(--text-3); }
+
+/* ════════════════════════════════════════
+   LIGHT MODE
+   ════════════════════════════════════════ */
+body.light .eve-header {
+  background: rgba(255,255,255,.90);
+  border-bottom-color: rgba(139,92,246,.10);
+}
+body.light .eve-name   { color: #0d0f1e; }
+body.light .eve-status { color: rgba(13,15,30,.45); }
+body.light .eve-bubble .msg-text {
+  background: rgba(255,255,255,.95);
+  border-color: rgba(139,92,246,.10);
+  color: #0d0f1e;
+}
+body.light .eve-input-area {
+  background: rgba(255,255,255,.90);
+  border-top-color: rgba(139,92,246,.10);
+}
+body.light .eve-input-wrap {
+  background: rgba(255,255,255,.98);
+  border-color: rgba(139,92,246,.12);
+}
+body.light .eve-input      { color: #0d0f1e; }
+body.light .eve-disclaimer { color: rgba(13,15,30,.35); }
+body.light .msg-time       { color: rgba(13,15,30,.35); }

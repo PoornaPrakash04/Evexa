@@ -222,14 +222,14 @@
 
 .event-hero {
   width: 100%;
-  height: 260px;
+  aspect-ratio: 9 / 16;
+  max-height: 460px;
   object-fit: cover;
-  border-radius: 22px;
+  border-radius: 18px;
   display: block;
-  margin-bottom: 20px;
   box-shadow: 0 12px 32px rgba(17, 24, 39, .12);
+  margin-bottom: 0;
 }
-
 .detail-layout {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -416,4 +416,313 @@
 }
 @media (max-width: 700px) {
   .events-grid { grid-template-columns: 1fr; }
+}
+/* ════════════════════════════════════════
+   DARK MODE overrides
+   ════════════════════════════════════════ */
+
+body:not(.light) .filter-btn {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+body:not(.light) .filter-btn:hover,
+body:not(.light) .filter-btn.active {
+  background: var(--g-violet);
+  border-color: transparent;
+  color: white;
+}
+
+body:not(.light) .event-card {
+  background: var(--glass);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+body:not(.light) .event-card:hover {
+  border-color: var(--border-2);
+  box-shadow: var(--shadow-md);
+}
+body:not(.light) .event-name    { color: var(--text); }
+body:not(.light) .meta-row      { color: var(--text-2); }
+body:not(.light) .event-footer  {
+  background: var(--surface);
+  border-top-color: var(--border);
+}
+body:not(.light) .seats-info    { color: var(--text-3); }
+body:not(.light) .seats-info span { color: var(--text); }
+body:not(.light) .seats-bar-bg  { background: rgba(255,255,255,.08); }
+body:not(.light) .no-results    { color: var(--text-3); }
+
+body:not(.light) .back-btn {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+body:not(.light) .back-btn:hover { border-color: var(--border-2); color: var(--text); }
+
+body:not(.light) .detail-section {
+  background: var(--glass);
+  border-color: var(--border);
+  box-shadow: none;
+}
+body:not(.light) .detail-section-title { color: var(--text); }
+body:not(.light) .detail-desc          { color: var(--text-2); }
+body:not(.light) .detail-title         { color: var(--text); }
+
+body:not(.light) .info-icon-box { background: rgba(139,92,246,.12); }
+body:not(.light) .info-item-label { color: var(--text-3); }
+body:not(.light) .info-item-value { color: var(--text); }
+
+body:not(.light) .reg-card {
+  background: var(--glass);
+  border-color: var(--border);
+  box-shadow: none;
+}
+body:not(.light) .reg-card-title { color: var(--text); }
+body:not(.light) .seats-label    { color: var(--text-2); }
+
+body:not(.light) .prize-row {
+  color: var(--text-2);
+  border-bottom-color: var(--border);
+}
+
+body:not(.light) .not-found { color: var(--text-3); }
+
+/* ════════════════════════════════════════
+   LIGHT MODE explicit overrides
+   ════════════════════════════════════════ */
+
+body.light .event-card {
+  background: rgba(255,255,255,.88);
+  border-color: rgba(139,92,246,.10);
+  box-shadow: 0 8px 24px rgba(109,92,246,.07);
+}
+body.light .event-name  { color: #0d0f1e; }
+body.light .meta-row    { color: rgba(13,15,30,.55); }
+body.light .event-footer {
+  background: rgba(139,92,246,.03);
+  border-top-color: rgba(139,92,246,.08);
+}
+body.light .seats-info       { color: rgba(13,15,30,.45); }
+body.light .seats-info span  { color: #0d0f1e; }
+body.light .seats-bar-bg     { background: rgba(139,92,246,.10); }
+
+body.light .back-btn {
+  background: rgba(255,255,255,.90);
+  border-color: rgba(139,92,246,.15);
+  color: rgba(13,15,30,.65);
+}
+body.light .detail-section {
+  background: rgba(255,255,255,.88);
+  border-color: rgba(139,92,246,.10);
+}
+body.light .detail-section-title { color: #0d0f1e; }
+body.light .detail-desc          { color: rgba(13,15,30,.65); }
+body.light .detail-title         { color: #0d0f1e; }
+body.light .info-icon-box        { background: rgba(139,92,246,.08); }
+body.light .info-item-label      { color: rgba(13,15,30,.45); }
+body.light .info-item-value      { color: #0d0f1e; }
+body.light .reg-card {
+  background: rgba(255,255,255,.92);
+  border-color: rgba(139,92,246,.12);
+}
+body.light .reg-card-title { color: #0d0f1e; }
+body.light .seats-label    { color: rgba(13,15,30,.60); }
+body.light .prize-row {
+  color: rgba(13,15,30,.65);
+  border-bottom-color: rgba(139,92,246,.10);
+}
+body.light .filter-btn {
+  background: rgba(255,255,255,.85);
+  border-color: rgba(139,92,246,.12);
+  color: rgba(13,15,30,.65);
+}
+body.light .filter-btn:hover,
+body.light .filter-btn.active {
+  background: var(--g-violet);
+  color: white;
+  border-color: transparent;
+}
+/* ── Event Single Page — compact right column ─────── */
+.detail-title {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.2;
+  flex: 1;
+}
+
+.detail-section {
+  padding: 14px 16px;
+}
+
+.detail-section-title {
+  font-weight: 800;
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+.info-list {
+  gap: 8px;
+}
+
+.info-item {
+  gap: 8px;
+  font-size: 12px;
+}
+
+.info-icon-box {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.info-item-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.info-item-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.tag-row {
+  margin-top: 8px;
+  gap: 6px;
+}
+
+.reg-card {
+  padding: 14px 16px;
+}
+
+.reg-card-title {
+  font-size: 13px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.seats-label {
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.reg-note {
+  font-size: 10px;
+  margin-top: 8px;
+}
+/* Force event-single layout */
+.event-single-wrap {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 20px;
+}
+
+.event-single-wrap .event-hero {
+  width: 220px;
+  height: calc(220px * 16 / 9);
+  object-fit: cover;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(17, 24, 39, .15);
+  margin: 0;
+  max-height: none;
+  display: block;
+}
+
+.event-single-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(220px * 16 / 9);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+/* ── Issue Modal — dark/light mode ─────────────────── */
+body:not(.light) #issueModal {
+  background: var(--surface, #1e1e2e) !important;
+  border-color: rgba(239, 68, 68, .25) !important;
+}
+
+body:not(.light) #issueModal textarea {
+  background: var(--surface-2, #2a2a3e) !important;
+  border-color: var(--border, rgba(255,255,255,.1)) !important;
+  color: var(--text, #f1f1f1) !important;
+}
+
+body:not(.light) #issueModal textarea::placeholder {
+  color: var(--text-3, #6b7280) !important;
+}
+
+body:not(.light) #issueModal div[style*="font-size:15px"] {
+  color: var(--text, #f1f1f1) !important;
+}
+
+body:not(.light) #issueModal button[onclick*="toggleIssueModal"] {
+  color: var(--text-3, #9ca3af) !important;
+}
+
+/* Light mode */
+body.light #issueModal {
+  background: #ffffff !important;
+  border-color: rgba(239, 68, 68, .15) !important;
+}
+
+body.light #issueModal textarea {
+  background: #f9fafb !important;
+  border-color: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+body.light #issueModal textarea::placeholder {
+  color: #9ca3af !important;
+}
+/* ════════════════════════════════════════
+   EVENT-SINGLE — dark mode inline fixes
+   ════════════════════════════════════════ */
+
+body:not(.light) .detail-section div[style*="color:var(--text-1"],
+body:not(.light) .detail-section div[style*="color:var(--text-1,#111)"] {
+  color: var(--text, #f1f5f9) !important;
+}
+
+body:not(.light) .detail-section div[style*="font-size:11px"],
+body:not(.light) .detail-section div[style*="font-size:10px"] {
+  color: var(--text-3, #9ca3af) !important;
+}
+
+body:not(.light) .detail-section div[style*="font-size:13px;font-weight:800"],
+body:not(.light) .detail-section div[style*="font-size:20px;font-weight:900"] {
+  color: var(--text, #f1f5f9) !important;
+}
+
+body:not(.light) .detail-section div[style*="font-size:13px;font-weight:800;margin-bottom:10px"] {
+  color: var(--text, #f1f5f9) !important;
+}
+
+body:not(.light) .reg-card div[style*="font-weight:900"] {
+  color: var(--text, #f1f5f9) !important;
+}
+
+body:not(.light) .reg-card div[style*="font-size:13px;line-height:1.9"] {
+  color: var(--text-2, #cbd5e1) !important;
+}
+
+body:not(.light) .reg-card strong {
+  color: var(--text, #f1f5f9) !important;
+}
+
+body:not(.light) .reg-card div[style*="font-size:12px;font-weight:700"],
+body:not(.light) .reg-card div[style*="font-size:12px;margin-bottom"] {
+  color: var(--text-2, #cbd5e1) !important;
+}
+
+/* Icon boxes in dark mode */
+body:not(.light) div[style*="background:rgba(109,94,252,.08)"] {
+  background: rgba(109, 94, 252, .15) !important;
 }

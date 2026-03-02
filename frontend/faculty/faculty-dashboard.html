@@ -9,389 +9,510 @@
 <body>
 <div class="app">
 
-  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <!-- ═══════════════ SIDEBAR ═══════════════ -->
   <aside class="sidebar" id="sidebar">
-
     <div class="brand">
       <div class="brand-logo">F</div>
       <div class="brand-text">
-        <div class="brand-name">EVEXA<span></span></div>
+        <div class="brand-name">EVEXA</div>
         <div class="brand-sub">Faculty Portal</div>
       </div>
     </div>
 
-    <nav class="nav" id="sideNav">
+    <nav class="nav">
+      <button class="nav-item active" data-page="dashboard" data-tooltip="Dashboard">
+        <span class="icon">🏠</span><span class="nav-label">Dashboard</span>
+      </button>
 
-      <div class="section-label">Main</div>
-      <a class="nav-item active" href="#" data-page="dashboard">
-        <span class="icon">🏠</span><span>Dashboard</span>
-      </a>
-      <a class="nav-item" href="#" data-page="pending">
-        <span class="icon">⏳</span><span>Pending Approvals</span>
-        <span class="nav-badge orange" id="badge-pending">5</span>
-      </a>
-      <a class="nav-item" href="#" data-page="notif-history">
-        <span class="icon">🔔</span><span>Notifications</span>
-        <span class="nav-badge red" id="badge-notif">3</span>
-      </a>
+      <div class="section-label">Approvals</div>
+      <button class="nav-item" data-page="proposals" data-tooltip="Event Proposals">
+        <span class="icon">📋</span><span class="nav-label">Event Proposals</span>
+        <span class="nav-badge orange" id="badge-proposals">–</span>
+      </button>
+      <button class="nav-item" data-page="certificates" data-tooltip="Certificates">
+        <span class="icon">🎓</span><span class="nav-label">Certificates</span>
+        <span class="nav-badge green" id="badge-certs">–</span>
+      </button>
+      <button class="nav-item" data-page="pending" data-tooltip="Pending">
+        <span class="icon">⏳</span><span class="nav-label">Pending Queue</span>
+        <span class="nav-badge red" id="badge-pending">–</span>
+      </button>
 
       <div class="section-label">Events</div>
-      <a class="nav-item" href="#" data-page="proposals">
-        <span class="icon">📋</span><span>Event Proposals</span>
-        <span class="nav-badge" id="badge-proposals">4</span>
-      </a>
-      <a class="nav-item" href="#" data-page="event-list">
-        <span class="icon">📅</span><span>Event List</span>
-      </a>
-      <a class="nav-item" href="#" data-page="calendar">
-        <span class="icon">🗓️</span><span>Approval Calendar</span>
-      </a>
-
-      <div class="section-label">Certificates</div>
-      <a class="nav-item" href="#" data-page="certificates">
-        <span class="icon">🎓</span><span>Certificate Approvals</span>
-        <span class="nav-badge green" id="badge-certs">12</span>
-      </a>
+      <button class="nav-item" data-page="event-list" data-tooltip="All Events">
+        <span class="icon">📅</span><span class="nav-label">Event List</span>
+      </button>
+      <button class="nav-item" data-page="calendar" data-tooltip="Calendar">
+        <span class="icon">🗓️</span><span class="nav-label">Calendar View</span>
+      </button>
 
       <div class="section-label">Clubs & Reports</div>
-      <a class="nav-item" href="#" data-page="clubs">
-        <span class="icon">🏷️</span><span>Club Oversight</span>
-      </a>
-      <a class="nav-item" href="#" data-page="analytics">
-        <span class="icon">📊</span><span>Analytics</span>
-      </a>
-      <a class="nav-item" href="#" data-page="feedback">
-        <span class="icon">💬</span><span>Feedback</span>
-      </a>
+      <button class="nav-item" data-page="clubs" data-tooltip="Club Oversight">
+        <span class="icon">🏛️</span><span class="nav-label">Club Oversight</span>
+      </button>
+      <button class="nav-item" data-page="analytics" data-tooltip="Analytics">
+        <span class="icon">📊</span><span class="nav-label">Analytics</span>
+      </button>
+      <button class="nav-item" data-page="feedback" data-tooltip="Feedback">
+        <span class="icon">💬</span><span class="nav-label">Feedback &amp; Reports</span>
+      </button>
 
+      <div class="section-label">Communication</div>
+      <button class="nav-item" data-page="announcements" data-tooltip="Announcements">
+        <span class="icon">📢</span><span class="nav-label">Announcements</span>
+      </button>
+      <button class="nav-item" data-page="notif-history" data-tooltip="Notifications">
+        <span class="icon">🔔</span><span class="nav-label">Notif History</span>
+        <span class="nav-badge" id="badge-notif">–</span>
+      </button>
     </nav>
 
     <div class="sidebar-bottom">
-      <a class="nav-item" href="#">
-        <span class="icon">⚙️</span><span>Settings</span>
-      </a>
-      <div class="mini-user">
-        <div class="mini-avatar">DR</div>
+      <div class="mini-user" id="miniUser">
+        <div class="mini-avatar" id="miniAvatar">FA</div>
         <div class="mini-meta">
-          <div class="mini-name">Dr. Ramesh Nair</div>
-          <div class="mini-role">Faculty Advisor · ECE</div>
+          <div class="mini-name" id="miniName">Loading…</div>
+          <div class="mini-role" id="miniRole">Faculty Advisor</div>
         </div>
       </div>
     </div>
-
   </aside>
 
-  <!-- ═══════════ MAIN ═══════════ -->
+  <!-- ═══════════════ MAIN ═══════════════ -->
   <main class="main">
 
     <!-- Topbar -->
     <header class="topbar">
       <div class="topbar-left">
-        <button class="icon-btn" id="sidebarToggle">☰</button>
+        <button class="icon-btn" id="sidebarToggle" aria-label="Menu">☰</button>
         <div class="page-title">
           <div class="title" id="pageTitle">Dashboard</div>
-          <div class="subtitle" id="pageSub">Welcome back, Dr. Ramesh — here's your faculty overview.</div>
+          <div class="subtitle" id="pageSub">Welcome back — here's your faculty overview.</div>
         </div>
       </div>
       <div class="topbar-right">
-        <span class="role-pill">Faculty Advisor</span>
-        <button class="icon-btn" id="notifBtn" title="Notifications">
-          🔔<div class="notif-dot" id="notifDot"></div>
+        <span class="role-pill" id="rolePill">Faculty Advisor</span>
+        <button class="icon-btn theme-btn" id="themeToggle" title="Toggle Theme">🌙</button>
+
+        <!-- Notification Bell -->
+        <div class="notif-wrap">
+          <button class="icon-btn notif-bell" id="notifBtn" title="Notifications">
+            🔔
+            <span class="notif-count" id="notifCount" style="display:none">0</span>
+          </button>
+          <div class="notif-dropdown" id="notifDropdown">
+            <div class="notif-drop-head">
+              <span class="notif-drop-title" id="notifDropTitle">Notifications</span>
+              <button class="notif-clear-btn" id="notifClearAll">Clear all</button>
+            </div>
+            <div class="notif-drop-list" id="notifDropList"></div>
+          </div>
+        </div>
+
+        <!-- Profile -->
+        <button class="profile-btn" id="profileBtn" title="Profile">
+          <div class="profile-avatar" id="topAvatar">FA</div>
         </button>
-        <button class="icon-btn" id="profileBtn" title="Profile">👤</button>
-        <button class="top-link danger" id="logoutBtn">Logout</button>
+
+        <button class="top-link danger" onclick="logout()">Logout</button>
       </div>
     </header>
 
-    <!-- Page content -->
+    <!-- Content -->
     <section class="content" id="content">
 
-      <!-- ─────────────────────────────────────
-           PAGE: DASHBOARD
-      ───────────────────────────────────── -->
-      <div id="pg-dashboard">
+      <!-- ══════════ DASHBOARD ══════════ -->
+      <div id="pg-dashboard" class="page-section">
 
-        <!-- Summary stats -->
-        <div class="cards-grid">
-          <div class="card accent-orange">
-            <div class="card-icon">⏳</div>
-            <div class="card-info"><div class="card-value">5</div><div class="card-label">Pending Approvals</div></div>
+        <!-- Welcome hero strip -->
+        <div class="hero-strip" id="heroStrip">
+          <div class="hero-left">
+            <div class="hero-greeting" id="heroGreeting">Good Morning! Faculty</div>
+            <div class="hero-sub">You have <span id="heroPending" class="hero-accent">–</span> pending approvals and <span id="heroCerts" class="hero-accent">–</span> certificates awaiting review.</div>
           </div>
-          <div class="card accent-green">
-            <div class="card-icon">✅</div>
-            <div class="card-info"><div class="card-value">28</div><div class="card-label">Events Approved</div></div>
-          </div>
-          <div class="card accent-purple">
-            <div class="card-icon">🎓</div>
-            <div class="card-info"><div class="card-value">12</div><div class="card-label">Certs Pending</div></div>
-          </div>
-          <div class="card accent-pink">
-            <div class="card-icon">🏷️</div>
-            <div class="card-info"><div class="card-value">6</div><div class="card-label">Clubs Overseen</div></div>
-          </div>
-          <div class="card accent-blue">
-            <div class="card-icon">💬</div>
-            <div class="card-info"><div class="card-value">4.6</div><div class="card-label">Avg Feedback</div></div>
-          </div>
-          <div class="card accent-red">
-            <div class="card-icon">❗</div>
-            <div class="card-info"><div class="card-value">3</div><div class="card-label">Urgent Items</div></div>
+          <div class="hero-right">
+            <div class="hero-stat">
+              <div class="hero-stat-val" id="heroClubs">–</div>
+              <div class="hero-stat-label">Clubs Incharge</div>
+            </div>
+            <div class="hero-divider"></div>
+            <div class="hero-stat">
+              <div class="hero-stat-val" id="heroEvents">–</div>
+              <div class="hero-stat-label">Active Events</div>
+            </div>
+            <div class="hero-divider"></div>
+            <div class="hero-stat">
+              <div class="hero-stat-val" id="heroStudents">–</div>
+              <div class="hero-stat-label">Students Enrolled</div>
+            </div>
           </div>
         </div>
 
-        <!-- Middle row -->
-        <div class="two-col">
+        <!-- 3-col layout -->
+        <div class="dash-grid">
 
-          <!-- Pending quick view -->
-          <div class="panel">
+          <!-- Pending Approvals -->
+          <div class="panel col-span-1">
             <div class="panel-header">
-              <div><div class="panel-title">Pending Approvals</div><div class="panel-sub">Requires your attention</div></div>
+              <div>
+                <div class="panel-title">⏳ Pending Approvals</div>
+                <div class="panel-sub">Requires your attention</div>
+              </div>
               <button class="btn ghost sm" onclick="navigateTo('proposals')">View All</button>
             </div>
-            <div class="list" id="dashPendingList"></div>
+            <div class="dash-list" id="dashPendingList"><div class="list-empty">Loading…</div></div>
           </div>
 
-          <!-- Recent notifications -->
-          <div class="panel">
+          <!-- Recent Notifications -->
+          <div class="panel col-span-1">
             <div class="panel-header">
-              <div><div class="panel-title">Recent Notifications</div><div class="panel-sub">Latest activity</div></div>
+              <div>
+                <div class="panel-title">🔔 Recent Notifications</div>
+                <div class="panel-sub">Latest activity</div>
+              </div>
               <button class="btn ghost sm" onclick="navigateTo('notif-history')">View All</button>
             </div>
-            <div class="list" id="dashNotifList"></div>
+            <div class="dash-list" id="dashNotifList"><div class="list-empty">Loading…</div></div>
           </div>
 
-        </div>
-
-        <!-- Announcement board -->
-        <div class="panel">
-          <div class="panel-header">
-            <div><div class="panel-title">📢 Announcement Board</div><div class="panel-sub">Messages from Admin</div></div>
-          </div>
-          <div class="panel-body" id="announcementBoard"></div>
-        </div>
-
-      </div>
-
-      <!-- ─────────────────────────────────────
-           PAGE: EVENT PROPOSALS
-      ───────────────────────────────────── -->
-      <div id="pg-proposals" style="display:none">
-
-        <div class="panel">
-          <div class="panel-header">
-            <div><div class="panel-title">Event Proposal Review</div><div class="panel-sub">Review and approve or reject submitted proposals</div></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <input class="search" placeholder="Search proposals…" id="proposalSearch" style="width:190px"/>
-              <select class="search select-input" id="proposalFilter" style="width:130px">
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="review">Under Review</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
+          <!-- Announcement Board -->
+          <div class="panel col-span-1">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">📢 Announcement Board</div>
+                <div class="panel-sub">Messages from admin</div>
+              </div>
+              <button class="btn ghost sm" onclick="navigateTo('announcements')">View All</button>
             </div>
+            <div class="panel-body" id="dashAnnouncements"><div class="list-empty">Loading…</div></div>
           </div>
+
+        </div><!-- /dash-grid -->
+
+        <!-- My Clubs quick view -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">🏛️ My Incharge Clubs</div>
+              <div class="panel-sub">Clubs and their recent activity</div>
+            </div>
+            <button class="btn ghost sm" onclick="navigateTo('clubs')">Full Oversight</button>
+          </div>
+          <div class="clubs-quick-grid" id="dashClubsGrid"><div class="list-empty" style="padding:20px;">Loading…</div></div>
+        </div>
+
+      </div><!-- /pg-dashboard -->
+
+      <!-- ══════════ EVENT PROPOSALS ══════════ -->
+      <div id="pg-proposals" class="page-section" style="display:none">
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+          <input class="search-input" id="proposalSearch" placeholder="🔍  Search proposals…"/>
+          <select class="filter-select" id="proposalFilter">
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="review">Under Review</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select class="filter-select" id="proposalCategoryFilter">
+            <option value="all">All Categories</option>
+            <option value="Technical">Technical</option>
+            <option value="Cultural">Cultural</option>
+            <option value="Workshop">Workshop</option>
+            <option value="Sports">Sports</option>
+            <option value="Academic">Academic</option>
+          </select>
+          <div class="bulk-actions">
+            <button class="btn success sm" id="bulkApproveBtn">✅ Approve Selected</button>
+            <button class="btn danger sm"  id="bulkRejectBtn">❌ Reject Selected</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="panel">
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th><input type="checkbox" class="cb" id="chkAllProposals"/></th>
-                  <th>Event Name</th><th>Organizer</th><th>Date</th>
-                  <th>Category</th><th>Status</th><th>Actions</th>
+                  <th width="36"><input type="checkbox" class="cb" id="chkAllProposals"/></th>
+                  <th>Event Name</th>
+                  <th>Organizer / Club</th>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Participants</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
-              <tbody id="proposalsBody"></tbody>
+              <tbody id="proposalsBody"><tr><td colspan="8" class="td-loading">Loading proposals…</td></tr></tbody>
             </table>
-          </div>
-          <div style="padding:12px 20px;display:flex;gap:8px;border-top:1px solid rgba(229,231,235,.7);flex-wrap:wrap;">
-            <button class="btn success sm" id="bulkApproveBtn">✅ Approve Selected</button>
-            <button class="btn danger sm" id="bulkRejectBtn">❌ Reject Selected</button>
           </div>
         </div>
 
-        <!-- Event detail view -->
-        <div class="panel" id="proposalDetail" style="display:none">
+        <!-- Detail Panel -->
+        <div class="panel detail-panel" id="proposalDetail" style="display:none">
           <div class="panel-header">
-            <div><div class="panel-title" id="detailName">Event Details</div><div class="panel-sub">Full proposal information</div></div>
-            <button class="btn ghost sm" id="closeDetail">✕ Close</button>
+            <div>
+              <div class="panel-title" id="detailName">Event Details</div>
+              <div class="panel-sub">Full proposal information</div>
+            </div>
+            <button class="icon-btn" id="closeDetail">✕</button>
           </div>
           <div class="panel-body" id="detailBody"></div>
         </div>
 
-      </div>
+      </div><!-- /pg-proposals -->
 
-      <!-- ─────────────────────────────────────
-           PAGE: EVENT LIST
-      ───────────────────────────────────── -->
-      <div id="pg-event-list" style="display:none">
+      <!-- ══════════ EVENT LIST ══════════ -->
+      <div id="pg-event-list" class="page-section" style="display:none">
+        <div class="filter-bar">
+          <input class="search-input" id="eventListSearch" placeholder="🔍  Search events…"/>
+          <select class="filter-select" id="eventListStatus">
+            <option value="all">All Status</option>
+            <option value="approved">Approved</option>
+            <option value="pending">Pending</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
         <div class="panel">
-          <div class="panel-header">
-            <div><div class="panel-title">All Events</div><div class="panel-sub">Complete list across all clubs</div></div>
-            <input class="search" placeholder="Search events…" id="eventListSearch" style="width:200px"/>
-          </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Event Name</th><th>Organizer</th><th>Date</th>
-                  <th>Venue</th><th>Category</th><th>Participants</th><th>Status</th>
+                  <th>Event Name</th>
+                  <th>Organizer</th>
+                  <th>Date</th>
+                  <th>Venue</th>
+                  <th>Category</th>
+                  <th>Capacity</th>
+                  <th>Fee</th>
+                  <th>Status</th>
                 </tr>
               </thead>
-              <tbody id="eventListBody"></tbody>
+              <tbody id="eventListBody"><tr><td colspan="8" class="td-loading">Loading events…</td></tr></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- ─────────────────────────────────────
-           PAGE: CALENDAR
-      ───────────────────────────────────── -->
-      <div id="pg-calendar" style="display:none">
+      <!-- ══════════ CALENDAR ══════════ -->
+      <div id="pg-calendar" class="page-section" style="display:none">
         <div class="panel">
           <div class="panel-header">
-            <div><div class="panel-title">Approval Calendar</div><div class="panel-sub">Events scheduled for review</div></div>
-            <div style="display:flex;gap:8px;">
-              <button class="btn ghost sm" id="calPrev">← Prev</button>
-              <span id="calMonthLabel" style="font-weight:900;font-size:14px;align-self:center;min-width:120px;text-align:center;"></span>
-              <button class="btn ghost sm" id="calNext">Next →</button>
+            <div>
+              <div class="panel-title">🗓️ Venue & Schedule Calendar</div>
+              <div class="panel-sub">Events requiring approval by date</div>
+            </div>
+            <div class="cal-controls">
+              <button class="cal-nav-btn" id="calPrev">‹</button>
+              <span class="cal-month-label" id="calMonthLabel"></span>
+              <button class="cal-nav-btn" id="calNext">›</button>
             </div>
           </div>
           <div class="panel-body">
-            <div class="cal-grid" id="calGrid"></div>
-            <div class="divider"></div>
-            <div id="calEventsList"></div>
+            <div class="cal-legend">
+              <span class="leg-item"><span class="leg-dot pending-dot"></span>Pending</span>
+              <span class="leg-item"><span class="leg-dot approved-dot"></span>Approved</span>
+              <span class="leg-item"><span class="leg-dot today-dot"></span>Today</span>
+            </div>
+            <div class="mini-calendar" id="miniCalendar"></div>
+            <div class="cal-event-detail" id="calEventDetail" style="display:none">
+              <div class="cal-detail-title" id="calDetailTitle"></div>
+              <div class="cal-detail-meta" id="calDetailMeta"></div>
+              <div class="cal-detail-actions" id="calDetailActions"></div>
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- ─────────────────────────────────────
-           PAGE: CERTIFICATES
-      ───────────────────────────────────── -->
-      <div id="pg-certificates" style="display:none">
-        <div class="panel">
+        <div class="panel" id="calMonthEventsList">
           <div class="panel-header">
-            <div><div class="panel-title">Certificate Approvals</div><div class="panel-sub">Verify attendance and issue certificates</div></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <input class="search" placeholder="Search student / event…" id="certSearch" style="width:210px"/>
-              <button class="btn success sm" id="bulkCertBtn">✅ Bulk Approve</button>
-            </div>
+            <div class="panel-title">Events This Month</div>
           </div>
           <div class="table-wrap">
             <table>
-              <thead>
-                <tr>
-                  <th><input type="checkbox" class="cb" id="chkAllCerts"/></th>
-                  <th>Student Name</th><th>Reg No</th><th>Event</th>
-                  <th>Attendance</th><th>Status</th><th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="certsBody"></tbody>
+              <thead><tr><th>Event</th><th>Club</th><th>Date</th><th>Venue</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="calMonthBody"><tr><td colspan="6" class="td-loading">Loading…</td></tr></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- ─────────────────────────────────────
-           PAGE: CLUBS
-      ───────────────────────────────────── -->
-      <div id="pg-clubs" style="display:none">
-        <div class="panel" style="margin-bottom:18px;">
-          <div class="panel-header">
-            <div><div class="panel-title">Club & Academic Oversight</div><div class="panel-sub">View club reports and monitor activity</div></div>
+      <!-- ══════════ CERTIFICATES ══════════ -->
+      <div id="pg-certificates" class="page-section" style="display:none">
+        <div class="filter-bar">
+          <input class="search-input" id="certSearch" placeholder="🔍  Search student or event…"/>
+          <select class="filter-select" id="certStatusFilter">
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <div class="bulk-actions">
+            <button class="btn success sm" id="bulkCertBtn">✅ Bulk Approve Present</button>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;" id="clubsGrid"></div>
-      </div>
-
-      <!-- ─────────────────────────────────────
-           PAGE: ANALYTICS
-      ───────────────────────────────────── -->
-      <div id="pg-analytics" style="display:none">
-
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">📊 Events Per Month</div><div class="panel-sub">Academic year 2025–26</div></div></div>
-            <div class="panel-body chart-box"><canvas id="eventsChart"></canvas></div>
-          </div>
-          <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">👥 Student Participation</div><div class="panel-sub">Students per month</div></div></div>
-            <div class="panel-body chart-box"><canvas id="participationChart"></canvas></div>
-          </div>
-        </div>
-
         <div class="panel">
-          <div class="panel-header"><div><div class="panel-title">🎓 Academic vs Non-Academic</div><div class="panel-sub">Distribution this semester</div></div></div>
-          <div class="panel-body" style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;">
-            <div style="width:200px;height:200px;flex-shrink:0;"><canvas id="typeChart"></canvas></div>
-            <div id="typeChartLegend"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th width="36"><input type="checkbox" class="cb" id="chkAllCerts"/></th>
+                  <th>Student Name</th>
+                  <th>Reg No</th>
+                  <th>Event</th>
+                  <th>Club</th>
+                  <th>Attendance</th>
+                  <th>Cert Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="certsBody"><tr><td colspan="8" class="td-loading">Loading certificates…</td></tr></tbody>
+            </table>
           </div>
         </div>
-
       </div>
 
-      <!-- ─────────────────────────────────────
-           PAGE: FEEDBACK
-      ───────────────────────────────────── -->
-      <div id="pg-feedback" style="display:none">
-
+      <!-- ══════════ PENDING QUEUE ══════════ -->
+      <div id="pg-pending" class="page-section" style="display:none">
         <div class="two-col">
           <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">⭐ Feedback Ratings</div><div class="panel-sub">Average per event</div></div></div>
-            <div class="panel-body chart-box"><canvas id="feedbackChart"></canvas></div>
+            <div class="panel-header">
+              <div><div class="panel-title">📋 Event Proposals</div><div class="panel-sub" id="pendProposalCount">–</div></div>
+            </div>
+            <div class="dash-list" id="pendingProposalList"><div class="list-empty">Loading…</div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div><div class="panel-title">🎓 Certificates</div><div class="panel-sub" id="pendCertCount">–</div></div>
+            </div>
+            <div class="dash-list" id="pendingCertList"><div class="list-empty">Loading…</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ CLUB OVERSIGHT ══════════ -->
+      <div id="pg-clubs" class="page-section" style="display:none">
+        <div class="clubs-overview-grid" id="clubsGrid"><div class="list-empty" style="padding:20px;">Loading clubs…</div></div>
+      </div>
+
+      <!-- ══════════ ANALYTICS ══════════ -->
+      <div id="pg-analytics" class="page-section" style="display:none">
+        <div class="analytics-kpi-row" id="analyticsKpi"></div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">📊 Events Per Month</div><div class="panel-sub">Last 8 months</div></div></div>
+            <div class="panel-body chart-box"><canvas id="eventsChart" height="200"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">👥 Student Participation</div><div class="panel-sub">Registrations per month</div></div></div>
+            <div class="panel-body chart-box"><canvas id="participationChart" height="200"></canvas></div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">🎓 Academic vs Non-Academic</div><div class="panel-sub">Distribution</div></div></div>
+            <div class="panel-body donut-row">
+              <canvas id="typeChart" width="180" height="180"></canvas>
+              <div id="typeChartLegend" class="donut-legend"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">🏛️ Events By Club</div><div class="panel-sub">Your incharge clubs</div></div></div>
+            <div class="panel-body chart-box"><canvas id="clubChart" height="200"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ FEEDBACK ══════════ -->
+      <div id="pg-feedback" class="page-section" style="display:none">
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">⭐ Ratings by Event</div><div class="panel-sub">Average ratings</div></div></div>
+            <div class="panel-body chart-box"><canvas id="feedbackChart" height="200"></canvas></div>
           </div>
           <div class="panel">
             <div class="panel-header"><div><div class="panel-title">📈 Rating Breakdown</div><div class="panel-sub">Overall distribution</div></div></div>
-            <div class="panel-body" id="ratingBreakdown"></div>
+            <div class="panel-body" id="ratingBreakdown"><div class="list-empty">Loading…</div></div>
           </div>
         </div>
-
-        <div class="panel">
-          <div class="panel-header"><div><div class="panel-title">💬 Student Comments</div><div class="panel-sub">Recent feedback</div></div></div>
-          <div class="panel-body" id="commentsBody"></div>
-        </div>
-
-      </div>
-
-      <!-- ─────────────────────────────────────
-           PAGE: NOTIFICATION HISTORY
-      ───────────────────────────────────── -->
-      <div id="pg-notif-history" style="display:none">
         <div class="panel">
           <div class="panel-header">
-            <div><div class="panel-title">Notification History</div><div class="panel-sub">All alerts and updates</div></div>
-            <button class="btn ghost sm" id="markAllReadBtn">Mark all read</button>
+            <div><div class="panel-title">💬 Student Comments</div><div class="panel-sub">Recent feedback</div></div>
+            <input class="search-input" id="feedbackSearch" placeholder="🔍  Search comments…" style="width:200px"/>
           </div>
-          <div class="list" id="notifHistoryList"></div>
+          <div class="comments-grid" id="commentsGrid"><div class="list-empty" style="padding:20px;">Loading…</div></div>
         </div>
       </div>
 
-      <!-- ─────────────────────────────────────
-           PAGE: PENDING APPROVALS
-      ───────────────────────────────────── -->
-      <div id="pg-pending" style="display:none">
+      <!-- ══════════ ANNOUNCEMENTS ══════════ -->
+      <div id="pg-announcements" class="page-section" style="display:none">
+        <div class="two-col">
+          <!-- Post new -->
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">✏️ Post Announcement</div><div class="panel-sub">Notify students &amp; clubs</div></div></div>
+            <div class="panel-body" style="display:flex;flex-direction:column;gap:12px;">
+              <input class="search-input" id="announceTitle" placeholder="Announcement title…" style="width:100%"/>
+              <textarea class="search-input" id="announceBody" placeholder="Write your message…" rows="5" style="width:100%;resize:vertical;"></textarea>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <select class="filter-select" id="announceType">
+                  <option value="General">📣 General</option>
+                  <option value="Event">📅 Event</option>
+                  <option value="Info">ℹ️ Info</option>
+                  <option value="Urgent">🚨 Urgent</option>
+                </select>
+                <button class="btn primary" id="postAnnounceBtn">📢 Post Announcement</button>
+              </div>
+            </div>
+          </div>
+          <!-- Posted announcements -->
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">📋 Posted Announcements</div><div class="panel-sub">Your recent posts</div></div></div>
+            <div class="panel-body" id="announceList"><div class="list-empty">Loading…</div></div>
+          </div>
+        </div>
+        <!-- Admin announcements -->
         <div class="panel">
-          <div class="panel-header">
-            <div><div class="panel-title">All Pending Approvals</div><div class="panel-sub">Events and certificates needing action</div></div>
-          </div>
-          <div class="list" id="pendingList"></div>
+          <div class="panel-header"><div><div class="panel-title">📌 Admin Announcements</div><div class="panel-sub">From institution admin</div></div></div>
+          <div class="panel-body" id="adminAnnounceList"><div class="list-empty">Loading…</div></div>
         </div>
       </div>
 
-    </section>
+      <!-- ══════════ NOTIFICATION HISTORY ══════════ -->
+      <div id="pg-notif-history" class="page-section" style="display:none">
+        <div class="filter-bar">
+          <select class="filter-select" id="notifTypeFilter">
+            <option value="all">All Types</option>
+            <option value="event">Events</option>
+            <option value="club">Clubs</option>
+            <option value="admin">Admin</option>
+            <option value="cert">Certificates</option>
+          </select>
+          <button class="btn ghost sm" id="markAllReadBtn">Mark all read</button>
+          <button class="btn danger sm" id="clearAllNotifBtn">Clear all</button>
+        </div>
+        <div class="panel">
+          <div class="notif-hist-list" id="notifHistoryList"><div class="list-empty" style="padding:24px;">Loading…</div></div>
+        </div>
+      </div>
+
+    </section><!-- /content -->
   </main>
 </div>
 
-<!-- Notification drawer -->
+<!-- Profile Drawer -->
 <div class="overlay" id="overlay"></div>
-<aside class="drawer" id="notifDrawer">
+<aside class="drawer" id="profileDrawer">
   <div class="drawer-head">
-    <div><div class="drawer-title">🔔 Notifications</div><div class="drawer-sub">Recent alerts</div></div>
-    <button class="icon-btn" id="closeDrawer">✕</button>
+    <div>
+      <div class="drawer-title">Faculty Profile</div>
+      <div class="drawer-sub">Your account details</div>
+    </div>
+    <button class="icon-btn" id="closeProfileBtn">✕</button>
   </div>
-  <div class="drawer-body" id="notifDrawerBody"></div>
+  <div class="drawer-body" id="profileDrawerBody">Loading…</div>
 </aside>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>

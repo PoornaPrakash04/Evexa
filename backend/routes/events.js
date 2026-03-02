@@ -7,8 +7,8 @@ const nodemailer = require("nodemailer");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "Poorna@gmail.com",
-    pass: "poorna@123"
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   }
 });
 
@@ -214,8 +214,8 @@ router.post("/:id/issues", authorize(), (req, res) => {
             return res.status(500).json({ message: "Server error" });
           }
 
-          transporter.sendMail({
-            from: "EVEXA <Poorna@gmail.com>",
+           transporter.sendMail({
+            from: `EVEXA <${process.env.EMAIL_USER}>`,
             to: organizer_email,
             subject: `New Issue Raised – ${title}`,
             html: `
@@ -224,6 +224,8 @@ router.post("/:id/issues", authorize(), (req, res) => {
               <blockquote>${message}</blockquote>
               <p>Please resolve it via the EVEXA dashboard.</p>
             `
+          }, (mailErr) => {
+            if (mailErr) console.warn("Email failed (non-fatal):", mailErr.message);
           });
 
           res.json({ message: "Issue submitted" });

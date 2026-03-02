@@ -154,7 +154,43 @@ body.dark {
   align-items: center;
   gap: 10px;
 }
+/* Desktop sidebar collapse */
+.sidebar {
+  transition: width 0.25s ease;
+}
 
+.main {
+  transition: margin-left 0.25s ease;
+}
+
+/* collapsed state */
+.sidebar.collapsed {
+  width: 88px; /* adjust if you want */
+}
+
+/* shrink sidebar content when collapsed */
+.sidebar.collapsed .logo-text,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .sidebar-user .user-info {
+  display: none;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 10px;
+}
+
+.sidebar.collapsed .nav-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+}
+
+/* main expands when sidebar collapses */
+.main.expanded {
+  margin-left: 88px; /* must match sidebar.collapsed width */
+}
 .user-info .name { font-size: 13px; font-weight: 500; }
 .user-info .role { font-size: 11px; color: var(--muted); }
 
@@ -379,7 +415,7 @@ body.dark {
   font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.2px;
-  margin-bottom: 12px;
+  margin-bottom: 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -838,8 +874,6 @@ body.dark {
   text-overflow: ellipsis;
   color: var(--ink2);
 }
-.venue-list-item:hover { background: var(--bg); }
-.venue-list-item.active { background: var(--violet-light); color: var(--violet); font-weight: 500; }
 
 .venue-calendar-card { padding: 18px; }
 
@@ -1186,3 +1220,160 @@ body.dark {
 
 /* Profile stats numbers */
 .pstat-num { font-size: 13px; font-weight: 600; }
+/* Venue sidebar container */
+.venue-sidebar-card {
+  padding: 18px;
+}
+
+/* Venue list wrapper */
+#venueList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;   /* spacing between venues */
+  margin-top: 14px;
+}
+
+/* Each venue item */
+.venue-list-item {
+  padding: 12px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.25s ease;
+  background: var(--bg);
+}
+
+/* Hover effect */
+.venue-list-item:hover {
+  background: rgba(108, 99, 255, 0.08);
+  transform: translateX(4px);
+}
+
+/* Active venue */
+.venue-list-item.active {
+  background: linear-gradient(135deg, var(--violet), #a78bfa);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(108, 99, 255, 0.25);
+}
+/* collapsed state */
+.sidebar.collapsed {
+  width: 88px;
+}
+
+/* hide text + labels + user info in collapsed */
+.sidebar.collapsed .logo-text,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .user-info,
+.sidebar.collapsed .nav-item {
+  font-size: 0;          /* hides text even if no <span> */
+}
+
+/* keep icons visible */
+.sidebar.collapsed .nav-icon {
+  font-size: 16px;       /* restore icon size */
+}
+
+/* center items */
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  gap: 0;
+  padding: 10px;
+}
+
+/* badges also hide */
+.sidebar.collapsed .nav-badge {
+  display: none;
+}
+
+/* main expands */
+.main.expanded {
+  margin-left: 88px;
+}
+.count-pill{
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--violet-light);
+  color: var(--violet);
+  font-weight: 700;
+}
+/* ✅ Balanced calendar spacing */
+#calGrid{
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;            /* spacing between cells */
+  margin-top: 12px;
+}
+
+/* For weekday labels if you render them inside the grid */
+#calGrid .cal-dow{
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  opacity: .65;
+  padding: 4px 0;
+}
+
+/* ✅ Perfect square day cells */
+#calGrid .cal-day{
+  width: 100%;
+  aspect-ratio: 1 / 1;  /* makes every cell same height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+
+  font-weight: 700;
+  cursor: pointer;
+
+  padding: 0;           /* remove default button padding */
+  margin: 0;            /* remove default margin */
+  box-sizing: border-box;
+}
+
+/* Optional: highlight selected day */
+#calGrid .cal-day.active{
+  background: rgba(244, 205, 210, 1);
+  border-color: transparent;
+}
+
+/* Optional: days that have events */
+#calGrid .cal-day.has-event{
+  outline: 2px solid rgba(91,63,248,0.25);
+}
+/* 1) Give the calendar card enough inner padding */
+#eventCalendarCard{
+  padding: 18px 18px 16px;   /* more left/right space */
+  overflow: hidden;          /* prevents any glow/outline touching edges */
+}
+
+/* 2) Keep header aligned after adding padding */
+#eventCalendarCard .card-header{
+  margin: -18px -18px 0;     /* remove extra padding effect only for header */
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+/* 3) Add side padding to the grid (extra safe) */
+#calGrid{
+  padding: 6px 4px;          /* stops date buttons from touching edges */
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+/* 4) Square buttons stay inside nicely */
+#calGrid .cal-day{
+  aspect-ratio: 1/1;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border-radius: 14px;
+  box-sizing: border-box;
+}

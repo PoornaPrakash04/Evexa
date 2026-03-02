@@ -481,6 +481,7 @@ function logout() {
   const onKey = e => { if (e.key === "Escape") { modal.remove(); document.removeEventListener("keydown", onKey); } };
   document.addEventListener("keydown", onKey);
 }
+
 // ── Notification Bell ─────────────────────────────────────────
 function initNotifications() {
   const btn      = document.getElementById("notifBtn");
@@ -599,17 +600,39 @@ function initNotifications() {
   autoGenerateNotifs();
 }
 
+// ── ⚡ ONLY THIS FUNCTION WAS CHANGED — announcement notifications added ──
 async function autoGenerateNotifs() {
   try {
-    const registered = await apiFetch("/attendance/my-registrations");
-    if (!registered?.length) return;
+    // Fetch registrations AND announcements in parallel
+    const [registered, announcements] = await Promise.all([
+      apiFetch("/attendance/my-registrations"),
+      apiFetch("/announcements/student"),
+    ]);
 
-    const existing = JSON.parse(localStorage.getItem("evexa_notifs") || "[]");
+    const existing    = JSON.parse(localStorage.getItem("evexa_notifs") || "[]");
     const existingIds = new Set(existing.map(n => n.sourceId).filter(Boolean));
-    const now = new Date();
-    const newNotifs = [];
+    const now         = new Date();
+    const newNotifs   = [];
 
-    registered.forEach(r => {
+    // ── Announcement notifications (newest first) ──────────
+    const TYPE_ICON = { Urgent: "🚨", Event: "📢", Info: "ℹ️", General: "📣" };
+    (announcements || []).forEach(a => {
+      const sourceId = `announcement-${a.id}`;
+      if (existingIds.has(sourceId)) return; // already stored, skip
+      newNotifs.push({
+        id:        Date.now() + Math.random(),
+        sourceId,
+        icon:      TYPE_ICON[a.type] || "📢",
+        title:     a.title,
+        message:   `${a.club}: ${a.message}`,
+        timestamp: a.created_at || new Date().toISOString(),
+        time:      new Date(a.created_at).toLocaleString("en-IN"),
+        read:      false,
+      });
+    });
+
+    // ── Event reminder notifications (unchanged) ───────────
+    (registered || []).forEach(r => {
       if (!r.date) return;
       const eventDate = new Date(r.date);
       const diffDays  = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
@@ -678,21 +701,45 @@ function addNotification(icon, title, message) {
   const btn = document.getElementById("notifBtn");
   if (btn) { btn.classList.add("ring"); setTimeout(() => btn.classList.remove("ring"), 600); }
 }
+
 /* ── UPCOMING REGISTERED MODAL ──────────────────────────────── */
+/* ── UPCOMING REGISTERED MODAL ──────────────────────────────── 
+   Replace the existing openUpcomingModal / closeUpcomingModal
+   functions in student-dashboard.js with these
+   ──────────────────────────────────────────────────────────── */
+
+const ACCENT_CLASSES = ["accent-v", "accent-p", "accent-c", "accent-l"];
+const BADGE_ICONS    = ["🛡️", "🤖", "🎨", "💡", "🚀", "⚡", "🎯", "📡"];
+
+function getCountdownClass(diffDays) {
+  if (diffDays <= 1)  return "urgent";
+  if (diffDays <= 3)  return "soon";
+  if (diffDays <= 14) return "medium";
+  return "far";
+}
+
+function getCountdownLabel(diffDays) {
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  return `In ${diffDays} days`;
+}
+
 async function openUpcomingModal() {
   const overlay = document.getElementById("upcomingModalOverlay");
   const modal   = document.getElementById("upcomingModal");
   const list    = document.getElementById("upcomingModalList");
+  if (!overlay || !modal || !list) return;
 
-  // Show modal immediately with loading state
+  // Show immediately with loading state
   overlay.style.display = "block";
   modal.style.display   = "flex";
-  list.innerHTML = `<p style="color:var(--text-3,#888);font-size:13px;text-align:center;padding:20px 0;">Loading...</p>`;
+  list.innerHTML = `<p class="modal-empty">Loading...</p>`;
 
   try {
     const registered = await apiFetch("/attendance/my-registrations");
+
     if (!registered || !Array.isArray(registered)) {
-      list.innerHTML = `<p style="color:var(--text-3,#888);font-size:13px;text-align:center;padding:20px 0;">No registered events found.</p>`;
+      list.innerHTML = `<p class="modal-empty">No registered events found.</p>`;
       return;
     }
 
@@ -702,58 +749,51 @@ async function openUpcomingModal() {
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     if (!upcoming.length) {
-      list.innerHTML = `<p style="color:var(--text-3,#888);font-size:13px;text-align:center;padding:20px 0;">No upcoming registered events.</p>`;
+      list.innerHTML = `<p class="modal-empty">No upcoming registered events.</p>`;
       return;
     }
 
-    list.innerHTML = upcoming.map(r => {
-      const eventDate = new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-      const diffDays  = Math.ceil((new Date(r.date) - now) / (1000 * 60 * 60 * 24));
-      const badge     = diffDays === 0 ? "Today" : diffDays === 1 ? "Tomorrow" : `In ${diffDays} days`;
-      const badgeColor = diffDays <= 1 ? "#ef4444" : diffDays <= 3 ? "#f59e0b" : "#10b981";
+    list.innerHTML = upcoming.map((r, i) => {
+      const eventDate    = new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+      const diffDays     = Math.ceil((new Date(r.date) - now) / (1000 * 60 * 60 * 24));
+      const accentClass  = ACCENT_CLASSES[i % ACCENT_CLASSES.length];
+      const icon         = BADGE_ICONS[i % BADGE_ICONS.length];
+      const cdClass      = getCountdownClass(diffDays);
+      const cdLabel      = getCountdownLabel(diffDays);
 
       return `
-        <div onclick="window.location.href='event-single.html?id=${r.event_id}'"
-             style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;
-                    border:1px solid var(--border,#eee);background:var(--surface-2,#fafafa);
-                    cursor:pointer;transition:box-shadow .15s;"
-             onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'"
-             onmouseout="this.style.boxShadow='none'">
-          <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;
-                      background:rgba(6,182,212,.1);display:flex;align-items:center;
-                      justify-content:center;font-size:20px;">📅</div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:600;color:var(--text-1,#111);
-                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              ${r.event_title || "Untitled Event"}
-            </div>
-            <div style="font-size:12px;color:var(--text-3,#888);margin-top:3px;">
-              📆 ${eventDate}
-              ${r.venue ? `&nbsp;·&nbsp; 🏛️ ${r.venue}` : ""}
-              ${r.club  ? `&nbsp;·&nbsp; 🏷️ ${r.club}`  : ""}
+        <div class="modal-event-item ${accentClass}"
+             onclick="window.location.href='event-single.html?id=${r.event_id}'">
+          <div class="modal-event-badge">${icon}</div>
+          <div class="modal-event-info">
+            <div class="modal-event-title">${r.event_title || "Untitled Event"}</div>
+            <div class="modal-event-meta">
+              <span>📆 ${eventDate}</span>
+              ${r.venue ? `<span class="modal-event-meta-sep">·</span><span>🏛 ${r.venue}</span>` : ""}
+              ${r.club  ? `<span class="modal-event-meta-sep">·</span><span>🏷 ${r.club}</span>`  : ""}
             </div>
           </div>
-          <span style="flex-shrink:0;font-size:11px;font-weight:600;padding:4px 10px;
-                       border-radius:20px;background:${badgeColor}1a;color:${badgeColor};">
-            ${badge}
-          </span>
+          <span class="modal-countdown ${cdClass}">${cdLabel}</span>
         </div>`;
     }).join("");
 
   } catch (err) {
     console.error("Upcoming modal error:", err);
-    list.innerHTML = `<p style="color:#ef4444;font-size:13px;text-align:center;padding:20px 0;">Failed to load events.</p>`;
+    list.innerHTML = `<p class="modal-empty" style="color:#f87171;">Failed to load events.</p>`;
   }
 }
 
 function closeUpcomingModal() {
-  document.getElementById("upcomingModalOverlay").style.display = "none";
-  document.getElementById("upcomingModal").style.display        = "none";
+  const overlay = document.getElementById("upcomingModalOverlay");
+  const modal   = document.getElementById("upcomingModal");
+  if (overlay) overlay.style.display = "none";
+  if (modal)   modal.style.display   = "none";
 }
 
-// Close on Escape key
+// Close on Escape key (keep this in place of the existing one)
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") closeUpcomingModal();
 });
+
 /* ── Boot ───────────────────────────────────────────────────── */
 loadDashboard();

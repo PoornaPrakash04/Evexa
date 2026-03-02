@@ -106,7 +106,7 @@
 }
 /* ── Club logo (card banner) ── */
 .club-logo-big {
-  font-size: 52px;          /* fallback emoji size */
+  font-size: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -230,8 +230,8 @@
 }
 .club-hero-banner {
   background-image: url(...);
-  min-height: 200px;          /* use min-height instead */
-  background-size: contain;   /* shows full image without cropping */
+  min-height: 200px;
+  background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
 }
@@ -360,7 +360,7 @@
 .person-role { font-size: 12px; font-weight: 800; color: #6d5efc; margin-top: 2px; }
 .person-year { font-size: 11px; color: #9ca3af; font-weight: 700; margin-top: 1px; }
 
-/* Info items in quick info card */
+/* Info items */
 .info-item { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; }
 .info-icon-box {
   width: 34px; height: 34px; border-radius: 11px;
@@ -373,6 +373,70 @@
 /* Divider */
 .divider { height: 1px; background: rgba(229,231,235,.8); }
 
+/* ── Execom Grid ── */
+.execom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 14px;
+}
+
+.execom-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: rgba(255,255,255,.8);
+  border: 1px solid rgba(229,231,235,.75);
+  border-radius: 16px;
+  padding: 18px 12px 14px;
+  gap: 6px;
+  transition: box-shadow .2s, transform .2s;
+}
+.execom-card:hover {
+  box-shadow: 0 6px 20px rgba(17,24,39,.1);
+  transform: translateY(-2px);
+}
+
+.execom-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.execom-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.execom-role {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.execom-meta {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.execom-phone {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-decoration: none;
+  margin-top: 2px;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .cs-layout { grid-template-columns: 1fr; }
@@ -380,4 +444,135 @@
 }
 @media (max-width: 700px) {
   .clubs-grid { grid-template-columns: 1fr; }
+  .execom-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
 }
+
+/* ════════════════════════════════════════
+   DARK MODE
+   ════════════════════════════════════════ */
+body:not(.light) .filter-btn {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+body:not(.light) .filter-btn:hover,
+body:not(.light) .filter-btn.active {
+  background: var(--g-violet);
+  border-color: transparent;
+  color: white;
+}
+body:not(.light) .club-card {
+  background: var(--glass);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+body:not(.light) .club-card:hover {
+  border-color: var(--border-2);
+  box-shadow: var(--shadow-md);
+}
+body:not(.light) .club-name    { color: var(--text); }
+body:not(.light) .club-desc    { color: var(--text-2); }
+body:not(.light) .club-tagline { color: var(--violet-2); }
+body:not(.light) .club-meta-item { color: var(--text-3); }
+body:not(.light) .club-footer {
+  background: var(--surface);
+  border-top-color: var(--border);
+}
+body:not(.light) .club-people-label { color: var(--text-3); }
+body:not(.light) .back-btn {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+body:not(.light) .club-hero {
+  background: var(--glass) !important;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+body:not(.light) .club-hero-name    { color: var(--text); }
+body:not(.light) .club-hero-tagline { color: var(--text-2); }
+body:not(.light) .club-tag {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+body:not(.light) .cs-section {
+  background: var(--glass);
+  border-color: var(--border);
+  box-shadow: none;
+}
+body:not(.light) .cs-section-title { color: var(--text); }
+body:not(.light) .cs-desc          { color: var(--text-2); }
+body:not(.light) .goal-item        { color: var(--text-2); }
+body:not(.light) .cs-card {
+  background: var(--glass);
+  border-color: var(--border);
+  box-shadow: none;
+}
+body:not(.light) .cs-card-title  { color: var(--text); }
+body:not(.light) .members-count  { color: var(--text); }
+body:not(.light) .members-label  { color: var(--text-3); }
+body:not(.light) .join-note      { color: var(--text-3); }
+body:not(.light) .person-name    { color: var(--text); }
+body:not(.light) .person-role    { color: var(--violet-2); }
+body:not(.light) .person-year    { color: var(--text-3); }
+body:not(.light) .info-item-label { color: var(--text-3); }
+body:not(.light) .info-item-value { color: var(--text); }
+body:not(.light) .info-icon-box   { background: rgba(139,92,246,.12); }
+body:not(.light) .divider         { background: var(--border); }
+body:not(.light) .no-results      { color: var(--text-3); }
+body:not(.light) .club-event-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+body:not(.light) .club-event-name { color: var(--text); }
+body:not(.light) .club-event-meta { color: var(--text-3); }
+body:not(.light) .no-events-msg   { color: var(--text-3); }
+
+/* Execom dark mode */
+body:not(.light) .execom-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+body:not(.light) .execom-card:hover {
+  border-color: var(--border-2);
+  box-shadow: var(--shadow-md);
+}
+body:not(.light) .execom-name { color: var(--text); }
+body:not(.light) .execom-meta { color: var(--text-3); }
+body:not(.light) .execom-phone { color: var(--text-3); }
+
+/* ════════════════════════════════════════
+   LIGHT MODE
+   ════════════════════════════════════════ */
+body.light .club-card {
+  background: rgba(255,255,255,.88);
+  border-color: rgba(139,92,246,.10);
+}
+body.light .club-name    { color: #0d0f1e; }
+body.light .club-desc    { color: rgba(13,15,30,.55); }
+body.light .club-footer  {
+  background: rgba(139,92,246,.02);
+  border-top-color: rgba(139,92,246,.08);
+}
+body.light .cs-section {
+  background: rgba(255,255,255,.88);
+  border-color: rgba(139,92,246,.10);
+}
+body.light .cs-section-title { color: #0d0f1e; }
+body.light .cs-desc          { color: rgba(13,15,30,.65); }
+body.light .cs-card {
+  background: rgba(255,255,255,.92);
+  border-color: rgba(139,92,246,.10);
+}
+body.light .info-item-label  { color: rgba(13,15,30,.45); }
+body.light .info-item-value  { color: #0d0f1e; }
+body.light .divider          { background: rgba(139,92,246,.10); }
+
+/* Execom light mode */
+body.light .execom-card {
+  background: rgba(255,255,255,.92);
+  border-color: rgba(139,92,246,.10);
+}
+body.light .execom-name { color: #0d0f1e; }
+body.light .execom-meta { color: rgba(13,15,30,.45); }

@@ -1,689 +1,1295 @@
 // ============================================================
 //  faculty-dashboard.js  —  EVEXA Faculty Portal
+//  Full real-time API integration · All features implemented
 // ============================================================
 
-// ── DATA ──────────────────────────────────────────────────────────────────
+// var (not const/let) ensures global scope regardless of strict mode or defer
+var API = "http://localhost:5000/api";
+window.API = API;
 
-const PROPOSALS = [
-  { id:1, name:"Robo Race 2026",       organizer:"Robotics Club",     date:"Mar 15, 2026", category:"Technical",  status:"pending",  desc:"Annual inter-college robotics competition featuring autonomous and manual bots.", objectives:"Foster robotics skills, promote teamwork, inter-college exposure.", participants:200, venue:"Sports Arena, Block A", time:"9:00 AM – 5:00 PM", doc:"robo_race_proposal.pdf" },
-  { id:2, name:"AI & ML Summit",        organizer:"Data Science Club", date:"Mar 22, 2026", category:"Technical",  status:"pending",  desc:"Two-day summit covering latest trends in Artificial Intelligence and Machine Learning.", objectives:"Industry exposure, paper presentations, keynote speakers.", participants:150, venue:"Seminar Hall 1", time:"10:00 AM – 4:00 PM", doc:"ai_summit_proposal.pdf" },
-  { id:3, name:"Hackathon 36H",         organizer:"FOSS Club",        date:"Apr 5, 2026",  category:"Technical",  status:"review",   desc:"36-hour non-stop coding hackathon open to all students.", objectives:"Problem solving, open source contribution, team building.", participants:120, venue:"Computer Lab Block C", time:"6:00 PM (36 hrs)", doc:"hackathon_proposal.pdf" },
-  { id:4, name:"Cultural Fest Spectrum",organizer:"Cultural Committee",date:"Apr 12, 2026", category:"Cultural",   status:"review",   desc:"Annual 3-day cultural extravaganza featuring music, dance, drama and art.", objectives:"Cultural exchange, student creativity, entertainment.", participants:500, venue:"Open Air Auditorium", time:"4:00 PM – 9:00 PM", doc:"spectrum_proposal.pdf" },
-  { id:5, name:"Web Dev Workshop",      organizer:"IEEE Branch",       date:"Mar 20, 2026", category:"Workshop",   status:"approved", desc:"Full-stack web development workshop covering HTML, CSS, JS and React.", objectives:"Skill building, hands-on learning, portfolio development.", participants:60,  venue:"Lab 4, Block B", time:"10:00 AM – 3:00 PM", doc:"webdev_proposal.pdf" },
-  { id:6, name:"Photography Walk",      organizer:"Photography Club",  date:"Apr 25, 2026", category:"Creative",   status:"approved", desc:"Campus photography walk followed by editing workshop.", objectives:"Photography skills, creative expression, exhibition.", participants:40,  venue:"Campus Grounds", time:"6:00 AM – 9:00 AM", doc:"photo_walk_proposal.pdf" },
-  { id:7, name:"Space Awareness Day",   organizer:"Space Club",        date:"May 3, 2026",  category:"Science",    status:"rejected", desc:"Stargazing night and astronomy awareness program.", objectives:"Science awareness, telescope sessions, ISRO discussion.", participants:80,  venue:"Rooftop Observatory", time:"6:00 PM – 10:00 PM", doc:"space_day_proposal.pdf" },
-];
-
-const CERTIFICATES = [
-  { id:1,  student:"Arjun Kumar",    reg:"STU-2026-019", event:"Robo Race 2026",    attendance:true,  status:"pending"  },
-  { id:2,  student:"Meena Pillai",   reg:"STU-2026-034", event:"Robo Race 2026",    attendance:true,  status:"pending"  },
-  { id:3,  student:"Siddharth Nair", reg:"STU-2026-041", event:"Robo Race 2026",    attendance:false, status:"pending"  },
-  { id:4,  student:"Divya Thomas",   reg:"STU-2026-055", event:"Web Dev Workshop",  attendance:true,  status:"pending"  },
-  { id:5,  student:"Karthik Raj",    reg:"STU-2026-062", event:"Web Dev Workshop",  attendance:true,  status:"pending"  },
-  { id:6,  student:"Lakshmi Nair",   reg:"STU-2026-078", event:"Web Dev Workshop",  attendance:true,  status:"approved" },
-  { id:7,  student:"Ananya Krishnan",reg:"STU-2026-083", event:"AI & ML Summit",    attendance:true,  status:"pending"  },
-  { id:8,  student:"Rahul Menon",    reg:"STU-2026-091", event:"AI & ML Summit",    attendance:false, status:"pending"  },
-  { id:9,  student:"Priya Suresh",   reg:"STU-2026-104", event:"Photography Walk",  attendance:true,  status:"approved" },
-  { id:10, student:"Neil Mathew",    reg:"STU-2026-117", event:"Photography Walk",  attendance:true,  status:"pending"  },
-  { id:11, student:"Sneha Rajan",    reg:"STU-2026-122", event:"Cultural Fest",     attendance:true,  status:"pending"  },
-  { id:12, student:"Arjun Varma",    reg:"STU-2026-139", event:"Cultural Fest",     attendance:true,  status:"rejected" },
-];
-
-const CLUBS = [
-  { id:1, logo:"🤖", name:"Robotics Club",   category:"Technical", members:87,  chair:"Ravi Shankar",    events:3, reports:2, status:"Active" },
-  { id:2, logo:"⚡", name:"IEEE Branch",      category:"Technical", members:142, chair:"Ananya Krishnan", events:4, reports:3, status:"Active" },
-  { id:3, logo:"💻", name:"FOSS Club",        category:"Technical", members:63,  chair:"Karthik Raj",     events:2, reports:1, status:"Active" },
-  { id:4, logo:"🤝", name:"NSS Club",         category:"Social",    members:210, chair:"Lakshmi Nair",    events:5, reports:4, status:"Active" },
-  { id:5, logo:"🚀", name:"Space Club",       category:"Science",   members:55,  chair:"Neil Mathew",     events:2, reports:1, status:"Active" },
-  { id:6, logo:"📷", name:"Photography Club", category:"Creative",  members:48,  chair:"Priya Suresh",    events:2, reports:2, status:"Active" },
-];
-
-const NOTIFICATIONS = [
-  { id:1, type:"event",   icon:"📋", title:"3 new event proposals submitted",    sub:"Robotics, FOSS, Cultural Committee",  time:"Today, 10:22 AM", read:false },
-  { id:2, type:"cert",    icon:"🎓", title:"12 certificates awaiting approval",  sub:"Robo Race 2026 & Web Dev Workshop",   time:"Today, 9:14 AM",  read:false },
-  { id:3, type:"admin",   icon:"📢", title:"Admin: Semester calendar deadline",  sub:"All proposals due before Feb 28",     time:"Yesterday",       read:false },
-  { id:4, type:"club",    icon:"🏷️", title:"IEEE Club submitted annual report",  sub:"Please review and validate",          time:"2 days ago",      read:true  },
-  { id:5, type:"club",    icon:"🏷️", title:"NSS Club — Blood donation drive",   sub:"Event report uploaded",               time:"3 days ago",      read:true  },
-  { id:6, type:"event",   icon:"📋", title:"Web Dev Workshop approved",          sub:"IEEE Branch — March 20",              time:"4 days ago",      read:true  },
-  { id:7, type:"cert",    icon:"🎓", title:"Photography Walk certs processed",   sub:"8 certificates issued",               time:"5 days ago",      read:true  },
-];
-
-const ANNOUNCEMENTS = [
-  { title:"📌 Semester Event Calendar Deadline", from:"Admin", date:"Feb 20, 2026", body:"All event proposals for March must be submitted and approved by Feb 28. Please review and approve pending proposals at the earliest." },
-  { title:"🎓 Certificate Verification Drive",   from:"Admin", date:"Feb 18, 2026", body:"Batch certificate approvals for January events are due. Please complete verification of attendance-marked students by end of this week." },
-  { title:"🏷️ Club Annual Review Submission",   from:"Admin", date:"Feb 15, 2026", body:"All clubs must submit their semester activity reports. Faculty advisors are requested to review and validate reports before March 5." },
-];
-
-const FEEDBACK_COMMENTS = [
-  { name:"Arjun Kumar",    event:"Robo Race 2026",     rating:5, text:"Absolutely loved the event! Great organisation, amazing teams and a super competitive atmosphere." },
-  { name:"Meena Pillai",   event:"Web Dev Workshop",   rating:4, text:"Very informative session. The React portion could have been more hands-on, but overall great content." },
-  { name:"Karthik Raj",    event:"FOSS Hackathon",     rating:5, text:"Best hackathon I've been to. Loved the open source theme and the mentors were really helpful." },
-  { name:"Divya Thomas",   event:"Photography Walk",   rating:4, text:"Really fun morning! Editing workshop was the highlight. Would love to see Photoshop included next time." },
-  { name:"Ananya Krishnan",event:"AI & ML Summit",     rating:5, text:"The keynote speakers were outstanding. Learned so much about real-world ML deployment." },
-  { name:"Siddharth Nair", event:"Cultural Fest",      rating:3, text:"Fun event but the schedule ran quite late. Music performances were excellent though." },
-];
+// ── AUTH ──────────────────────────────────────────────────────────────────
+async function apiFetch(endpoint, opts = {}) {
+  const token = localStorage.getItem("authToken");
+  if (!token) { window.location.href = "faculty-signin.html"; return null; }
+  try {
+    const base = (typeof API !== "undefined" ? API : window.API) || "http://localhost:5000/api";
+    const res = await fetch(`${base}${endpoint}`, {
+      ...opts,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
+    });
+    if (res.status === 401) { localStorage.removeItem("authToken"); window.location.href = "faculty-signin.html"; return null; }
+    if (!res.ok) {
+      let body = "";
+      try { body = await res.text(); } catch(_) {}
+      console.error(`[apiFetch] ${endpoint} → ${res.status} | body: ${body}`);
+      return null;
+    }
+    const data = await res.json();
+    console.log(`[apiFetch] ${endpoint} →`, data);
+    return data;
+  } catch (e) { console.error("[apiFetch] network error:", e); return null; }
+}
 
 // ── STATE ─────────────────────────────────────────────────────────────────
 let currentPage   = "dashboard";
-let proposals     = PROPOSALS.map(p => ({ ...p }));
-let certificates  = CERTIFICATES.map(c => ({ ...c }));
+let calYear       = new Date().getFullYear();
+let calMonth      = new Date().getMonth();
 let chartsInited  = false;
-let calYear       = 2026;
-let calMonth      = 2; // 0-indexed: Feb
+let feedbackInited= false;
 
-// ── NAVIGATION ────────────────────────────────────────────────────────────
-function navigateTo(page) {
-  // Hide all
-  document.querySelectorAll("[id^='pg-']").forEach(el => el.style.display = "none");
+// Data cache
+let cachedProfile   = null;
+let cachedProposals = [];
+let cachedCerts     = [];
+let cachedEvents    = [];
+let cachedClubs     = [];
+let cachedFeedback  = [];
 
-  // Show target
-  const target = document.getElementById("pg-" + page);
-  if (target) target.style.display = "";
+// Local notifications
+let localNotifs = JSON.parse(localStorage.getItem("evexa_faculty_notifs") || "[]");
+function saveNotifs() { localStorage.setItem("evexa_faculty_notifs", JSON.stringify(localNotifs.slice(0, 50))); }
 
-  // Active nav
-  document.querySelectorAll(".nav-item").forEach(el => {
-    el.classList.toggle("active", el.dataset.page === page);
+// ── BOOT ──────────────────────────────────────────────────────────────────
+async function boot() {
+  applyTheme();
+
+  // Wire navigation
+  document.querySelectorAll(".nav-item[data-page]").forEach(el =>
+    el.addEventListener("click", () => navigateTo(el.dataset.page))
+  );
+
+  // Topbar controls
+  document.getElementById("sidebarToggle").addEventListener("click", () => {
+    const s = document.getElementById("sidebar");
+    window.innerWidth <= 768 ? s.classList.toggle("mobile-open") : s.classList.toggle("collapsed");
+  });
+  document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+  document.getElementById("notifBtn").addEventListener("click", toggleNotifDropdown);
+  document.getElementById("notifClearAll")?.addEventListener("click", clearAllNotifs);
+  document.getElementById("profileBtn").addEventListener("click", openProfileDrawer);
+  document.getElementById("miniUser")?.addEventListener("click", openProfileDrawer);
+  document.getElementById("closeProfileBtn")?.addEventListener("click", closeProfileDrawer);
+  document.getElementById("overlay")?.addEventListener("click", closeProfileDrawer);
+  document.getElementById("markAllReadBtn")?.addEventListener("click", markAllNotifsRead);
+  document.getElementById("clearAllNotifBtn")?.addEventListener("click", clearAllNotifs);
+  document.getElementById("closeDetail")?.addEventListener("click", () => {
+    document.getElementById("proposalDetail").style.display = "none";
+  });
+  document.getElementById("postAnnounceBtn")?.addEventListener("click", postAnnouncement);
+
+  // Close notif dropdown on outside click
+  document.addEventListener("click", e => {
+    const wrap = document.getElementById("notifBtn")?.closest(".notif-wrap");
+    const dd   = document.getElementById("notifDropdown");
+    if (dd && !wrap?.contains(e.target)) dd.classList.remove("open");
   });
 
+  // Bulk handlers
+  initBulk();
+  initSearchFilters();
+  initCalNav();
+
+  // Load faculty profile — try faculty-specific endpoint first, fallback to /auth/me
+  let profile = await apiFetch("/faculty/me");
+
+  if (!profile) {
+    profile = await apiFetch("/auth/me");
+  }
+
+  if (!profile) return;
+
+  // Guard: if token belongs to a student (has roll_no but no faculty fields), redirect
+  if (!profile.faculty_no && !profile.department && profile.roll_no) {
+    localStorage.removeItem("authToken");
+    showToast("Please log in with your faculty account.", "error");
+    setTimeout(() => window.location.href = "faculty-signin.html", 1500);
+    return;
+  }
+
+  cachedProfile = profile;
+
+  // Map faculty DB columns: id, faculty_no, name, email, department, role_id
+  const name       = profile.name || "Faculty";
+  const initials   = name.split(" ").filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2) || "FA";
+  const department = profile.department || "Faculty Advisor";
+  const facultyNo  = profile.faculty_no || "";
+
+  el("miniName")?.text(name);
+  el("miniRole")?.text(facultyNo ? `${facultyNo} · ${department}` : department);
+  el("miniAvatar")?.text(initials);
+  el("topAvatar")?.text(initials);
+  el("rolePill")?.text(`Faculty · ${department}`);
+
+  // Greeting
+  const h = new Date().getHours();
+  const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  el("heroGreeting")?.text(`${greet}, ${name.split(" ")[0]}`);
+
+  // Fetch all data in parallel
+  await refreshAll();
+
+  // Render initial page
+  renderDashboard();
+  updateNotifBadge();
+  syncNotifs();
+}
+
+async function refreshAll() {
+  const [proposals, certs, events, clubs, feedback] = await Promise.all([
+    apiFetch("/faculty/proposals"),
+    apiFetch("/faculty/certificates"),
+    fetch(`${API}/events`).then(r => r.ok ? r.json() : []).catch(() => []),
+    apiFetch("/clubs/my-clubs"),
+    apiFetch("/faculty/feedback"),
+  ]);
+  cachedProposals = Array.isArray(proposals) ? proposals : [];
+  cachedCerts     = Array.isArray(certs)     ? certs     : [];
+  cachedEvents    = Array.isArray(events)    ? events    : [];
+  cachedClubs     = Array.isArray(clubs)     ? clubs     : [];
+  cachedFeedback  = Array.isArray(feedback)  ? feedback  : [];
+  updateBadges();
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────
+const PAGE_META = {
+  "dashboard":     ["Dashboard",              "Welcome back — here's your faculty overview."],
+  "proposals":     ["Event Proposal Review",  "Review, approve or reject submitted proposals."],
+  "event-list":    ["All Events",             "Complete event list across your clubs."],
+  "calendar":      ["Calendar View",          "Venue & schedule overview by date."],
+  "certificates":  ["Certificate Approvals",  "Verify attendance and issue student certificates."],
+  "pending":       ["Pending Queue",          "All items requiring your immediate action."],
+  "clubs":         ["Club & Academic Oversight","Your incharge clubs and their activity."],
+  "analytics":     ["Reports & Analytics",    "Events, participation, and academic statistics."],
+  "feedback":      ["Feedback & Reports",     "Student feedback ratings and comments."],
+  "announcements": ["Announcements",          "Post and manage club announcements."],
+  "notif-history": ["Notification History",   "All alerts and system updates."],
+};
+
+function navigateTo(page) {
+  document.querySelectorAll("[id^='pg-']").forEach(e => e.style.display = "none");
+  const pg = document.getElementById("pg-" + page);
+  if (pg) pg.style.display = "";
+
+  document.querySelectorAll(".nav-item").forEach(e =>
+    e.classList.toggle("active", e.dataset.page === page)
+  );
   currentPage = page;
 
-  // Update topbar
-  const titles = {
-    "dashboard":    ["Dashboard",              "Welcome back, Dr. Ramesh — here's your faculty overview."],
-    "proposals":    ["Event Proposal Review",  "Review, comment and approve event proposals."],
-    "event-list":   ["Event List",             "All events across all clubs."],
-    "calendar":     ["Approval Calendar",      "View scheduled events and approval deadlines."],
-    "certificates": ["Certificate Approvals",  "Verify attendance and issue student certificates."],
-    "clubs":        ["Club Oversight",         "Monitor club activity and review reports."],
-    "analytics":    ["Reports & Analytics",    "Event statistics and student participation data."],
-    "feedback":     ["Feedback & Reports",     "Student feedback ratings and comments."],
-    "notif-history":["Notification History",   "All alerts and system notifications."],
-    "pending":      ["Pending Approvals",      "All items requiring your approval."],
-  };
-  const [t, s] = titles[page] || ["Dashboard", ""];
-  document.getElementById("pageTitle").textContent = t;
-  document.getElementById("pageSub").textContent   = s;
+  const [t, s] = PAGE_META[page] || ["", ""];
+  el("pageTitle")?.text(t);
+  el("pageSub")?.text(s);
 
   // Lazy renders
-  if (page === "proposals")     renderProposals();
-  if (page === "event-list")    renderEventList();
-  if (page === "certificates")  renderCerts();
-  if (page === "clubs")         renderClubs();
-  if (page === "notif-history") renderNotifHistory();
-  if (page === "pending")       renderPendingPage();
-  if (page === "calendar")      renderCalendar();
-  if (page === "analytics" && !chartsInited) { chartsInited = true; setTimeout(initCharts, 50); }
-  if (page === "feedback")      renderFeedback();
+  const renders = {
+    "dashboard":    renderDashboard,
+    "proposals":    renderProposals,
+    "event-list":   renderEventList,
+    "calendar":     renderCalendar,
+    "certificates": renderCerts,
+    "pending":      renderPendingPage,
+    "clubs":        renderClubs,
+    "announcements":renderAnnouncements,
+    "notif-history":renderNotifHistory,
+    "feedback":     renderFeedback,
+    "analytics":    () => { if (!chartsInited) { chartsInited = true; setTimeout(initCharts, 60); } else { /* already done */ } },
+  };
+  renders[page]?.();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────
-function renderDashboard() {
+async function renderDashboard() {
+  // Hero stats
+  const pending  = cachedProposals.filter(p => p.status === "pending" || p.status === "review");
+  const pendCert = cachedCerts.filter(c => (c.certificate_status || c.status) === "pending");
+  const now      = new Date();
+  const activeEv = cachedEvents.filter(e => new Date(e.date) >= now);
+  const students = cachedCerts.reduce((s, c) => s + 1, 0); // total unique in certs
+
+  el("heroPending")?.text(pending.length);
+  el("heroCerts")?.text(pendCert.length);
+  el("heroClubs")?.text(cachedClubs.length);
+  el("heroEvents")?.text(activeEv.length);
+  el("heroStudents")?.text(cachedCerts.length);
+
   // Pending list
   const pl = document.getElementById("dashPendingList");
   if (pl) {
-    pl.innerHTML = proposals.filter(p => p.status === "pending" || p.status === "review").slice(0,4).map(p => `
-      <div class="list-item">
-        <div class="dot ${p.status==="pending"?"dot-orange":"dot-blue"}"></div>
-        <div class="li-text">
-          <div class="li-title">${p.name}</div>
-          <div class="li-sub">${p.organizer} · ${p.date}</div>
-        </div>
-        <span class="badge ${p.status==="pending"?"pending":"review"}">${p.status==="pending"?"Pending":"Review"}</span>
-      </div>`).join("");
+    pl.innerHTML = pending.length
+      ? pending.slice(0, 5).map(p => `
+          <div class="dash-item">
+            <div class="dot ${p.status === "pending" ? "dot-orange" : "dot-blue"}"></div>
+            <div class="di-text">
+              <div class="di-title">${p.title || p.name || "Untitled"}</div>
+              <div class="di-sub">${p.club || p.organizer || "—"} · ${fmtDate(p.date || p.event_date)}</div>
+            </div>
+            <div style="display:flex;gap:5px;">
+              <button class="mini-btn approve" onclick="quickApprove(${p.id})">✅</button>
+              <button class="mini-btn reject"  onclick="quickReject(${p.id})">❌</button>
+            </div>
+          </div>`).join("")
+      : `<div class="list-empty">No pending proposals 🎉</div>`;
   }
 
   // Notifications
   const nl = document.getElementById("dashNotifList");
   if (nl) {
-    nl.innerHTML = NOTIFICATIONS.slice(0,4).map(n => `
-      <div class="list-item">
-        <div class="dot ${n.read?"dot-blue":"dot-red"}"></div>
-        <div class="li-text">
-          <div class="li-title">${n.title}</div>
-          <div class="li-sub">${n.time}</div>
-        </div>
-      </div>`).join("");
+    const recent = localNotifs.slice(0, 5);
+    nl.innerHTML = recent.length
+      ? recent.map(n => `
+          <div class="dash-item">
+            <div class="dot ${n.read ? "dot-blue" : "dot-pink"}"></div>
+            <div class="di-text">
+              <div class="di-title">${n.icon || "🔔"} ${n.title}</div>
+              <div class="di-sub">${timeAgo(n.time)}</div>
+            </div>
+          </div>`).join("")
+      : `<div class="list-empty">No notifications yet.</div>`;
   }
 
   // Announcements
-  const ab = document.getElementById("announcementBoard");
-  if (ab) {
-    ab.innerHTML = ANNOUNCEMENTS.map(a => `
-      <div class="announce-card">
-        <div class="announce-title">${a.title}</div>
-        <div class="announce-meta">${a.from} · ${a.date}</div>
-        <div class="announce-body">${a.body}</div>
-      </div>`).join("");
-  }
+  await loadAnnouncementBoard();
+
+  // Clubs quick
+  renderClubsQuick();
+}
+
+async function loadAnnouncementBoard() {
+  const ab = document.getElementById("dashAnnouncements");
+  if (!ab) return;
+  const ann = await apiFetch("/announcements/faculty");
+  if (!ann?.length) { ab.innerHTML = `<div class="list-empty">No announcements.</div>`; return; }
+  const ICONS = { Urgent: "🚨", Event: "📅", Info: "ℹ️", General: "📣" };
+  ab.innerHTML = ann.slice(0, 3).map(a => `
+    <div class="announce-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div class="announce-title">${ICONS[a.type] || "📣"} ${a.title}</div>
+        <span class="badge purple" style="flex-shrink:0;">${a.type || "General"}</span>
+      </div>
+      <div class="announce-meta">${a.club || "Admin"} · ${fmtDate(a.created_at)}</div>
+      <div class="announce-body">${a.message}</div>
+    </div>`).join("");
+}
+
+function renderClubsQuick() {
+  const g = document.getElementById("dashClubsGrid");
+  if (!g) return;
+  if (!cachedClubs.length) { g.innerHTML = `<div class="list-empty" style="padding:20px;">No clubs assigned yet.</div>`; return; }
+  const emojis = ["🤖","⚡","💻","🤝","🚀","📷","🎨","🏆","🎯","💡","🌍","🎵"];
+  g.innerHTML = cachedClubs.map((c, i) => {
+    const evCount = cachedEvents.filter(e => (e.club_id === c.id || e.club === c.name)).length;
+    return `
+      <div class="club-quick-card" onclick="navigateTo('clubs')">
+        <div class="club-quick-emoji">${c.logo || emojis[i % emojis.length]}</div>
+        <div class="club-quick-info">
+          <div class="club-quick-name">${c.name}</div>
+          <div class="club-quick-meta">${c.member_count || 0} members · ${evCount} events</div>
+        </div>
+        <span class="club-quick-badge">${c.status || "Active"}</span>
+      </div>`;
+  }).join("");
 }
 
 // ── PROPOSALS ─────────────────────────────────────────────────────────────
-function renderProposals(filter="all", search="") {
+async function renderProposals(filter = "all", search = "", category = "all") {
+  const fresh = await apiFetch("/faculty/proposals");
+  if (fresh) cachedProposals = fresh;
+
   const tbody = document.getElementById("proposalsBody");
-  let list = proposals;
-  if (filter !== "all") list = list.filter(p => p.status === filter);
-  if (search) list = list.filter(p =>
-    p.name.toLowerCase().includes(search) ||
-    p.organizer.toLowerCase().includes(search)
+  if (!tbody) return;
+
+  let list = cachedProposals;
+  if (filter !== "all")   list = list.filter(p => p.status === filter);
+  if (category !== "all") list = list.filter(p => (p.category || p.type || "") === category);
+  if (search)             list = list.filter(p =>
+    (p.title || p.name || "").toLowerCase().includes(search) ||
+    (p.club || p.organizer || "").toLowerCase().includes(search)
   );
 
-  tbody.innerHTML = list.map(p => `
+  tbody.innerHTML = list.length ? list.map(p => `
     <tr>
-      <td><input type="checkbox" class="cb proposal-cb" data-id="${p.id}"/></td>
-      <td><span style="font-weight:900;cursor:pointer;color:#5b21b6;" class="view-detail" data-id="${p.id}">${p.name}</span></td>
-      <td>${p.organizer}</td>
-      <td>${p.date}</td>
-      <td><span class="tag">${p.category}</span></td>
-      <td><span class="badge ${p.status}">${cap(p.status)}</span></td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="mini-btn approve" onclick="approveProposal(${p.id})">✅ Approve</button>
-        <button class="mini-btn reject"  onclick="rejectProposal(${p.id})">❌ Reject</button>
-        <button class="mini-btn"         onclick="showDetail(${p.id})">👁 View</button>
+      <td><input type="checkbox" class="cb proposal-cb" data-id="${p.id}"></td>
+      <td>
+        <span class="ev-name" onclick="showProposalDetail(${p.id})">${p.title || p.name || "Untitled"}</span>
       </td>
-    </tr>`).join("") || `<tr><td colspan="7" style="padding:24px;text-align:center;color:#9ca3af;font-weight:700;">No proposals found.</td></tr>`;
-
-  // Badge
-  const pendingCount = proposals.filter(p => p.status==="pending" || p.status==="review").length;
-  updateBadge("badge-pending", pendingCount);
-  updateBadge("badge-proposals", proposals.filter(p=>p.status==="pending").length);
-
-  // Detail click
-  document.querySelectorAll(".view-detail").forEach(el =>
-    el.addEventListener("click", () => showDetail(+el.dataset.id))
-  );
-}
-
-function showDetail(id) {
-  const p = proposals.find(x => x.id === id);
-  if (!p) return;
-  document.getElementById("detailName").textContent = p.name;
-  document.getElementById("detailBody").innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex-wrap:wrap;">
-      <div>
-        <div class="detail-row"><span class="detail-label">📋 Description</span></div>
-        <p style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:14px;">${p.desc}</p>
-        <div class="detail-row"><span class="detail-label">🎯 Objectives</span></div>
-        <p style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:14px;">${p.objectives}</p>
-        <div class="detail-row"><span class="detail-label">👥 Expected Participants</span><span class="detail-val">${p.participants} students</span></div>
-        <div class="detail-row"><span class="detail-label">📎 Document</span><span class="detail-val" style="color:#6d5efc;font-weight:800;">${p.doc}</span></div>
-      </div>
-      <div>
-        <div class="detail-row"><span class="detail-label">🏛️ Venue</span><span class="detail-val">${p.venue}</span></div>
-        <div class="detail-row"><span class="detail-label">📅 Date</span><span class="detail-val">${p.date}</span></div>
-        <div class="detail-row"><span class="detail-label">⏰ Time</span><span class="detail-val">${p.time}</span></div>
-        <div class="detail-row"><span class="detail-label">🏷️ Category</span><span class="detail-val">${p.category}</span></div>
-        <div class="detail-row"><span class="detail-label">📌 Status</span><span class="badge ${p.status}">${cap(p.status)}</span></div>
-        <div style="display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;">
-          <button class="btn success sm" onclick="approveProposal(${p.id});document.getElementById('proposalDetail').style.display='none'">✅ Approve</button>
-          <button class="btn danger sm"  onclick="rejectProposal(${p.id});document.getElementById('proposalDetail').style.display='none'">❌ Reject</button>
+      <td>${p.club || p.organizer || "—"}</td>
+      <td>${fmtDate(p.date || p.event_date)}</td>
+      <td><span class="tag">${p.category || p.type || "General"}</span></td>
+      <td>${p.capacity || p.expected_participants || "—"}</td>
+      <td><span class="badge ${p.status}">${cap(p.status)}</span></td>
+      <td>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          ${p.status !== "approved" ? `<button class="mini-btn approve" onclick="approveProposal(${p.id})">✅</button>` : ""}
+          ${p.status !== "rejected" ? `<button class="mini-btn reject"  onclick="rejectProposal(${p.id})">❌</button>` : ""}
+          <button class="mini-btn" onclick="showProposalDetail(${p.id})">👁</button>
         </div>
-      </div>
-    </div>`;
-  document.getElementById("proposalDetail").style.display = "";
-  document.getElementById("proposalDetail").scrollIntoView({ behavior:"smooth", block:"start" });
+      </td>
+    </tr>`).join("")
+    : `<tr><td colspan="8" class="td-empty">No proposals match your filter.</td></tr>`;
+
+  updateBadges();
 }
 
-function approveProposal(id) {
-  const p = proposals.find(x => x.id === id);
-  if (p) { p.status = "approved"; renderProposals(); showToast("✅ Proposal approved!", "success"); }
+function showProposalDetail(id) {
+  const p = cachedProposals.find(x => x.id === id);
+  if (!p) return;
+
+  el("detailName")?.text(p.title || p.name || "Event Details");
+
+  const body = document.getElementById("detailBody");
+  if (body) {
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div class="detail-section">
+            <div class="detail-section-title">Event Info</div>
+            <div class="detail-grid">
+              <div class="detail-cell"><div class="detail-label">Club / Organizer</div><div class="detail-val">${p.club || p.organizer || "—"}</div></div>
+              <div class="detail-cell"><div class="detail-label">Category</div><div class="detail-val">${p.category || p.type || "—"}</div></div>
+              <div class="detail-cell"><div class="detail-label">Date</div><div class="detail-val">${fmtDate(p.date || p.event_date)}</div></div>
+              <div class="detail-cell"><div class="detail-label">Venue</div><div class="detail-val">${p.venue || "—"}</div></div>
+              <div class="detail-cell"><div class="detail-label">Expected Participants</div><div class="detail-val">${p.capacity || p.expected_participants || "—"}</div></div>
+              <div class="detail-cell"><div class="detail-label">Registration Fee</div><div class="detail-val">${p.registration_fee > 0 ? "₹" + p.registration_fee : "Free"}</div></div>
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Status</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <span class="badge ${p.status}">${cap(p.status)}</span>
+              ${p.status !== "approved" ? `<button class="btn success sm" onclick="approveProposal(${p.id});document.getElementById('proposalDetail').style.display='none'">✅ Approve</button>` : ""}
+              ${p.status !== "rejected" ? `<button class="btn danger sm"  onclick="rejectProposal(${p.id});document.getElementById('proposalDetail').style.display='none'">❌ Reject</button>` : ""}
+            </div>
+          </div>
+          ${p.document_url ? `
+          <div class="detail-section">
+            <div class="detail-section-title">Document Uploaded</div>
+            <a href="${p.document_url}" target="_blank" class="mini-btn" style="display:inline-flex;">📎 View Document</a>
+          </div>` : ""}
+        </div>
+        <div>
+          <div class="detail-section">
+            <div class="detail-section-title">Description</div>
+            <div class="detail-desc">${p.description || "No description provided."}</div>
+          </div>
+          <div class="detail-section" style="margin-top:14px;">
+            <div class="detail-section-title">Objectives</div>
+            <div class="detail-desc">${p.objectives || "—"}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById("proposalDetail").style.display = "";
+  document.getElementById("proposalDetail").scrollIntoView({ behavior: "smooth", block: "start" });
 }
-function rejectProposal(id) {
-  const p = proposals.find(x => x.id === id);
-  if (p) { p.status = "rejected"; renderProposals(); showToast("❌ Proposal rejected.", "error"); }
+
+async function approveProposal(id) {
+  const res = await apiFetch(`/faculty/proposals/${id}/approve`, { method: "PATCH" });
+  if (res !== null) {
+    const p = cachedProposals.find(x => x.id === id);
+    if (p) p.status = "approved";
+    addLocalNotif("event", "✅", "Proposal Approved", `${p?.title || "Event"} has been approved.`);
+    renderProposals(); showToast("✅ Proposal approved!", "success");
+  } else showToast("Failed to approve.", "error");
 }
+async function rejectProposal(id) {
+  const res = await apiFetch(`/faculty/proposals/${id}/reject`, { method: "PATCH" });
+  if (res !== null) {
+    const p = cachedProposals.find(x => x.id === id);
+    if (p) p.status = "rejected";
+    renderProposals(); showToast("❌ Proposal rejected.", "error");
+  } else showToast("Failed to reject.", "error");
+}
+async function quickApprove(id) { await approveProposal(id); renderDashboard(); }
+async function quickReject(id)  { await rejectProposal(id);  renderDashboard(); }
 
 // ── EVENT LIST ────────────────────────────────────────────────────────────
-function renderEventList(search="") {
+async function renderEventList(search = "", status = "all") {
+  const fresh = await fetch(`${API}/events`).then(r => r.ok ? r.json() : []).catch(() => []);
+  cachedEvents = fresh;
+
   const tbody = document.getElementById("eventListBody");
-  let list = proposals;
-  if (search) list = list.filter(p => p.name.toLowerCase().includes(search) || p.organizer.toLowerCase().includes(search));
-  tbody.innerHTML = list.map(p => `
+  if (!tbody) return;
+
+  let list = cachedEvents;
+  if (status !== "all") list = list.filter(e => (e.status || "approved") === status);
+  if (search)           list = list.filter(e => (e.title || "").toLowerCase().includes(search) || (e.club || "").toLowerCase().includes(search));
+
+  tbody.innerHTML = list.length ? list.map(e => `
     <tr>
-      <td style="font-weight:900;">${p.name}</td>
-      <td>${p.organizer}</td>
-      <td>${p.date}</td>
-      <td>${p.venue}</td>
-      <td><span class="tag">${p.category}</span></td>
-      <td>${p.participants}</td>
-      <td><span class="badge ${p.status}">${cap(p.status)}</span></td>
-    </tr>`).join("");
-}
-
-// ── CERTIFICATES ──────────────────────────────────────────────────────────
-function renderCerts(search="") {
-  const tbody = document.getElementById("certsBody");
-  let list = certificates;
-  if (search) list = list.filter(c =>
-    c.student.toLowerCase().includes(search) || c.event.toLowerCase().includes(search)
-  );
-  tbody.innerHTML = list.map(c => `
-    <tr>
-      <td><input type="checkbox" class="cb cert-cb" data-id="${c.id}" ${c.status==="approved"?"disabled":""}></td>
-      <td style="font-weight:900;">${c.student}</td>
-      <td style="color:#6b7280;">${c.reg}</td>
-      <td>${c.event}</td>
-      <td>
-        <span class="badge ${c.attendance?"approved":"rejected"}">
-          ${c.attendance?"✅ Present":"❌ Absent"}
-        </span>
-      </td>
-      <td><span class="badge ${c.status}">${cap(c.status)}</span></td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${c.status==="pending"
-          ? `<button class="mini-btn approve" onclick="approveCert(${c.id})">✅ Approve</button>
-             <button class="mini-btn reject"  onclick="rejectCert(${c.id})">❌ Reject</button>`
-          : `<span style="font-size:12px;color:#9ca3af;font-weight:700;">${cap(c.status)}</span>`}
-      </td>
-    </tr>`).join("");
-
-  updateBadge("badge-certs", certificates.filter(c=>c.status==="pending").length);
-}
-
-function approveCert(id) {
-  const c = certificates.find(x=>x.id===id);
-  if (c) { c.status="approved"; renderCerts(); showToast("🎓 Certificate approved!", "success"); }
-}
-function rejectCert(id) {
-  const c = certificates.find(x=>x.id===id);
-  if (c) { c.status="rejected"; renderCerts(); showToast("Certificate rejected.", "error"); }
-}
-
-// ── CLUBS ─────────────────────────────────────────────────────────────────
-function renderClubs() {
-  const grid = document.getElementById("clubsGrid");
-  const colors = { Technical:"#6d5efc", Social:"#f59e0b", Science:"#8b5cf6", Creative:"#ec4899" };
-  grid.innerHTML = CLUBS.map(c => `
-    <div class="club-oversight-card">
-      <div class="co-logo">${c.logo}</div>
-      <div class="co-name">${c.name}</div>
-      <div class="co-cat">${c.category} · <span style="color:#22c55e;font-weight:800;">${c.status}</span></div>
-      <div class="co-stats">
-        <div class="co-stat">👥 <span>${c.members}</span> Members</div>
-        <div class="co-stat">📅 <span>${c.events}</span> Events</div>
-        <div class="co-stat">📄 <span>${c.reports}</span> Reports</div>
-      </div>
-      <div class="divider"></div>
-      <div style="font-size:12px;color:#6b7280;font-weight:700;margin-bottom:10px;">👤 Chair: ${c.chair}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="mini-btn" onclick="showToast('📄 Club report opened!','info')">📄 View Report</button>
-        <button class="mini-btn" onclick="showToast('✉️ Message sent to ${c.name}!','success')">✉️ Message</button>
-      </div>
-    </div>`).join("");
+      <td><span class="ev-name">${e.title}</span></td>
+      <td>${e.club || "—"}</td>
+      <td>${fmtDate(e.date)}</td>
+      <td>${e.venue || "—"}</td>
+      <td><span class="tag">${e.category || e.type || "General"}</span></td>
+      <td>${e.capacity || "—"}</td>
+      <td>${e.registration_fee > 0 ? "₹" + e.registration_fee : "Free"}</td>
+      <td><span class="badge ${e.status || "approved"}">${cap(e.status || "approved")}</span></td>
+    </tr>`).join("")
+    : `<tr><td colspan="8" class="td-empty">No events found.</td></tr>`;
 }
 
 // ── CALENDAR ──────────────────────────────────────────────────────────────
-const EVENT_DAYS = { "2026-2":[5,12,15,20,22,28], "2026-3":[3,8,12,15,20,22,25], "2026-4":[2,5,10,12,18,25] };
-
 function renderCalendar() {
-  const grid   = document.getElementById("calGrid");
-  const label  = document.getElementById("calMonthLabel");
-  const evList = document.getElementById("calEventsList");
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  el("calMonthLabel")?.text(`${MONTHS[calMonth]} ${calYear}`);
 
-  label.textContent = `${months[calMonth]} ${calYear}`;
+  const calEl = document.getElementById("miniCalendar");
+  if (!calEl) return;
 
-  // Day headers
-  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  let html = days.map(d => `<div class="cal-day header">${d}</div>`).join("");
+  const today    = new Date();
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const total    = new Date(calYear, calMonth + 1, 0).getDate();
 
-  const firstDay  = new Date(calYear, calMonth, 1).getDay();
-  const totalDays = new Date(calYear, calMonth+1, 0).getDate();
-  const today     = new Date();
-  const eventDays = EVENT_DAYS[`${calYear}-${calMonth}`] || [];
+  // Build day→events map
+  const dayMap = {};
+  cachedEvents.forEach(e => {
+    const d = new Date(e.date);
+    if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
+      const day = d.getDate();
+      if (!dayMap[day]) dayMap[day] = [];
+      dayMap[day].push(e);
+    }
+  });
 
-  for (let i=0; i<firstDay; i++) html += `<div class="cal-day"></div>`;
-
-  for (let d=1; d<=totalDays; d++) {
-    const isToday   = d===today.getDate() && calMonth===today.getMonth() && calYear===today.getFullYear();
-    const hasEvent  = eventDays.includes(d);
-    html += `<div class="cal-day ${isToday?"today":""} ${hasEvent&&!isToday?"has-event":""}" title="${hasEvent?"Events on this day":""}">
-      ${d}${hasEvent?`<div class="cal-event-dot"></div>`:""}
-    </div>`;
+  const days = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+  let html = `<div class="cal-weekdays">${days.map(d => `<div class="cal-weekday">${d}</div>`).join("")}</div><div class="cal-days">`;
+  for (let i = 0; i < firstDay; i++) html += `<div class="cal-day empty"></div>`;
+  for (let d = 1; d <= total; d++) {
+    const isToday = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
+    const evs     = dayMap[d] || [];
+    const hasPend = evs.some(e => e.status === "pending" || e.status === "review");
+    const hasAppr = evs.some(e => e.status === "approved" || !e.status);
+    const cls     = ["cal-day", isToday ? "today" : "", hasPend ? "has-pending" : (hasAppr && evs.length ? "has-approved" : "")].filter(Boolean).join(" ");
+    const enc     = evs.length ? encodeURIComponent(JSON.stringify(evs)) : "";
+    html += `<div class="${cls}" onclick="calDayClick(this,${d})" data-events="${enc.replace(/"/g,"&quot;")}">${d}</div>`;
   }
+  html += `</div>`;
+  calEl.innerHTML = html;
 
-  grid.innerHTML = html;
-
-  // Events this month
-  evList.innerHTML = eventDays.length
-    ? `<div style="font-weight:900;font-size:13px;margin-bottom:10px;">Events this month (${eventDays.length} days with events)</div>`
-    + proposals.filter(p=>eventDays.some(d=>p.date.includes(months[calMonth]))).slice(0,4).map(p=>`
-        <div class="list-item">
-          <div class="dot dot-purple"></div>
-          <div class="li-text"><div class="li-title">${p.name}</div><div class="li-sub">${p.date} · ${p.organizer}</div></div>
-          <span class="badge ${p.status}">${cap(p.status)}</span>
-        </div>`).join("")
-    : `<div style="color:#9ca3af;font-size:13px;font-weight:700;text-align:center;padding:12px;">No events scheduled this month.</div>`;
+  // Month events table
+  renderCalMonthEvents();
 }
 
-// ── ANALYTICS ─────────────────────────────────────────────────────────────
-function initCharts() {
-  const months  = ["Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
-  const eventNums   = [2,3,4,3,2,5,4,6];
-  const partNums    = [120,180,250,190,140,310,270,380];
+function calDayClick(el2, day) {
+  const det = document.getElementById("calEventDetail");
+  if (!det) return;
+  if (el2.classList.contains("selected")) {
+    el2.classList.remove("selected"); det.style.display = "none"; return;
+  }
+  document.querySelectorAll(".cal-day.selected").forEach(d => d.classList.remove("selected"));
+  el2.classList.add("selected");
 
-  const opts = {
-    responsive: true,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { grid: { display: false }, ticks: { font: { weight:700 } } },
-      y: { grid: { color:"rgba(229,231,235,.6)" }, ticks: { font: { weight:700 } } }
-    }
-  };
+  const raw = el2.getAttribute("data-events").replace(/&quot;/g, '"');
+  if (!raw) { det.style.display = "none"; return; }
+  const evs = JSON.parse(decodeURIComponent(raw));
 
-  // Events per month
-  new Chart(document.getElementById("eventsChart"), {
-    type: "bar",
-    data: {
-      labels: months,
-      datasets: [{ data: eventNums, backgroundColor: "rgba(109,94,252,.75)", borderRadius: 8, borderSkipped: false }]
-    },
-    options: { ...opts, plugins: { ...opts.plugins, tooltip: { callbacks: { label: v => ` ${v.raw} events` } } } }
-  });
+  el("calDetailTitle")?.text(`${evs.length} event${evs.length>1?"s":""} on ${fmtDate(new Date(calYear, calMonth, day))}`);
+  el("calDetailMeta")?.text(evs.map(e => `${e.title} · ${e.club || "—"} · ${e.venue || "—"}`).join(" | "));
 
-  // Student participation
-  new Chart(document.getElementById("participationChart"), {
-    type: "line",
-    data: {
-      labels: months,
-      datasets: [{
-        data: partNums,
-        borderColor: "#ff6aa0", backgroundColor: "rgba(255,106,160,.12)",
-        borderWidth: 2.5, fill: true, tension: 0.4, pointRadius: 4,
-        pointBackgroundColor: "#ff6aa0"
-      }]
-    },
-    options: { ...opts, plugins: { ...opts.plugins, tooltip: { callbacks: { label: v => ` ${v.raw} students` } } } }
-  });
-
-  // Academic vs Non-academic
-  new Chart(document.getElementById("typeChart"), {
-    type: "doughnut",
-    data: {
-      labels: ["Academic","Non-Academic"],
-      datasets: [{
-        data: [58, 42],
-        backgroundColor: ["#6d5efc","#ff6aa0"],
-        borderWidth: 0, hoverOffset: 6
-      }]
-    },
-    options: { responsive: false, plugins: { legend: { display: false } }, cutout: "68%" }
-  });
-
-  // Legend
-  document.getElementById("typeChartLegend").innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:14px;height:14px;border-radius:4px;background:#6d5efc;"></div>
-        <span style="font-weight:800;font-size:14px;">Academic Events — 58%</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:14px;height:14px;border-radius:4px;background:#ff6aa0;"></div>
-        <span style="font-weight:800;font-size:14px;">Non-Academic Events — 42%</span>
-      </div>
-      <div style="margin-top:6px;font-size:13px;color:#6b7280;font-weight:700;">Total this semester: <strong style="color:#111827;">34 events</strong></div>
-    </div>`;
+  const actions = document.getElementById("calDetailActions");
+  if (actions) {
+    actions.innerHTML = evs.map(e => `
+      <button class="mini-btn approve" onclick="approveProposal(${e.id})">✅ Approve "${e.title}"</button>
+      <button class="mini-btn reject"  onclick="rejectProposal(${e.id})">❌ Reject</button>
+    `).join("");
+  }
+  det.style.display = "";
 }
 
-// ── FEEDBACK ──────────────────────────────────────────────────────────────
-function renderFeedback() {
-  // Rating chart
-  const evNames = proposals.slice(0,5).map(p => p.name.length > 16 ? p.name.slice(0,16)+"…" : p.name);
-  const ratings = [4.8, 4.2, 4.6, 3.9, 4.5];
-
-  new Chart(document.getElementById("feedbackChart"), {
-    type: "bar",
-    data: {
-      labels: evNames,
-      datasets: [{
-        data: ratings,
-        backgroundColor: ratings.map(r => r >= 4.5 ? "rgba(34,197,94,.75)" : r >= 4 ? "rgba(109,94,252,.75)" : "rgba(245,158,11,.75)"),
-        borderRadius: 8, borderSkipped: false
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { weight:700 }, maxRotation: 30 } },
-        y: { min: 0, max: 5, grid: { color:"rgba(229,231,235,.6)" }, ticks: { font: { weight:700 } } }
-      }
-    }
+function renderCalMonthEvents() {
+  const tbody = document.getElementById("calMonthBody");
+  if (!tbody) return;
+  const monthEvs = cachedEvents.filter(e => {
+    const d = new Date(e.date);
+    return d.getFullYear() === calYear && d.getMonth() === calMonth;
   });
-
-  // Rating breakdown
-  const breakdown = [[5,62],[4,24],[3,10],[2,3],[1,1]];
-  document.getElementById("ratingBreakdown").innerHTML =
-    `<div style="font-weight:900;font-size:32px;text-align:center;margin-bottom:4px;">4.6</div>
-     <div style="text-align:center;font-size:14px;color:#6b7280;font-weight:700;margin-bottom:18px;">Overall Average Rating</div>`
-    + breakdown.map(([star, pct]) => `
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-        <span style="font-weight:900;font-size:13px;width:14px;">${star}</span>
-        <span style="color:#f59e0b;font-size:13px;">★</span>
-        <div class="progress-wrap" style="flex:1;">
-          <div class="progress-bar" style="width:${pct}%;background:${pct>50?"#6d5efc":pct>20?"#ff6aa0":"#9ca3af"};"></div>
+  tbody.innerHTML = monthEvs.length ? monthEvs.map(e => `
+    <tr>
+      <td><span class="ev-name">${e.title}</span></td>
+      <td>${e.club || "—"}</td>
+      <td>${fmtDate(e.date)}</td>
+      <td>${e.venue || "—"}</td>
+      <td><span class="badge ${e.status || "approved"}">${cap(e.status || "approved")}</span></td>
+      <td>
+        <div style="display:flex;gap:5px;">
+          ${e.status !== "approved" ? `<button class="mini-btn approve" onclick="approveProposal(${e.id})">✅</button>` : ""}
+          ${e.status !== "rejected" ? `<button class="mini-btn reject" onclick="rejectProposal(${e.id})">❌</button>` : ""}
         </div>
-        <span style="font-size:12px;font-weight:800;color:#6b7280;width:32px;">${pct}%</span>
-      </div>`).join("");
-
-  // Comments
-  document.getElementById("commentsBody").innerHTML = FEEDBACK_COMMENTS.map(c => `
-    <div class="comment-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
-        <div>
-          <div class="comment-name">${c.name}</div>
-          <div class="comment-event">${c.event}</div>
-        </div>
-        <div class="stars">${"★".repeat(c.rating)}${"☆".repeat(5-c.rating)}</div>
-      </div>
-      <div class="comment-text">"${c.text}"</div>
-    </div>`).join("");
+      </td>
+    </tr>`).join("")
+    : `<tr><td colspan="6" class="td-empty">No events this month.</td></tr>`;
 }
 
-// ── NOTIFICATION HISTORY ──────────────────────────────────────────────────
-function renderNotifHistory() {
-  const typeColor = { event:"dot-purple", cert:"dot-green", admin:"dot-red", club:"dot-orange" };
-  document.getElementById("notifHistoryList").innerHTML = NOTIFICATIONS.map(n => `
-    <div class="list-item" style="${n.read?"opacity:.65":""}">
-      <div class="dot ${typeColor[n.type]||"dot-blue"}"></div>
-      <div class="li-text">
-        <div class="li-title">${n.title}${!n.read?` <span style="display:inline-block;width:7px;height:7px;background:#ef4444;border-radius:50%;margin-left:6px;"></span>`:""}</div>
-        <div class="li-sub">${n.sub} · ${n.time}</div>
-      </div>
-      ${!n.read?`<button class="mini-btn" onclick="markRead(${n.id})">Mark read</button>`:""}
-    </div>`).join("");
+function initCalNav() {
+  document.getElementById("calPrev")?.addEventListener("click", () => {
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+    if (currentPage === "calendar") renderCalendar();
+  });
+  document.getElementById("calNext")?.addEventListener("click", () => {
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+    if (currentPage === "calendar") renderCalendar();
+  });
 }
 
-function markRead(id) {
-  const n = NOTIFICATIONS.find(x=>x.id===id);
-  if (n) { n.read=true; renderNotifHistory(); updateNotifBadge(); }
+// ── CERTIFICATES ──────────────────────────────────────────────────────────
+async function renderCerts(search = "", statusFil = "all") {
+  const fresh = await apiFetch("/faculty/certificates");
+  if (fresh) cachedCerts = fresh;
+
+  const tbody = document.getElementById("certsBody");
+  if (!tbody) return;
+
+  let list = cachedCerts;
+  const getStatus = c => c.certificate_status || c.status || "pending";
+  if (statusFil !== "all") list = list.filter(c => getStatus(c) === statusFil);
+  if (search) list = list.filter(c =>
+    (c.student_name || c.student || "").toLowerCase().includes(search) ||
+    (c.event_title  || c.event  || "").toLowerCase().includes(search)
+  );
+
+  tbody.innerHTML = list.length ? list.map(c => {
+    const name   = c.student_name || c.student || "—";
+    const reg    = c.roll_no || c.reg_no || "—";
+    const event  = c.event_title || c.event || "—";
+    const club   = c.club || "—";
+    const att    = c.attended ?? c.attendance ?? false;
+    const status = getStatus(c);
+    return `
+      <tr>
+        <td><input type="checkbox" class="cb cert-cb" data-id="${c.id}" ${status==="approved"?"disabled":""}></td>
+        <td style="font-weight:700;color:var(--text);">${name}</td>
+        <td style="font-family:'Courier New',monospace;font-size:11px;color:var(--text-3);">${reg}</td>
+        <td>${event}</td>
+        <td>${club}</td>
+        <td><span class="badge ${att?"approved":"rejected"}">${att?"✅ Present":"❌ Absent"}</span></td>
+        <td><span class="badge ${status}">${cap(status)}</span></td>
+        <td>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            ${status==="pending" ? `<button class="mini-btn approve" onclick="approveCert(${c.id})">✅</button>
+                                    <button class="mini-btn reject"  onclick="rejectCert(${c.id})">❌</button>` :
+              `<span style="font-size:11px;color:var(--text-3);">${cap(status)}</span>`}
+          </div>
+        </td>
+      </tr>`;
+  }).join("")
+    : `<tr><td colspan="8" class="td-empty">No certificates found.</td></tr>`;
+
+  updateBadges();
+}
+
+async function approveCert(id) {
+  const res = await apiFetch(`/faculty/certificates/${id}/approve`, { method: "PATCH" });
+  if (res !== null) {
+    const c = cachedCerts.find(x => x.id === id);
+    if (c) { c.certificate_status = "approved"; c.status = "approved"; }
+    renderCerts(); showToast("🎓 Certificate approved!", "success");
+  } else showToast("Failed to approve.", "error");
+}
+async function rejectCert(id) {
+  const res = await apiFetch(`/faculty/certificates/${id}/reject`, { method: "PATCH" });
+  if (res !== null) {
+    const c = cachedCerts.find(x => x.id === id);
+    if (c) { c.certificate_status = "rejected"; c.status = "rejected"; }
+    renderCerts(); showToast("Certificate rejected.", "error");
+  } else showToast("Failed to reject.", "error");
 }
 
 // ── PENDING PAGE ──────────────────────────────────────────────────────────
-function renderPendingPage() {
-  const pending = proposals.filter(p=>p.status==="pending"||p.status==="review");
-  const pendCerts = certificates.filter(c=>c.status==="pending");
-  document.getElementById("pendingList").innerHTML =
-    `<div style="padding:12px 20px;font-weight:900;font-size:13px;color:#6b7280;">EVENT PROPOSALS (${pending.length})</div>`
-    + pending.map(p => `
-      <div class="list-item">
-        <div class="dot dot-orange"></div>
-        <div class="li-text"><div class="li-title">${p.name}</div><div class="li-sub">${p.organizer} · ${p.date}</div></div>
-        <div style="display:flex;gap:6px;">
+async function renderPendingPage() {
+  await refreshAll();
+
+  const pending  = cachedProposals.filter(p => p.status === "pending" || p.status === "review");
+  const pendCert = cachedCerts.filter(c => (c.certificate_status || c.status) === "pending");
+
+  el("pendProposalCount")?.text(`${pending.length} pending`);
+  el("pendCertCount")?.text(`${pendCert.length} pending`);
+
+  const pl = document.getElementById("pendingProposalList");
+  if (pl) {
+    pl.innerHTML = pending.length ? pending.map(p => `
+      <div class="dash-item">
+        <div class="dot ${p.status==="pending"?"dot-orange":"dot-blue"}"></div>
+        <div class="di-text">
+          <div class="di-title">${p.title || p.name || "Untitled"}</div>
+          <div class="di-sub">${p.club || "—"} · ${fmtDate(p.date || p.event_date)}</div>
+        </div>
+        <div style="display:flex;gap:5px;">
           <button class="mini-btn approve" onclick="approveProposal(${p.id});renderPendingPage()">✅</button>
           <button class="mini-btn reject"  onclick="rejectProposal(${p.id});renderPendingPage()">❌</button>
         </div>
       </div>`).join("")
-    + `<div class="divider" style="margin:0 20px;"></div>
-       <div style="padding:12px 20px;font-weight:900;font-size:13px;color:#6b7280;">CERTIFICATES (${pendCerts.length})</div>`
-    + pendCerts.map(c => `
-      <div class="list-item">
+      : `<div class="list-empty">All clear! 🎉</div>`;
+  }
+
+  const cl = document.getElementById("pendingCertList");
+  if (cl) {
+    cl.innerHTML = pendCert.length ? pendCert.map(c => `
+      <div class="dash-item">
         <div class="dot dot-purple"></div>
-        <div class="li-text"><div class="li-title">${c.student}</div><div class="li-sub">${c.event} · ${c.reg}</div></div>
-        <div style="display:flex;gap:6px;">
+        <div class="di-text">
+          <div class="di-title">${c.student_name || c.student || "—"}</div>
+          <div class="di-sub">${c.event_title || c.event || "—"}</div>
+        </div>
+        <div style="display:flex;gap:5px;">
           <button class="mini-btn approve" onclick="approveCert(${c.id});renderPendingPage()">✅</button>
           <button class="mini-btn reject"  onclick="rejectCert(${c.id});renderPendingPage()">❌</button>
         </div>
-      </div>`).join("");
+      </div>`).join("")
+      : `<div class="list-empty">All clear! 🎉</div>`;
+  }
 }
 
-// ── NOTIFICATION DRAWER ───────────────────────────────────────────────────
-function openNotifDrawer() {
-  document.getElementById("notifDrawer").classList.add("open");
-  document.getElementById("overlay").classList.add("open");
-  const typeColor = { event:"dot-purple", cert:"dot-green", admin:"dot-red", club:"dot-orange" };
-  document.getElementById("notifDrawerBody").innerHTML = NOTIFICATIONS.map(n => `
-    <div class="list-item" style="${n.read?"opacity:.6":""}">
-      <div class="dot ${typeColor[n.type]||"dot-blue"}"></div>
-      <div class="li-text">
-        <div class="li-title">${n.icon} ${n.title}</div>
-        <div class="li-sub">${n.sub} · ${n.time}</div>
+// ── CLUBS ─────────────────────────────────────────────────────────────────
+async function renderClubs() {
+  const fresh = await apiFetch("/clubs/my-clubs");
+  if (fresh) cachedClubs = fresh;
+
+  const grid = document.getElementById("clubsGrid");
+  if (!grid) return;
+
+  if (!cachedClubs.length) { grid.innerHTML = `<div class="list-empty" style="padding:20px;">No clubs assigned.</div>`; return; }
+
+  const emojis = ["🤖","⚡","💻","🤝","🚀","📷","🎨","🏆","🎯","💡","🌍","🎵"];
+  grid.innerHTML = cachedClubs.map((c, i) => {
+    const clubEvents = cachedEvents
+      .filter(e => e.club_id === c.id || e.club === c.name)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const upcomingCount  = clubEvents.filter(e => new Date(e.date) >= new Date()).length;
+    const pendingCount   = cachedProposals.filter(p => p.club_id === c.id || p.club === c.name).filter(p => p.status==="pending"||p.status==="review").length;
+
+    return `
+      <div class="club-card">
+        <div class="club-card-top">
+          <div class="club-card-emoji">${c.logo || emojis[i % emojis.length]}</div>
+          <div>
+            <div class="club-card-name">${c.name}</div>
+            <div class="club-card-cat">${c.category || c.type || "Club"}</div>
+          </div>
+          <span class="club-card-status">${c.status || "Active"}</span>
+        </div>
+
+        <div class="club-stats-row">
+          <div class="club-stat-cell"><div class="club-stat-val">${c.member_count || c.members || 0}</div><div class="club-stat-label">Members</div></div>
+          <div class="club-stat-cell"><div class="club-stat-val">${clubEvents.length}</div><div class="club-stat-label">Total Events</div></div>
+          <div class="club-stat-cell"><div class="club-stat-val">${upcomingCount}</div><div class="club-stat-label">Upcoming</div></div>
+          <div class="club-stat-cell"><div class="club-stat-val" style="color:${pendingCount>0?"#fbbf24":"#4ade80"};">${pendingCount}</div><div class="club-stat-label">Pending</div></div>
+        </div>
+
+        ${clubEvents.length ? `
+        <div class="club-recent-title">Recent Events</div>
+        ${clubEvents.slice(0, 3).map(e => `
+          <div class="club-event-row">
+            <span class="club-event-name">${e.title}</span>
+            <span class="badge ${e.status || "approved"}" style="font-size:10px;">${cap(e.status || "approved")}</span>
+            <span class="club-event-date">${fmtDate(e.date)}</span>
+          </div>`).join("")}` : `<div class="list-empty">No events yet.</div>`}
+
+        <div class="club-card-actions">
+          <button class="btn ghost sm" onclick="navigateTo('proposals')">📋 Proposals</button>
+          <button class="btn ghost sm" onclick="navigateTo('analytics')">📊 Analytics</button>
+          <button class="btn primary sm" onclick="showToast('✉️ Club message sent!','success')">✉️ Message</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+// ── ANALYTICS ─────────────────────────────────────────────────────────────
+function initCharts() {
+  // KPI row
+  const now      = new Date();
+  const approved = cachedProposals.filter(p => p.status === "approved").length;
+  const pending  = cachedProposals.filter(p => p.status === "pending" || p.status === "review").length;
+  const totalReg = cachedCerts.length;
+  const avgRating = cachedFeedback.length
+    ? (cachedFeedback.reduce((s, f) => s + (f.rating || 0), 0) / cachedFeedback.length).toFixed(1)
+    : "—";
+
+  const kpi = document.getElementById("analyticsKpi");
+  if (kpi) kpi.innerHTML = [
+    { k: "kv", icon: "📋", val: cachedProposals.length, label: "Total Proposals" },
+    { k: "kp", icon: "✅", val: approved, label: "Approved Events" },
+    { k: "kc", icon: "👥", val: totalReg, label: "Student Registrations" },
+    { k: "kl", icon: "⭐", val: avgRating, label: "Avg Feedback Rating" },
+  ].map(d => `
+    <div class="kpi-card ${d.k}">
+      <div class="kpi-icon">${d.icon}</div>
+      <div class="kpi-val">${d.val}</div>
+      <div class="kpi-label">${d.label}</div>
+    </div>`).join("");
+
+  // Month buckets (last 8 months)
+  const labels       = [];
+  const evCounts     = [];
+  const regCounts    = [];
+  const MONTH_NAMES  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels.push(MONTH_NAMES[d.getMonth()]);
+    const mEvs = cachedEvents.filter(e => {
+      const ed = new Date(e.date);
+      return ed.getFullYear() === d.getFullYear() && ed.getMonth() === d.getMonth();
+    });
+    evCounts.push(mEvs.length);
+
+    const mRegs = cachedCerts.filter(c => {
+      const cd = new Date(c.registered_at || c.created_at || 0);
+      return cd.getFullYear() === d.getFullYear() && cd.getMonth() === d.getMonth();
+    });
+    regCounts.push(mRegs.length);
+  }
+
+  const chartDefaults = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: "rgba(240,242,255,.4)", font: { weight:600, size:11 } } },
+      y: { grid: { color: "rgba(255,255,255,.05)" }, ticks: { color: "rgba(240,242,255,.4)", font: { weight:600, size:11 } } },
+    },
+  };
+
+  tryChart("eventsChart", {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ data: evCounts, backgroundColor: "rgba(139,92,246,.7)", borderRadius: 7, borderSkipped: false }],
+    },
+    options: chartDefaults,
+  });
+
+  tryChart("participationChart", {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        data: regCounts,
+        borderColor: "#ec4899", backgroundColor: "rgba(236,72,153,.12)",
+        borderWidth: 2.5, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#ec4899",
+      }],
+    },
+    options: chartDefaults,
+  });
+
+  // Academic vs Non-academic
+  const academic    = cachedEvents.filter(e => ["academic","seminar","workshop","lecture"].includes((e.category||e.type||"").toLowerCase())).length;
+  const nonAcademic = Math.max(0, cachedEvents.length - academic);
+  const total       = academic + nonAcademic || 1;
+
+  tryChart("typeChart", {
+    type: "doughnut",
+    data: {
+      labels: ["Academic","Non-Academic"],
+      datasets: [{ data: [academic || 1, nonAcademic || 1], backgroundColor: ["#8b5cf6","#ec4899"], borderWidth: 0, hoverOffset: 6 }],
+    },
+    options: { responsive: false, plugins: { legend: { display: false } }, cutout: "68%" },
+  });
+
+  const leg = document.getElementById("typeChartLegend");
+  if (leg) leg.innerHTML = [
+    { color: "#8b5cf6", label: "Academic", pct: Math.round((academic/total)*100), cnt: academic },
+    { color: "#ec4899", label: "Non-Academic", pct: Math.round((nonAcademic/total)*100), cnt: nonAcademic },
+  ].map(d => `
+    <div class="leg-row">
+      <div class="leg-swatch" style="background:${d.color};"></div>
+      <div>
+        <div class="leg-text">${d.label} — ${d.pct}%</div>
+        <div class="leg-pct">${d.cnt} events</div>
       </div>
     </div>`).join("");
+
+  // Club breakdown
+  const clubNames  = cachedClubs.map(c => c.name);
+  const clubCounts = cachedClubs.map(c => cachedEvents.filter(e => e.club_id === c.id || e.club === c.name).length);
+
+  tryChart("clubChart", {
+    type: "bar",
+    data: {
+      labels: clubNames.length ? clubNames : ["No clubs"],
+      datasets: [{
+        data: clubCounts.length ? clubCounts : [0],
+        backgroundColor: ["rgba(139,92,246,.7)","rgba(236,72,153,.7)","rgba(6,182,212,.7)","rgba(132,204,22,.7)","rgba(245,158,11,.7)"],
+        borderRadius: 7, borderSkipped: false,
+      }],
+    },
+    options: { ...chartDefaults, indexAxis: "y" },
+  });
 }
 
-function closeNotifDrawer() {
-  document.getElementById("notifDrawer").classList.remove("open");
-  document.getElementById("overlay").classList.remove("open");
+// ── FEEDBACK ──────────────────────────────────────────────────────────────
+async function renderFeedback(search = "") {
+  const fresh = await apiFetch("/faculty/feedback");
+  if (fresh) cachedFeedback = fresh;
+
+  const comments = cachedFeedback.filter(f =>
+    !search || (f.comment || f.text || "").toLowerCase().includes(search) ||
+    (f.student_name || "").toLowerCase().includes(search)
+  );
+
+  // Rating breakdown
+  const rb = document.getElementById("ratingBreakdown");
+  if (rb) {
+    if (!comments.length) { rb.innerHTML = `<div class="list-empty">No feedback yet.</div>`; }
+    else {
+      const avg = (comments.reduce((s, f) => s + (f.rating || 0), 0) / comments.length).toFixed(1);
+      const breakdown = [5,4,3,2,1].map(star => {
+        const cnt = comments.filter(f => Math.round(f.rating || 0) === star).length;
+        return { star, pct: Math.round((cnt / comments.length) * 100), cnt };
+      });
+      const colors = { 5:"#4ade80", 4:"#a78bfa", 3:"#fbbf24", 2:"#fb923c", 1:"#f87171" };
+      rb.innerHTML = `
+        <div class="rating-overview">
+          <div class="rating-big">${avg}</div>
+          <div class="rating-sub">Overall Average · ${comments.length} reviews</div>
+          <div class="comment-stars" style="font-size:18px;margin-top:6px;">${starStr(+avg)}</div>
+        </div>`
+        + breakdown.map(d => `
+          <div class="rating-row">
+            <div class="rating-star-lbl">${d.star}</div>
+            <span style="color:var(--amber);font-size:12px;">★</span>
+            <div class="rating-bar-wrap">
+              <div class="rating-bar-fill" style="width:${d.pct}%;background:${colors[d.star]};"></div>
+            </div>
+            <div class="rating-pct">${d.pct}%</div>
+          </div>`).join("");
+    }
+  }
+
+  // Comments grid
+  const cg = document.getElementById("commentsGrid");
+  if (cg) {
+    cg.innerHTML = comments.length ? comments.slice(0, 12).map(f => `
+      <div class="comment-card">
+        <div class="comment-head">
+          <div>
+            <div class="comment-name">${f.student_name || f.name || "Student"}</div>
+            <div class="comment-event">${f.event_title || f.event || "—"} · ${fmtDate(f.created_at || f.date)}</div>
+          </div>
+          <div class="comment-stars">${starStr(f.rating || 0)}</div>
+        </div>
+        <div class="comment-text">"${f.comment || f.text || "No comment."}"</div>
+      </div>`).join("")
+      : `<div class="list-empty" style="padding:20px;">No feedback yet.</div>`;
+  }
+
+  // Chart
+  if (cachedFeedback.length && !feedbackInited) {
+    feedbackInited = true;
+    const eventMap = {};
+    cachedFeedback.forEach(f => {
+      const k = f.event_title || f.event || "Other";
+      if (!eventMap[k]) eventMap[k] = [];
+      eventMap[k].push(f.rating || 0);
+    });
+    const lbls = Object.keys(eventMap).slice(0, 7).map(l => l.length > 14 ? l.slice(0,14)+"…" : l);
+    const vals = lbls.map((l, i) => {
+      const key = Object.keys(eventMap)[i];
+      const arr = eventMap[key] || [];
+      return arr.length ? +(arr.reduce((s,r)=>s+r,0)/arr.length).toFixed(1) : 0;
+    });
+    tryChart("feedbackChart", {
+      type: "bar",
+      data: {
+        labels: lbls,
+        datasets: [{ data: vals, backgroundColor: vals.map(v => v>=4.5?"rgba(34,197,94,.7)":v>=4?"rgba(139,92,246,.7)":"rgba(245,158,11,.7)"), borderRadius: 7, borderSkipped: false }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid:{display:false}, ticks:{color:"rgba(240,242,255,.4)",font:{size:11,weight:600},maxRotation:30} },
+          y: { min:0, max:5, grid:{color:"rgba(255,255,255,.05)"}, ticks:{color:"rgba(240,242,255,.4)",font:{size:11,weight:600}} },
+        },
+      },
+    });
+  }
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────────
-function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
+// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────
+async function renderAnnouncements() {
+  const [mine, admin] = await Promise.all([
+    apiFetch("/announcements/my-posts"),
+    apiFetch("/announcements/faculty"),
+  ]);
 
-function showToast(msg, type="info") {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.className = `toast ${type} show`;
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove("show"), 3000);
+  const ICONS = { Urgent:"🚨", Event:"📅", Info:"ℹ️", General:"📣" };
+  const al = document.getElementById("announceList");
+  if (al) {
+    const list = Array.isArray(mine) ? mine : [];
+    al.innerHTML = list.length ? list.map(a => `
+      <div class="announce-card">
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <div class="announce-title">${ICONS[a.type]||"📣"} ${a.title}</div>
+          <span class="badge purple">${a.type||"General"}</span>
+        </div>
+        <div class="announce-meta">${fmtDate(a.created_at)}</div>
+        <div class="announce-body">${a.message}</div>
+      </div>`).join("")
+      : `<div class="list-empty">No posts yet.</div>`;
+  }
+
+  const aal = document.getElementById("adminAnnounceList");
+  if (aal) {
+    const list = Array.isArray(admin) ? admin : [];
+    aal.innerHTML = list.length ? list.map(a => `
+      <div class="announce-card">
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <div class="announce-title">${ICONS[a.type]||"📢"} ${a.title}</div>
+          <span class="badge ${a.type==="Urgent"?"pending":"purple"}">${a.type||"General"}</span>
+        </div>
+        <div class="announce-meta">${a.club||"Admin"} · ${fmtDate(a.created_at)}</div>
+        <div class="announce-body">${a.message}</div>
+      </div>`).join("")
+      : `<div class="list-empty">No admin announcements.</div>`;
+  }
 }
 
-function updateBadge(id, count) {
-  const el = document.getElementById(id);
-  if (el) { el.textContent = count; el.style.display = count > 0 ? "" : "none"; }
+async function postAnnouncement() {
+  const title   = document.getElementById("announceTitle")?.value.trim();
+  const message = document.getElementById("announceBody")?.value.trim();
+  const type    = document.getElementById("announceType")?.value;
+  if (!title || !message) { showToast("Fill in title and message.", "error"); return; }
+
+  const res = await apiFetch("/announcements", {
+    method: "POST",
+    body: JSON.stringify({ title, message, type }),
+  });
+  if (res) {
+    showToast("📢 Announcement posted!", "success");
+    document.getElementById("announceTitle").value = "";
+    document.getElementById("announceBody").value  = "";
+    addLocalNotif("admin", "📢", "Announcement Posted", title);
+    renderAnnouncements();
+  } else showToast("Failed to post.", "error");
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────
+async function syncNotifs() {
+  const ann = await apiFetch("/announcements/faculty");
+  if (!Array.isArray(ann)) return;
+  const existIds = new Set(localNotifs.map(n => n.sourceId));
+  const ICONS = { Urgent:"🚨", Event:"📅", Info:"ℹ️", General:"📣" };
+  let added = 0;
+  ann.forEach(a => {
+    const sid = `ann-${a.id}`;
+    if (existIds.has(sid)) return;
+    localNotifs.unshift({
+      id: `${Date.now()}-${Math.random()}`, sourceId: sid, type: "admin",
+      icon: ICONS[a.type] || "📢",
+      title: a.title, sub: `${a.club||"Admin"}: ${a.message?.slice(0,60)}…`,
+      time: a.created_at || new Date().toISOString(), read: false,
+    });
+    added++;
+  });
+  // Pending proposals as notifs
+  cachedProposals.filter(p => p.status==="pending").forEach(p => {
+    const sid = `prop-${p.id}`;
+    if (!existIds.has(sid)) {
+      localNotifs.push({
+        id: `${Date.now()}-${Math.random()}`, sourceId: sid, type: "event",
+        icon: "📋", title: "New Event Proposal", sub: `${p.title||"Untitled"} · ${p.club||"—"}`,
+        time: p.created_at || new Date().toISOString(), read: false,
+      });
+      added++;
+    }
+  });
+  if (added) saveNotifs();
+  updateNotifBadge();
+  renderNotifDropdown();
+}
+
+function addLocalNotif(type, icon, title, sub) {
+  localNotifs.unshift({ id: `${Date.now()}-${Math.random()}`, type, icon, title, sub, time: new Date().toISOString(), read: false });
+  saveNotifs(); updateNotifBadge(); renderNotifDropdown();
 }
 
 function updateNotifBadge() {
-  const unread = NOTIFICATIONS.filter(n=>!n.read).length;
+  const unread = localNotifs.filter(n => !n.read).length;
+  const cnt = document.getElementById("notifCount");
+  if (cnt) { cnt.textContent = unread > 9 ? "9+" : unread; cnt.style.display = unread > 0 ? "flex" : "none"; }
   updateBadge("badge-notif", unread);
-  const dot = document.getElementById("notifDot");
-  if (dot) dot.style.display = unread > 0 ? "" : "none";
 }
 
-// ── BULK ACTIONS ──────────────────────────────────────────────────────────
+function toggleNotifDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById("notifDropdown");
+  dd.classList.toggle("open");
+  if (dd.classList.contains("open")) {
+    setTimeout(() => {
+      localNotifs = localNotifs.map(n => ({ ...n, read: true }));
+      saveNotifs(); updateNotifBadge(); renderNotifDropdown();
+    }, 900);
+  }
+}
+
+function renderNotifDropdown() {
+  const list = document.getElementById("notifDropList");
+  if (!list) return;
+  if (!localNotifs.length) {
+    list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px;">🔔<br>No notifications yet.</div>`;
+    return;
+  }
+  list.innerHTML = localNotifs.slice(0, 8).map(n => `
+    <div class="notif-item ${n.read?"":"unread"}">
+      <div class="notif-icon">${n.icon || "🔔"}</div>
+      <div class="notif-body">
+        <div class="notif-ntitle">${n.title}</div>
+        <div class="notif-nsub">${n.sub || ""}</div>
+        <div class="notif-time">${timeAgo(n.time)}</div>
+      </div>
+      ${!n.read ? `<div class="notif-unread-dot"></div>` : ""}
+    </div>`).join("");
+}
+
+function clearAllNotifs() {
+  localNotifs = []; saveNotifs(); updateNotifBadge(); renderNotifDropdown();
+  renderNotifHistory(); showToast("Notifications cleared.", "info");
+}
+
+function renderNotifHistory() {
+  const filter = document.getElementById("notifTypeFilter")?.value || "all";
+  const list   = document.getElementById("notifHistoryList");
+  if (!list) return;
+  let notifs = localNotifs;
+  if (filter !== "all") notifs = notifs.filter(n => n.type === filter);
+  list.innerHTML = notifs.length ? notifs.map(n => `
+    <div class="notif-item ${n.read?"":"unread"}">
+      <div class="notif-icon">${n.icon || "🔔"}</div>
+      <div class="notif-body">
+        <div class="notif-ntitle">${n.title}${!n.read?` <span style="display:inline-block;width:7px;height:7px;background:var(--pink);border-radius:50%;margin-left:5px;vertical-align:middle;"></span>`:""}  </div>
+        <div class="notif-nsub">${n.sub || ""}</div>
+        <div class="notif-time">${timeAgo(n.time)}</div>
+      </div>
+    </div>`).join("")
+    : `<div style="padding:24px;text-align:center;color:var(--text-3);font-size:13px;">No notifications.</div>`;
+}
+
+function markAllNotifsRead() {
+  localNotifs = localNotifs.map(n => ({ ...n, read: true }));
+  saveNotifs(); updateNotifBadge(); renderNotifHistory();
+  showToast("All marked as read.", "success");
+}
+
+// ── PROFILE DRAWER ────────────────────────────────────────────────────────
+function openProfileDrawer() {
+  document.getElementById("profileDrawer").classList.add("open");
+  document.getElementById("overlay").classList.add("open");
+
+  const body = document.getElementById("profileDrawerBody");
+  if (!body || !cachedProfile) return;
+
+  const p = cachedProfile;
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+      <div style="width:72px;height:72px;border-radius:18px;background:var(--g-violet);display:grid;place-items:center;font-size:26px;font-weight:800;color:white;box-shadow:var(--glow-v);">
+        ${(p.name || "FA").split(" ").map(n=>n[0]).join("").slice(0,2)}
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--text);">${p.name || "Faculty"}</div>
+        <div style="font-size:13px;color:var(--text-3);margin-top:3px;">${p.email || "—"}</div>
+        <div style="font-size:13px;color:var(--text-3);">${p.department || "—"}</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+      ${[["Faculty No",p.faculty_no||"—"],["Department",p.department||"—"],["Email",p.email||"—"],["Phone",p.phone_no||p.phone||"—"]].map(([l,v])=>`
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);padding:12px;">
+          <div style="font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;">${l}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">${v}</div>
+        </div>`).join("")}
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;">Incharge Clubs</div>
+    ${cachedClubs.map((c,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:8px;">
+        <span style="font-size:20px;">${c.logo||["🤖","⚡","💻","🤝","🚀"][i%5]}</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);">${c.name}</div>
+          <div style="font-size:11px;color:var(--text-3);">${c.member_count||0} members</div>
+        </div>
+        <span class="club-card-status" style="margin-left:auto;">${c.status||"Active"}</span>
+      </div>`).join("") || `<div class="list-empty">No clubs assigned.</div>`}
+    <div style="margin-top:16px;">
+      <button class="btn primary" onclick="window.location.href='account-setting.html'">⚙️ Edit Profile</button>
+    </div>`;
+}
+
+function closeProfileDrawer() {
+  document.getElementById("profileDrawer").classList.remove("open");
+  document.getElementById("overlay").classList.remove("open");
+}
+
+// ── BULK HANDLERS ─────────────────────────────────────────────────────────
 function initBulk() {
-  // Select all proposals
   document.getElementById("chkAllProposals")?.addEventListener("change", e => {
     document.querySelectorAll(".proposal-cb").forEach(cb => cb.checked = e.target.checked);
   });
-
-  // Bulk approve proposals
-  document.getElementById("bulkApproveBtn")?.addEventListener("click", () => {
+  document.getElementById("bulkApproveBtn")?.addEventListener("click", async () => {
     const ids = [...document.querySelectorAll(".proposal-cb:checked")].map(cb => +cb.dataset.id);
-    if (!ids.length) return showToast("Select at least one proposal.", "error");
-    ids.forEach(id => { const p=proposals.find(x=>x.id===id); if(p) p.status="approved"; });
-    renderProposals(); showToast(`✅ ${ids.length} proposal(s) approved!`, "success");
+    if (!ids.length) { showToast("Select proposals first.", "error"); return; }
+    await Promise.all(ids.map(id => apiFetch(`/faculty/proposals/${id}/approve`, { method: "PATCH" })));
+    ids.forEach(id => { const p = cachedProposals.find(x=>x.id===id); if (p) p.status="approved"; });
+    renderProposals(); showToast(`✅ ${ids.length} approved!`, "success");
   });
-
-  // Bulk reject proposals
-  document.getElementById("bulkRejectBtn")?.addEventListener("click", () => {
+  document.getElementById("bulkRejectBtn")?.addEventListener("click", async () => {
     const ids = [...document.querySelectorAll(".proposal-cb:checked")].map(cb => +cb.dataset.id);
-    if (!ids.length) return showToast("Select at least one proposal.", "error");
-    ids.forEach(id => { const p=proposals.find(x=>x.id===id); if(p) p.status="rejected"; });
-    renderProposals(); showToast(`❌ ${ids.length} proposal(s) rejected.`, "error");
+    if (!ids.length) { showToast("Select proposals first.", "error"); return; }
+    await Promise.all(ids.map(id => apiFetch(`/faculty/proposals/${id}/reject`, { method: "PATCH" })));
+    ids.forEach(id => { const p = cachedProposals.find(x=>x.id===id); if (p) p.status="rejected"; });
+    renderProposals(); showToast(`${ids.length} rejected.`, "error");
   });
-
-  // Select all certs
   document.getElementById("chkAllCerts")?.addEventListener("change", e => {
     document.querySelectorAll(".cert-cb:not(:disabled)").forEach(cb => cb.checked = e.target.checked);
   });
-
-  // Bulk approve certs
-  document.getElementById("bulkCertBtn")?.addEventListener("click", () => {
+  document.getElementById("bulkCertBtn")?.addEventListener("click", async () => {
     const ids = [...document.querySelectorAll(".cert-cb:checked")].map(cb => +cb.dataset.id);
-    if (!ids.length) return showToast("Select at least one certificate.", "error");
-    ids.forEach(id => { const c=certificates.find(x=>x.id===id); if(c&&c.attendance) c.status="approved"; });
-    renderCerts(); showToast(`🎓 ${ids.length} certificate(s) approved!`, "success");
+    if (!ids.length) { showToast("Select certificates first.", "error"); return; }
+    const eligible = ids.filter(id => { const c = cachedCerts.find(x=>x.id===id); return c && (c.attended ?? c.attendance); });
+    await Promise.all(eligible.map(id => apiFetch(`/faculty/certificates/${id}/approve`, { method: "PATCH" })));
+    eligible.forEach(id => { const c = cachedCerts.find(x=>x.id===id); if (c) { c.certificate_status="approved"; c.status="approved"; } });
+    renderCerts(); showToast(`🎓 ${eligible.length} approved!`, "success");
   });
 }
 
-// ── SEARCH & FILTER LISTENERS ─────────────────────────────────────────────
+// ── SEARCH & FILTER ───────────────────────────────────────────────────────
 function initSearchFilters() {
-  document.getElementById("proposalSearch")?.addEventListener("input", e =>
-    renderProposals(document.getElementById("proposalFilter").value, e.target.value.toLowerCase())
+  document.getElementById("proposalSearch")?.addEventListener("input", debounce(e =>
+    renderProposals(document.getElementById("proposalFilter")?.value, e.target.value.toLowerCase(), document.getElementById("proposalCategoryFilter")?.value)
+  ));
+  document.getElementById("proposalFilter")?.addEventListener("change", () =>
+    renderProposals(document.getElementById("proposalFilter").value, document.getElementById("proposalSearch")?.value.toLowerCase(), document.getElementById("proposalCategoryFilter")?.value)
   );
-  document.getElementById("proposalFilter")?.addEventListener("change", e =>
-    renderProposals(e.target.value, document.getElementById("proposalSearch").value.toLowerCase())
+  document.getElementById("proposalCategoryFilter")?.addEventListener("change", () =>
+    renderProposals(document.getElementById("proposalFilter")?.value, document.getElementById("proposalSearch")?.value.toLowerCase(), document.getElementById("proposalCategoryFilter").value)
   );
-  document.getElementById("eventListSearch")?.addEventListener("input", e =>
-    renderEventList(e.target.value.toLowerCase())
+  document.getElementById("eventListSearch")?.addEventListener("input", debounce(e =>
+    renderEventList(e.target.value.toLowerCase(), document.getElementById("eventListStatus")?.value)
+  ));
+  document.getElementById("eventListStatus")?.addEventListener("change", e =>
+    renderEventList(document.getElementById("eventListSearch")?.value.toLowerCase(), e.target.value)
   );
-  document.getElementById("certSearch")?.addEventListener("input", e =>
-    renderCerts(e.target.value.toLowerCase())
+  document.getElementById("certSearch")?.addEventListener("input", debounce(e =>
+    renderCerts(e.target.value.toLowerCase(), document.getElementById("certStatusFilter")?.value)
+  ));
+  document.getElementById("certStatusFilter")?.addEventListener("change", e =>
+    renderCerts(document.getElementById("certSearch")?.value.toLowerCase(), e.target.value)
   );
+  document.getElementById("feedbackSearch")?.addEventListener("input", debounce(e =>
+    renderFeedback(e.target.value.toLowerCase())
+  ));
+  document.getElementById("notifTypeFilter")?.addEventListener("change", renderNotifHistory);
 }
 
-// ── CALENDAR CONTROLS ─────────────────────────────────────────────────────
-function initCalendar() {
-  document.getElementById("calPrev")?.addEventListener("click", () => {
-    calMonth--; if (calMonth < 0) { calMonth=11; calYear--; }
-    if (currentPage === "calendar") renderCalendar();
-  });
-  document.getElementById("calNext")?.addEventListener("click", () => {
-    calMonth++; if (calMonth > 11) { calMonth=0; calYear++; }
-    if (currentPage === "calendar") renderCalendar();
+// ── THEME ─────────────────────────────────────────────────────────────────
+function applyTheme() {
+  const saved = localStorage.getItem("evexa_theme");
+  if (saved === "light") document.body.classList.add("light");
+  updateThemeBtn();
+}
+function toggleTheme() {
+  document.body.classList.toggle("light");
+  localStorage.setItem("evexa_theme", document.body.classList.contains("light") ? "light" : "dark");
+  updateThemeBtn();
+}
+function updateThemeBtn() {
+  const btn = document.getElementById("themeToggle");
+  if (btn) btn.textContent = document.body.classList.contains("light") ? "🌙" : "☀️";
+}
+
+// ── LOGOUT ────────────────────────────────────────────────────────────────
+function logout() {
+  const modal = document.createElement("div");
+  modal.innerHTML = `
+    <div onclick="this.parentElement.remove()"
+         style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;backdrop-filter:blur(4px);"></div>
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2001;
+                background:rgba(10,13,28,.97);border:1px solid rgba(139,92,246,.28);border-radius:24px;
+                width:min(370px,90vw);padding:30px 26px;box-shadow:var(--shadow-lg);text-align:center;backdrop-filter:var(--blur);">
+      <div style="font-size:38px;margin-bottom:10px;">👋</div>
+      <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:6px;">Logging out?</div>
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:24px;">Are you sure you want to sign out of your faculty account?</div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button onclick="this.closest('div[style*=fixed]').parentElement.remove()"
+                style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">
+          Cancel
+        </button>
+        <button onclick="localStorage.removeItem('authToken');window.location.href='faculty-signin.html';"
+                style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">
+          Yes, Logout
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  document.addEventListener("keydown", function esc(e) {
+    if (e.key === "Escape") { modal.remove(); document.removeEventListener("keydown", esc); }
   });
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", () => {
+// ── BADGES ────────────────────────────────────────────────────────────────
+function updateBadges() {
+  const getStatus = c => c.certificate_status || c.status || "pending";
+  const pending   = cachedProposals.filter(p => p.status==="pending"||p.status==="review").length;
+  const pendCerts = cachedCerts.filter(c => getStatus(c)==="pending").length;
+  updateBadge("badge-proposals", cachedProposals.filter(p=>p.status==="pending").length);
+  updateBadge("badge-certs",     pendCerts);
+  updateBadge("badge-pending",   pending + pendCerts);
+}
 
-  // Sidebar toggle
-  document.getElementById("sidebarToggle").addEventListener("click", () => {
-    const s = document.getElementById("sidebar");
-    if (window.innerWidth <= 768) s.classList.toggle("mobile-open");
-    else s.classList.toggle("collapsed");
-  });
+function updateBadge(id, count) {
+  const el2 = document.getElementById(id);
+  if (el2) { el2.textContent = count > 0 ? count : "–"; el2.style.opacity = count > 0 ? "1" : "0.4"; }
+}
 
-  // Close proposal detail
-  document.getElementById("closeDetail")?.addEventListener("click", () => {
-    document.getElementById("proposalDetail").style.display = "none";
-  });
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function el(id) {
+  const e = document.getElementById(id);
+  if (!e) return null;
+  e.text = v => { e.textContent = v; return e; };
+  return e;
+}
 
-  // Nav items
-  document.querySelectorAll(".nav-item[data-page]").forEach(el => {
-    el.addEventListener("click", e => {
-      e.preventDefault();
-      navigateTo(el.dataset.page);
-    });
-  });
+function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : "—"; }
 
-  // Notification drawer
-  document.getElementById("notifBtn").addEventListener("click", openNotifDrawer);
-  document.getElementById("closeDrawer").addEventListener("click", closeNotifDrawer);
-  document.getElementById("overlay").addEventListener("click", closeNotifDrawer);
+function fmtDate(d) {
+  if (!d) return "—";
+  try { return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); }
+  catch { return "—"; }
+}
 
-  // Mark all read
-  document.getElementById("markAllReadBtn")?.addEventListener("click", () => {
-    NOTIFICATIONS.forEach(n => n.read=true);
-    renderNotifHistory(); updateNotifBadge();
-    showToast("All notifications marked as read.", "success");
-  });
+function timeAgo(iso) {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff/60000), h = Math.floor(diff/3600000), d = Math.floor(diff/86400000);
+  if (m < 1)  return "just now";
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  return `${d}d ago`;
+}
 
-  // Logout
-  document.getElementById("logoutBtn").addEventListener("click", () => {
-    if (confirm("Do you want to logout?")) window.location.href = "index.html";
-  });
+function starStr(rating) {
+  const r = Math.round(rating || 0);
+  return "★".repeat(r) + "☆".repeat(Math.max(0, 5-r));
+}
 
-  // Profile
-  document.getElementById("profileBtn").addEventListener("click", () =>
-    showToast("👤 Profile settings coming soon!", "info")
-  );
+function showToast(msg, type = "info") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove("show"), 3000);
+}
 
-  initBulk();
-  initSearchFilters();
-  initCalendar();
+function debounce(fn, ms = 280) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
 
-  // Initial render
-  renderDashboard();
-  updateNotifBadge();
-});
+function tryChart(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const existing = Chart.getChart(canvas);
+  if (existing) existing.destroy();
+  new Chart(canvas, config);
+}
+
+// ── START ─────────────────────────────────────────────────────────────────
+boot();
