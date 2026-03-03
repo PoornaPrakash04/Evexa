@@ -45,6 +45,22 @@ async function checkRegistration(eventId) {
   return registrations.some(r => String(r.event_id) === String(eventId));
 }
 
+// ── Check certificate status ──────────────────────────
+async function checkCertificateStatus(eventId) {
+  const token = localStorage.getItem("authToken");
+  if (!token) return { available: false };
+
+  try {
+    const res = await fetch(`${API_BASE}/certificates/status/${eventId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return { available: false };
+    return await res.json();
+  } catch {
+    return { available: false };
+  }
+}
+
 // ── Render full event page ────────────────────────────
 async function renderEvent(event) {
   document.title = `${event.title} | EVEXA`;
@@ -53,8 +69,8 @@ async function renderEvent(event) {
     document.getElementById("topbarTitle").textContent = event.title;
 
   const poster = event.poster
-  ? `http://localhost:5000/uploads/${event.poster}`
-  : "https://placehold.co/360x640/6d5efc/ffffff?text=No+Poster";
+    ? `http://localhost:5000/uploads/${event.poster}`
+    : "https://placehold.co/360x640/6d5efc/ffffff?text=No+Poster";
 
   const eventDate = event.date
     ? new Date(event.date).toLocaleDateString("en-IN", { dateStyle: "long" })
@@ -62,7 +78,6 @@ async function renderEvent(event) {
 
   const fee = event.registration_fee > 0 ? `₹${event.registration_fee}` : "Free";
 
-  // ── Check if already registered ──────────────────
   const alreadyRegistered = await checkRegistration(event.id);
 
   const now        = new Date();
@@ -92,6 +107,16 @@ async function renderEvent(event) {
   const seatsLeft       = capacity ? capacity - registeredCount : null;
   const pct             = capacity ? Math.min((registeredCount / capacity) * 100, 100) : 0;
 
+  // Certificate section — rendered async after main content
+  const certSectionHtml = (isPast && alreadyRegistered)
+    ? `<div class="reg-card cert-card-section" id="certSection">
+         <div class="cert-section-loading">
+           <div class="cert-spinner"></div>
+           <span>Checking certificate…</span>
+         </div>
+       </div>`
+    : "";
+
   content.innerHTML = `
     <a class="back-btn" href="event-details.html">← Back to Events</a>
 
@@ -102,7 +127,7 @@ async function renderEvent(event) {
         <img src="${poster}" alt="${event.title}"
              onerror="this.src='https://placehold.co/400x711/6d5efc/ffffff?text=No+Poster'"
              style="width:100%;aspect-ratio:9/16;object-fit:cover;max-height:500px;
-         border-radius:16px;box-shadow:0 12px 32px rgba(17,24,39,.15);display:block;" />
+                    border-radius:16px;box-shadow:0 12px 32px rgba(17,24,39,.15);display:block;" />
 
         <div class="detail-section">
           <div class="detail-section-title">📋 About this Event</div>
@@ -183,69 +208,229 @@ async function renderEvent(event) {
           </div>
         </div>
 
-        ${isPast ? `
-        <div class="reg-card">
-          <div style="font-size:14px;font-weight:900;margin-bottom:8px;">📜 Certificate</div>
-          <p style="font-size:12px;color:#6b7280;margin-bottom:10px;">Your certificate is ready to download.</p>
-          <button class="btn-register" onclick="downloadCertificate(${event.id})" type="button"
-            style="background:linear-gradient(135deg,#6d5efc,#8a7bff);color:white;border:none;cursor:pointer;">
-            📜 Download Certificate
-          </button>
-        </div>` : ""}
+        <!-- Certificate Section (shown only if past + registered) -->
+        ${certSectionHtml}
 
       </div>
     </div>
 
-  <!-- Floating Raise Issue -->
-  <button onclick="toggleIssueModal()" title="Raise an Issue"
-    style="position:fixed;bottom:28px;right:28px;z-index:500;
-           width:52px;height:52px;border-radius:50%;border:none;
-           background:linear-gradient(135deg,#ef4444,#dc2626);
-           display:flex;align-items:center;justify-content:center;
-           cursor:pointer;box-shadow:0 8px 24px rgba(239,68,68,.4);
-           transition:transform .2s ease,box-shadow .2s ease;"
-    onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 12px 32px rgba(239,68,68,.55)'"
-    onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 8px 24px rgba(239,68,68,.4)'">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-      <line x1="4" y1="22" x2="4" y2="15"/>
-    </svg>
-  </button>
-
-  <div id="issueModalOverlay" onclick="toggleIssueModal()"
-    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);
-           z-index:501;backdrop-filter:blur(3px);"></div>
-
-  <div id="issueModal"
-    style="display:none;position:fixed;bottom:80px;right:28px;z-index:502;
-           width:min(340px,90vw);background:var(--surface,#fff);border-radius:20px;
-           padding:22px;box-shadow:0 20px 50px rgba(0,0,0,0.18);
-           border:1px solid rgba(239,68,68,.15);">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <div style="font-size:15px;font-weight:700;color:var(--text-1,#111);">🚩 Raise an Issue</div>
-      <button onclick="toggleIssueModal()"
-        style="background:none;border:none;font-size:18px;cursor:pointer;color:#9ca3af;line-height:1;">✕</button>
-    </div>
-    <textarea id="issueText" placeholder="Describe your issue..."
-      style="width:100%;padding:10px;border-radius:12px;border:1px solid #e5e7eb;
-             font-size:13px;resize:vertical;min-height:90px;font-family:inherit;
-             outline:none;box-sizing:border-box;margin-bottom:12px;
-             background:var(--surface-2,#f9fafb);color:var(--text-1,#111);"></textarea>
-    <button onclick="submitIssue(${event.id})"
-      style="width:100%;padding:11px;border-radius:12px;border:none;
+    <!-- Floating Raise Issue -->
+    <button onclick="toggleIssueModal()" title="Raise an Issue"
+      style="position:fixed;bottom:28px;right:28px;z-index:500;
+             width:52px;height:52px;border-radius:50%;border:none;
              background:linear-gradient(135deg,#ef4444,#dc2626);
-             color:white;font-size:13px;font-weight:700;cursor:pointer;">
-      Submit Issue
+             display:flex;align-items:center;justify-content:center;
+             cursor:pointer;box-shadow:0 8px 24px rgba(239,68,68,.4);
+             transition:transform .2s ease,box-shadow .2s ease;"
+      onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 12px 32px rgba(239,68,68,.55)'"
+      onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 8px 24px rgba(239,68,68,.4)'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+        <line x1="4" y1="22" x2="4" y2="15"/>
+      </svg>
     </button>
-    <div id="issueSuccess"
-      style="display:none;margin-top:10px;font-size:12px;color:#10b981;font-weight:700;text-align:center;">
-      ✅ Submitted!
-    </div>
-  </div>`;
+
+    <div id="issueModalOverlay" onclick="toggleIssueModal()"
+      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);
+             z-index:501;backdrop-filter:blur(3px);"></div>
+
+    <div id="issueModal"
+      style="display:none;position:fixed;bottom:80px;right:28px;z-index:502;
+             width:min(340px,90vw);background:var(--surface,#fff);border-radius:20px;
+             padding:22px;box-shadow:0 20px 50px rgba(0,0,0,0.18);
+             border:1px solid rgba(239,68,68,.15);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:15px;font-weight:700;color:var(--text-1,#111);">🚩 Raise an Issue</div>
+        <button onclick="toggleIssueModal()"
+          style="background:none;border:none;font-size:18px;cursor:pointer;color:#9ca3af;line-height:1;">✕</button>
+      </div>
+      <textarea id="issueText" placeholder="Describe your issue..."
+        style="width:100%;padding:10px;border-radius:12px;border:1px solid #e5e7eb;
+               font-size:13px;resize:vertical;min-height:90px;font-family:inherit;
+               outline:none;box-sizing:border-box;margin-bottom:12px;
+               background:var(--surface-2,#f9fafb);color:var(--text-1,#111);"></textarea>
+      <button onclick="submitIssue(${event.id})"
+        style="width:100%;padding:11px;border-radius:12px;border:none;
+               background:linear-gradient(135deg,#ef4444,#dc2626);
+               color:white;font-size:13px;font-weight:700;cursor:pointer;">
+        Submit Issue
+      </button>
+      <div id="issueSuccess"
+        style="display:none;margin-top:10px;font-size:12px;color:#10b981;font-weight:700;text-align:center;">
+        ✅ Submitted!
+      </div>
+    </div>`;
 
   document.getElementById("registerNowBtn")?.addEventListener("click", () => registerForEvent(event.id));
+
+  // Load cert section async (after main content painted)
+  if (isPast && alreadyRegistered) {
+    loadCertificateSection(event.id, event.title);
+  }
 }
-// ── Register for event ────────────────────────────────
+
+// ── Certificate Section ───────────────────────────────
+async function loadCertificateSection(eventId, eventTitle) {
+  const section = document.getElementById("certSection");
+  if (!section) return;
+
+  const status = await checkCertificateStatus(eventId);
+
+  if (status.available) {
+    // Certificate is ready
+    const issuedDate = status.issued_at
+      ? new Date(status.issued_at).toLocaleDateString("en-IN", { dateStyle: "medium" })
+      : null;
+
+    section.innerHTML = `
+      <div class="cert-ready-header">
+        <div class="cert-ready-icon">🎓</div>
+        <div class="cert-ready-text">
+          <div class="cert-ready-title">Certificate Ready</div>
+          <div class="cert-ready-sub">
+            ${issuedDate ? `Issued on ${issuedDate}` : "Your certificate of participation is available"}
+          </div>
+        </div>
+        <div class="cert-ready-badge">✓ Available</div>
+      </div>
+
+      <div class="cert-event-label">${eventTitle}</div>
+
+      <div class="cert-actions-row">
+        <button class="cert-dl-btn" id="certDownloadBtn" onclick="downloadCertificate(${eventId})" type="button">
+          <span class="cert-dl-icon">⬇</span>
+          <span>Download Certificate</span>
+        </button>
+        <button class="cert-preview-btn" onclick="previewCertificate(${eventId})" type="button">
+          👁 Preview
+        </button>
+      </div>
+
+      <div class="cert-note">PDF · Participation Certificate · EVEXA</div>`;
+
+  } else {
+    // Not yet issued
+    section.innerHTML = `
+      <div class="cert-pending-header">
+        <div class="cert-pending-icon">📜</div>
+        <div class="cert-pending-text">
+          <div class="cert-pending-title">Certificate</div>
+          <div class="cert-pending-sub">Not yet issued by the organizer</div>
+        </div>
+        <div class="cert-pending-badge">Pending</div>
+      </div>
+
+      <div class="cert-pending-body">
+        <div class="cert-pending-timeline">
+          <div class="cert-tl-item cert-tl-done">
+            <div class="cert-tl-dot done"></div>
+            <span>Event completed</span>
+          </div>
+          <div class="cert-tl-line"></div>
+          <div class="cert-tl-item cert-tl-done">
+            <div class="cert-tl-dot done"></div>
+            <span>Attendance recorded</span>
+          </div>
+          <div class="cert-tl-line"></div>
+          <div class="cert-tl-item">
+            <div class="cert-tl-dot pending"></div>
+            <span>Certificate generation</span>
+          </div>
+          <div class="cert-tl-line"></div>
+          <div class="cert-tl-item cert-tl-muted">
+            <div class="cert-tl-dot muted"></div>
+            <span>Available to download</span>
+          </div>
+        </div>
+        <p class="cert-pending-note">
+          The organizer will generate certificates after verifying attendance. 
+          Check back soon.
+        </p>
+      </div>`;
+  }
+}
+
+// ── Download Certificate ──────────────────────────────
+async function downloadCertificate(eventId) {
+  const token = localStorage.getItem("authToken");
+  if (!token) { alert("Please login."); return; }
+
+  const btn = document.getElementById("certDownloadBtn");
+  if (btn) {
+    btn.innerHTML = `<span class="cert-dl-icon">⏳</span><span>Downloading…</span>`;
+    btn.disabled  = true;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/certificates/download/${eventId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      const blob         = await res.blob();
+      const url          = URL.createObjectURL(blob);
+      const a            = document.createElement("a");
+      a.href             = url;
+      // Try to get filename from Content-Disposition header
+      const disposition  = res.headers.get("Content-Disposition") || "";
+      const match        = disposition.match(/filename="?([^"]+)"?/);
+      a.download         = match ? match[1] : `Certificate-event-${eventId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      if (btn) {
+        btn.innerHTML = `<span class="cert-dl-icon">✅</span><span>Downloaded!</span>`;
+        setTimeout(() => {
+          btn.innerHTML = `<span class="cert-dl-icon">⬇</span><span>Download Certificate</span>`;
+          btn.disabled  = false;
+        }, 2500);
+      }
+    } else {
+      const err = await res.json().catch(() => ({}));
+      if (btn) {
+        btn.innerHTML = `<span class="cert-dl-icon">⬇</span><span>Download Certificate</span>`;
+        btn.disabled  = false;
+      }
+      alert(err.message || "Certificate not available yet. Please check back later.");
+    }
+  } catch (err) {
+    console.error("Certificate download error:", err);
+    if (btn) {
+      btn.innerHTML = `<span class="cert-dl-icon">⬇</span><span>Download Certificate</span>`;
+      btn.disabled  = false;
+    }
+    alert("Server error. Please try again.");
+  }
+}
+
+// ── Preview Certificate (inline PDF) ─────────────────
+async function previewCertificate(eventId) {
+  const token = localStorage.getItem("authToken");
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/certificates/download/${eventId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) { alert("Certificate not available yet."); return; }
+
+    const blob   = await res.blob();
+    const url    = URL.createObjectURL(blob);
+    const viewer = window.open(url, "_blank");
+    if (!viewer) {
+      // Fallback: open in same tab if popup blocked
+      window.location.href = url;
+    }
+  } catch {
+    alert("Preview failed. Try downloading instead.");
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// EVERYTHING BELOW is unchanged from your original file
+// ─────────────────────────────────────────────────────
+
 async function registerForEvent(eventId) {
   const token = localStorage.getItem("authToken");
   if (!token) {
@@ -307,7 +492,6 @@ async function registerForEvent(eventId) {
         dlBtn.addEventListener("click", () => showTicketModal(ticketData));
         btn.parentNode.insertBefore(dlBtn, btn.nextSibling);
       }
-
     } else {
       if (btn) {
         btn.textContent = "✅ Registered!";
@@ -326,7 +510,6 @@ async function registerForEvent(eventId) {
 
 function showTicketModal(data) {
   const { qr, student, event, ticket_id } = data;
-
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || "—"; };
 
   set("tEventName",   event.title);
@@ -350,28 +533,22 @@ function showTicketModal(data) {
     modal.classList.add("show");
     modal.removeAttribute("aria-hidden");
     modal.removeAttribute("inert");
-    setTimeout(() => {
-      modal.querySelector(".ticket-close-btn")?.focus();
-    }, 100);
+    setTimeout(() => modal.querySelector(".ticket-close-btn")?.focus(), 100);
   }
 }
+
 function closeTicket() {
   document.getElementById("ticketOverlay")?.classList.remove("show");
   const modal = document.getElementById("ticketModal");
   if (modal) {
     modal.classList.remove("show");
-    document.getElementById("registerNowBtn")?.focus() 
-      || document.body.focus();
-    setTimeout(() => {
-      modal.setAttribute("aria-hidden", "true");
-    }, 50);
+    document.getElementById("registerNowBtn")?.focus() || document.body.focus();
+    setTimeout(() => modal.setAttribute("aria-hidden", "true"), 50);
   }
 }
 
-// ── Download ticket as PNG ────────────────────────────
 async function downloadTicket() {
   const btn = document.querySelector(".ticket-actions .btn.primary");
-
   try {
     const script = document.createElement("script");
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
@@ -379,77 +556,36 @@ async function downloadTicket() {
 
     script.onload = async () => {
       if (btn) { btn.textContent = "Downloading..."; btn.classList.add("btn-downloading"); }
-
       const card   = document.getElementById("ticketCard");
       const canvas = await html2canvas(card, { scale: 3, useCORS: true, backgroundColor: "#ffffff" });
-
       const link    = document.createElement("a");
       link.download = `EVEXA-Ticket-${document.getElementById("tTicketId")?.textContent || "ticket"}.png`;
       link.href     = canvas.toDataURL("image/png");
       link.click();
-
       if (btn) { btn.textContent = "⬇ Download Ticket"; btn.classList.remove("btn-downloading"); }
     };
-
   } catch (err) {
     console.error("Download failed:", err);
     alert("Download failed. Try right-clicking the ticket and saving.");
   }
 }
 
-// ── Fetch and show existing ticket ───────────────────
 async function fetchAndShowTicket(eventId) {
   const token = localStorage.getItem("authToken");
   if (!token) return;
-
   try {
     const res = await fetch(`${API_BASE}/tickets/generate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ event_id: eventId }),
     });
-
-    if (res.ok) {
-      const ticketData = await res.json();
-      showTicketModal(ticketData);
-    } else {
-      alert("Could not load ticket. Please try again.");
-    }
+    if (res.ok) showTicketModal(await res.json());
+    else alert("Could not load ticket. Please try again.");
   } catch (err) {
     console.error("Ticket fetch error:", err);
   }
 }
 
-// ── Download Certificate ──────────────────────────────
-async function downloadCertificate(eventId) {
-  const token = localStorage.getItem("authToken");
-  if (!token) { alert("Please login."); return; }
-
-  try {
-    const res = await fetch(`${API_BASE}/certificates/download/${eventId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    if (res.ok) {
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = `certificate-event-${eventId}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } else {
-      alert("Certificate not available yet. Please check back later.");
-    }
-  } catch (err) {
-    console.error("Certificate download error:", err);
-    alert("Server error. Please try again.");
-  }
-}
-// ── Toggle Issue Modal ────────────────────────────────
 function toggleIssueModal() {
   const modal   = document.getElementById("issueModal");
   const overlay = document.getElementById("issueModalOverlay");
@@ -459,31 +595,22 @@ function toggleIssueModal() {
   overlay.style.display = isOpen ? "none" : "block";
   if (!isOpen) document.getElementById("issueText")?.focus();
 }
-// ── Submit Issue ──────────────────────────────────────
+
 async function submitIssue(eventId) {
   const token = localStorage.getItem("authToken");
   if (!token) { alert("Please login."); return; }
-
   const text = document.getElementById("issueText")?.value.trim();
   if (!text) { alert("Please describe your issue."); return; }
-
   try {
     const res = await fetch(`${API_BASE}/events/${eventId}/issues`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ message: text })
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ message: text }),
     });
-
     if (res.ok) {
       document.getElementById("issueText").value = "";
       const success = document.getElementById("issueSuccess");
-      if (success) {
-        success.style.display = "block";
-        setTimeout(() => { success.style.display = "none"; }, 3000);
-      }
+      if (success) { success.style.display = "block"; setTimeout(() => { success.style.display = "none"; }, 3000); }
     } else {
       alert("Failed to submit issue. Please try again.");
     }

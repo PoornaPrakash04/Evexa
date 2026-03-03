@@ -25,6 +25,7 @@ const id = Number(params.get("id"));
 console.log("URL ID:", id);
 console.log("Stored events:", JSON.parse(localStorage.getItem("evexa_events")));
 const e = getEventById(id);
+const registeredNow = Number(e?.registered_count ?? e?.registered ?? 0);
 document.getElementById("editTopBtn")?.addEventListener("click", () => {
   window.location.href = `org.html?id=${id}`; // change org.html if your edit page name is different
 });
@@ -40,7 +41,15 @@ document.getElementById("topShareBtn")?.addEventListener("click", async () => {
   }
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+  const backBtn = document.getElementById("backBtn");
+  if (!backBtn) return;
 
+  backBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    window.location.href = "./orgfront.html";
+  });
+});
 const container = document.getElementById("detailContainer");
 
 if(!e){
@@ -58,11 +67,10 @@ if(!e){
   // ✅ These MUST be normal JS (NOT inside the HTML string)
   const bannerImg = e.poster ? `http://localhost:5000/uploads/${e.poster}` : null;
 
-  const seatsLeft = Math.max((Number(e.capacity) || 0) - (Number(e.registered) || 0), 0);
-  const pct = (Number(e.capacity) > 0)
-    ? Math.min(100, Math.round((Number(e.registered || 0) / Number(e.capacity)) * 100))
-    : 0;
-
+  const seatsLeft = Math.max((Number(e.capacity) || 0) - registeredNow, 0);
+const pct = (Number(e.capacity) > 0)
+  ? Math.min(100, Math.round((registeredNow / Number(e.capacity)) * 100))
+  : 0;
   // ✅ Only HTML inside template string
   container.innerHTML = `
     <!-- ===== HERO BANNER ===== -->
@@ -96,7 +104,7 @@ if(!e){
               <span><i class="fa fa-calendar"></i>${formatDate(e.date)}</span>
               <span><i class="fa fa-clock"></i>${formatTime(e.time)}</span>
               <span><i class="fa fa-map-marker-alt"></i>${e.venue}</span>
-              <span><i class="fa fa-users"></i>${e.registered ?? 0}/${e.capacity}</span>
+              <span><i class="fa fa-users"></i>${registeredNow}/${e.capacity}</span>
             </div>
           </div>
 
@@ -123,7 +131,7 @@ if(!e){
             <div class="grid-2">
               <div class="kpi">
                 <div class="kicon"><i class="fa fa-users"></i></div>
-                <div><b>${e.registered ?? 0}</b><small>Registered</small></div>
+               <div><b>${registeredNow}</b><small>Registered</small></div>
               </div>
               <div class="kpi">
                 <div class="kicon"><i class="fa fa-chair"></i></div>
@@ -183,7 +191,7 @@ if(!e){
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
           <span class="p-muted">${seatsLeft} seats left</span>
-          <span class="p-muted">${e.registered ?? 0} / ${e.capacity ?? 0}</span>
+          <<span class="p-muted">${registeredNow} / ${e.capacity ?? 0}</span>
         </div>
 
         <div class="progress">
@@ -195,7 +203,7 @@ if(!e){
   <div class="grid-2">
     <div class="kpi">
       <div class="kicon"><i class="fa fa-users"></i></div>
-      <div><b>${e.registered ?? 0}</b><small>Registered</small></div>
+     <div><b>${registeredNow}</b><small>Registered</small></div>
     </div>
     <div class="kpi">
       <div class="kicon"><i class="fa fa-chair"></i></div>

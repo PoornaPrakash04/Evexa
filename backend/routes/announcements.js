@@ -80,21 +80,24 @@ router.get("/student", authorize(), (req, res) => {
 });
 
 // ── GET /api/announcements — organizer's club announcements ──
-// (your existing organizer route — unchanged)
 router.get("/", authorize(), (req, res) => {
-  console.log("=== Fetching announcements ===");
   db.query(
     "SELECT club FROM organizers WHERE id = ?",
     [req.user.id],
     (err, orgResult) => {
       if (err) return res.status(500).json({ message: "Server error" });
-      const club = orgResult[0]?.club;
+
+      if (!orgResult.length) {
+        return res.status(404).json({ message: "Organizer not found" });
+      }
+
+      const club = orgResult[0].club;
+
       db.query(
         "SELECT * FROM announcements WHERE club = ? ORDER BY created_at DESC",
         [club],
         (err, results) => {
           if (err) return res.status(500).json({ message: "Server error" });
-          console.log("✅ Found", results.length, "announcements");
           res.json(results);
         }
       );
@@ -155,26 +158,37 @@ router.post("/", authorize(), (req, res) => {
 // ── PUT /api/announcements/:id ────────────────────────────────
 router.put("/:id", authorize(), (req, res) => {
   const { title, message, type } = req.body;
+
   db.query(
-    "UPDATE announcements SET title = ?, message = ?, type = ? WHERE id = ?",
-    [title, message, type, req.params.id],
+    `UPDATE announcements 
+     SET title = ?, message = ?, type = ?
+     WHERE id = ? AND created_by = ?`,
+    [title, message, type, req.params.id, req.user.id],
     (err, result) => {
       if (err) return res.status(500).json({ message: "Server error" });
-      if (!result.affectedRows) return res.status(404).json({ message: "Announcement not found" });
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Not found or unauthorized" });
+      }
+
       res.json({ message: "Announcement updated" });
     }
   );
 });
-
 // ── DELETE /api/announcements/:id ────────────────────────────
 router.delete("/:id", authorize(), (req, res) => {
   db.query(
     "DELETE FROM announcements WHERE id = ? AND created_by = ?",
     [req.params.id, req.user.id],
-    (err) => {
-      if (err) return res.status(500).json({ message: "Server error" });
-      res.json({ message: "Announcement deleted" });
-    }
+    (err, result) => {
+  if (err) return res.status(500).json({ message: "Server error" });
+
+  if (result.affectedRows === 0) {
+    return res.status(404).json({ message: "Not found or unauthorized" });
+  }
+
+  res.json({ message: "Announcement deleted" });
+}
   );
 });
 
