@@ -18,13 +18,13 @@ const router = express.Router();
 router.post("/", authorize(), upload.single("poster"), (req, res) => {
   const { title, type, description, date, time, capacity, registration_fee, venue } = req.body;
   const poster = req.file ? req.file.filename : null;
-  const club = req.user.club;
+  const club_id = req.user.club_id;  // ✅ fixed
 
   db.query(
     `INSERT INTO events 
-    (title, type, description, date, time, capacity, registration_fee, venue, club, status, organizer_id, poster) 
+    (title, type, description, date, time, capacity, registration_fee, venue, club_id, status, organizer_id, poster) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Draft', ?, ?)`,
-    [title, type, description, date, time, capacity, registration_fee || 0, venue, club, req.user.id, poster],
+    [title, type, description, date, time, capacity, registration_fee || 0, venue, club_id, req.user.id, poster],
     (err, result) => {
       if (err) {
         console.error("DB Insert Error:", err);
@@ -52,10 +52,20 @@ router.get("/my", authorize(), (req, res) => {
 
 // ── Get all events ────────────────────────────────────
 router.get("/all", authorize(), (req, res) => {
-  db.query("SELECT * FROM events ORDER BY date DESC", (err, result) => {
-    if (err) return res.status(500).json({ message: "Server error" });
-    res.json(result);
-  });
+  db.query(
+    `SELECT 
+        e.*, 
+        c.club_name AS club,
+        c.club_logo
+     FROM events e
+     LEFT JOIN clubs c 
+       ON e.club_id = c.club_id
+     ORDER BY e.date DESC`,
+    (err, result) => {
+      if (err) return res.status(500).json({ message: "Server error" });
+      res.json(result);
+    }
+  );
 });
 
 // ── Get organizer issues (for organizer dashboard) ────

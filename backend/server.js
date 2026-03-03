@@ -12,7 +12,7 @@ const studentRoutes      = require("./routes/student");
 const announcementRoutes = require("./routes/announcements");
 const execomRoutes       = require("./routes/execom");
 const ticketRoutes       = require("./routes/tickets");
-
+const registrationsRoute = require("./routes/registrations");
 const app = express();
 const facultyRoutes = require("./routes/faculty");
 
@@ -33,6 +33,7 @@ app.use("/api/student",       studentRoutes);
 app.use("/api/clubs",         clubRoutes);
 app.use("/api/tickets",       ticketRoutes);
 app.use("/api/faculty", require("./routes/faculty"));
+app.use("/api/registrations", registrationsRoute);
 app.get("/", (req, res) => res.send("EVEXA Backend is running"));
 
 

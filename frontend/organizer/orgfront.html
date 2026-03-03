@@ -42,7 +42,7 @@
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="logo-area">
-    <div class="logo-mark">EV</div>
+    <div class="logo-mark">O</div>
     <div class="logo-text">
       <h1>EVEXA</h1>
       <span>Organizer Portal</span>
@@ -92,19 +92,17 @@
       <a class="nav-item" data-page="execom">
         <div class="nav-icon">⭐</div> Meet the Execom
       </a>
-      <a class="nav-item" data-page="settings">
-        <div class="nav-icon">⚙️</div> Settings
-      </a>
+      
     </div>
   </nav>
 
-  <div class="sidebar-user">
-    <div class="avatar profile-avatar" id="sidebarAvatar">??</div>
-    <div class="user-info">
-      <div class="name profile-name">Loading…</div>
-      <div class="role profile-role">Organizer</div>
-    </div>
+  <div class="sidebar-user" id="sidebarUserBtn" data-page="settings" role="button" tabindex="0">
+  <div class="avatar profile-avatar" id="sidebarAvatar">??</div>
+  <div class="user-info">
+    <div class="name profile-name">Loading…</div>
+    <div class="role profile-role">Organizer</div>
   </div>
+</div>
 </aside>
 
 <!-- OVERLAY (mobile) -->
@@ -112,6 +110,8 @@
 
 <!-- MAIN -->
 <div class="main" id="mainContent">
+  
+
 
   <!-- TOPBAR -->
   <header class="topbar">
@@ -129,7 +129,7 @@
   <!-- PAGE: DASHBOARD -->
   <div class="page active" id="page-dashboard">
     <div class="content">
-
+    
       <!-- QUICK ACTIONS — Generate Certs removed -->
       <div class="section-title">Quick Actions</div>
       <div class="quick-actions">
@@ -158,7 +158,7 @@
           <p>Book Venue</p>
         </div>
       </div>
-
+      
       <!-- MY EVENTS -->
       <div class="card" style="margin-bottom: 28px;">
         <div class="card-header">
@@ -211,7 +211,39 @@
     </div>
     </div>  
     </div>
+    <!-- PAGE: ANNOUNCEMENTS -->
+<div class="page" id="page-announcements">
+  <div class="content">
+    <div class="section-title">
+      <div class="title-left">
+        <button class="btn-back" onclick="switchPage('dashboard')">←</button>
+        Announcements
+      </div>
+      <button class="btn-primary" onclick="openNewAnnouncementModal()">＋ New</button>
+    </div>
 
+    <div class="card">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr class="table-head-row">
+              <th class="th">#</th>
+              <th class="th">Title</th>
+              <th class="th">Club</th>
+              <th class="th">Date</th>
+              <th class="th">Type</th>
+              <th class="th">Status</th>
+              <th class="th">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="announcementBody">
+            <tr><td colspan="7" class="table-empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
   <!-- PAGE: EVENTS -->
   <div class="page" id="page-events">
     <div class="content">
@@ -491,34 +523,6 @@
     </div>
   </div>
 </div>
-<!-- PAGE: ANNOUNCEMENTS -->
-  <div class="page" id="page-announcements">
-    <div class="content">
-      <div class="section-title">
-        <div class="title-left">
-          <button class="btn-back" onclick="switchPage('dashboard')">←</button>
-          Announcements
-        </div>
-        <button class="btn-primary" onclick="openNewAnnouncementModal()">＋ New Announcement</button>
-      </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr class="table-head-row">
-                <th class="th">#</th><th class="th">Title</th><th class="th">Club</th>
-                <th class="th">Date</th><th class="th">Type</th><th class="th">Status</th>
-                <th class="th">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="announcementBody">
-              <tr><td colspan="7" class="table-empty">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- PAGE: NOTIFICATIONS -->
   <div class="page" id="page-notifications">
@@ -530,11 +534,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="notif-tabs">
-          <button class="ntab btn-ghost active" data-tab="history">History</button>
-          <button class="ntab btn-ghost" data-tab="schedule">Schedule</button>
-          <button class="ntab btn-ghost" data-tab="requests">Requests</button>
-        </div>
+      
         <div id="notifBody" class="notif-body"></div>
       </div>
     </div>

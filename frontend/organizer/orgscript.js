@@ -40,7 +40,7 @@ if (window.__EVEXA_INITIALIZED__) {
     const savedPage = localStorage.getItem("currentPage") || "dashboard";
 switchPage(savedPage);
     await loadEvents();
-
+   
     wireStaticButtons();
 
     console.log("✅ Dashboard ready");
@@ -153,6 +153,20 @@ function updateProfileStats() {
 function setupProfile() {
   const logoutBtn = document.getElementById("profileLogoutBtn");
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
+
+  // ✅ Click bottom profile block → open settings page
+  const sidebarUserBtn = document.getElementById("sidebarUserBtn");
+  if (sidebarUserBtn) {
+    sidebarUserBtn.addEventListener("click", () => switchPage("settings"));
+
+    // keyboard support (Enter / Space)
+    sidebarUserBtn.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        switchPage("settings");
+      }
+    });
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -539,7 +553,7 @@ function renderEventsGrid() {
 
 function createEventCard(e) {
   const orgData    = JSON.parse(localStorage.getItem("organizerData") || "{}");
-  const clubName   = e.club || orgData.club || "Club not specified";
+  const clubName = e.club || "Club not specified";
   const posterUrl  = e.posterUrl || "";
   const capacity   = Number(e.capacity || 0);
   const registered = Number(e.registered || e.registered_count || 0);
@@ -994,34 +1008,39 @@ function setupNotifications() {
       switchPage("notifications");
       const dot = document.getElementById("notifDot");
       if (dot) dot.style.display = "none";
+      renderNotifications(); // ✅ render when opened
     });
   }
-  document.querySelectorAll(".ntab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".ntab").forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-      notifTab = tab.dataset.tab;
-      renderNotifications(notifTab);
-    });
-  });
-  renderNotifications("history");
+
+  renderNotifications(); // ✅ initial render
 }
 
-function renderNotifications(tab) {
-  const body  = document.getElementById("notifBody");
+function renderNotifications() {
+  const body = document.getElementById("notifBody");
   if (!body) return;
-  const items = notificationsData[tab] || [];
+
+  // ✅ Combine all tabs into one list
+  const items = [
+    ...(notificationsData.history || []),
+    ...(notificationsData.schedule || []),
+    ...(notificationsData.requests || []),
+  ];
+
   if (!items.length) {
     body.innerHTML = `<div class="empty-state"><span>🔕</span><p>No notifications</p></div>`;
     return;
   }
+
   body.innerHTML = items.map(n => `
     <div class="notif-item">
       <div class="notif-dot" style="background:${n.color}"></div>
-      <div class="notif-text"><p>${n.text}</p><span>${n.time}</span></div>
-    </div>`).join("");
+      <div class="notif-text">
+        <p>${n.text}</p>
+        <span>${n.time}</span>
+      </div>
+    </div>
+  `).join("");
 }
-
 // ─────────────────────────────────────────────────────────────
 // DARK MODE
 // ─────────────────────────────────────────────────────────────
