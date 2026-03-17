@@ -183,3 +183,21 @@ cursor:pointer;
 .back-wrapper:hover .arrow {
   transform: translateX(-4px);
 }
+.register-prompt {
+  margin-top: 1.2rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #888;
+}
+
+.register-link {
+  color: #5a7ef5; /* match your existing accent color */
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.register-link:hover {
+  color: #3a5ed5;
+  text-decoration: underline;
+}

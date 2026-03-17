@@ -82,17 +82,12 @@
       <a class="nav-item" data-page="announcements">
         <div class="nav-icon">📢</div> Announcements
       </a>
-      <a class="nav-item" data-page="notifications">
-        <div class="nav-icon">🔔</div> Notifications
-      </a>
+      
     </div>
 
     <div class="nav-section">
       <div class="nav-label">Team</div>
-      <a class="nav-item" data-page="execom">
-        <div class="nav-icon">⭐</div> Meet the Execom
-      </a>
-      
+     <a class="nav-item" href="orgexecom.html">Club Execom</a> 
     </div>
   </nav>
 
@@ -163,7 +158,7 @@
       <div class="card" style="margin-bottom: 28px;">
         <div class="card-header">
           <h3>📅 My Events</h3>
-          <a id="viewAllEventsLink">View All →</a>
+          
         </div>
         <div id="dashEventList">
           <div class="empty-state"><span>⏳</span><p>Loading events…</p></div>
@@ -171,47 +166,45 @@
       </div>
 
       <!-- BOTTOM ROW -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;">
-        <div class="card">
-          <div class="card-header">
-            <h3>⏳ Pending Approvals</h3>
-            
-          </div>
-          <div id="approvalList">
-            <div class="empty-state"><span>✅</span><p>No pending approvals</p></div>
-          </div>
-          <div class="card-footer">
-            <button class="btn-ghost btn-full" id="viewAllApprovalsBtn">View all approvals →</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <h3>📜 Certificates</h3>
-            <a data-page="certificates">Manage</a>
-          </div>
-          <div id="certList">
-            <div class="empty-state"><span>⏳</span><p>Loading certificates…</p></div>
-          </div>
-        </div>
-        <div class="card" id="eventCalendarCard">
-    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
-      <h3 style="margin:0;">📅 Event Calendar</h3>
-      <div style="display:flex;gap:10px;align-items:center;">
+      <div class="dash-bottom-row">
+  <!-- Pending approvals (left) -->
+  <div class="card">
+    <div class="card-header">
+      <h3>⏳ Pending Approvals</h3>
+    </div>
+
+    <div id="approvalList">
+      <div class="empty-state"><span>✅</span><p>No pending approvals</p></div>
+    </div>
+
+    <div class="card-footer">
+      <button class="btn-ghost btn-full" id="viewAllApprovalsBtn">
+        View all approvals →
+      </button>
+    </div>
+  </div>
+
+  <!-- Event calendar (right) -->
+  <div class="card" id="eventCalendarCard">
+    <div class="card-header cal-header">
+      <h3>📅 Event Calendar</h3>
+      <div class="cal-nav">
         <button class="btn-ghost" id="calPrev">‹</button>
-        <span id="calMonthLabel" style="font-weight:700;">—</span>
+        <span id="calMonthLabel">—</span>
         <button class="btn-ghost" id="calNext">›</button>
       </div>
     </div>
 
     <div id="calGrid"></div>
-    <div id="calSelectedInfo" style="margin-top:12px;font-weight:700;opacity:.85;"></div>
+    <div id="calSelectedInfo" class="cal-selected"></div>
+    <div id="calEventList" class="cal-event-list"></div>
+  </div>
+</div>
 
-<div id="calEventList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
-    </div>
-    </div>
-    </div>  
-    </div>
-    <!-- PAGE: ANNOUNCEMENTS -->
+</div> <!-- ✅ close .content -->
+</div> <!-- ✅ close #page-dashboard -->
+
+<!-- PAGE: ANNOUNCEMENTS -->
 <div class="page" id="page-announcements">
   <div class="content">
     <div class="section-title">
@@ -273,37 +266,40 @@
   </div>
 
   <!-- PAGE: REGISTRATIONS -->
-  
-  <div class="page" id="page-registrations">
-    <div class="content">
-      <div class="section-title">
-        <div class="title-left">
-          <button class="btn-back" onclick="switchPage('dashboard')">←</button>
-          Registrations
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-  <h3>👥 All Registrations <span id="registrationCount" class="count-pill">0</span></h3>
-  <button class="btn-ghost" id="exportRegsBtn">📤 Export</button>
-</div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr class="table-head-row">
-                <th class="th">#</th><th class="th">Name</th><th class="th">Event</th>
-                <th class="th">Date</th><th class="th">Status</th>
-              </tr>
-            </thead>
-            <tbody id="registrationsBody">
-              <tr><td colspan="5" class="table-empty">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
+<div class="page" id="page-registrations">
+  <div class="content">
+
+    <div class="section-title">
+      <div class="title-left">
+        <button class="btn-back" onclick="switchPage('dashboard')">←</button>
+        Registrations
       </div>
     </div>
-  </div>
 
+    <!-- EVENT-WISE DOWNLOAD TABLE -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <h3>📌 Event-wise Participants</h3>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr class="table-head-row">
+              <th class="th">#</th>
+              <th class="th">Event Name</th>
+              <th class="th">Download</th>
+            </tr>
+          </thead>
+          <tbody id="eventParticipantsBody">
+            <tr><td colspan="3" class="table-empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
   <!-- PAGE: VENUES -->
   <div class="page" id="page-venues">
     <div class="content">
@@ -379,7 +375,7 @@
         </div>
         <div class="cert-panel-footer">
           <div id="certStep1Selection" class="cert-selection-badge" style="display:none;"></div>
-          <button class="btn-primary" id="certStep1Next" disabled onclick="certGoStep(2)">Next →</button>
+          <button type="button" class="btn-primary" id="certStep1Next" disabled onclick="certGoStep(2)">Next →</button>
         </div>
       </div>
 
@@ -430,8 +426,8 @@
         </div>
 
         <div class="cert-panel-footer">
-          <button class="btn-ghost" onclick="certGoStep(1)">← Back</button>
-          <button class="btn-primary" id="certStep2Next" disabled onclick="certGoStep(3)">Next →</button>
+          <button type="button" class="btn-ghost" onclick="certGoStep(1)">← Back</button>
+          <button type="button" class="btn-primary" id="certStep2Next" disabled onclick="certGoStep(3)">Next →</button>
         </div>
       </div>
 
@@ -467,7 +463,13 @@
                   <span id="certColorHex" style="font-size:12px;color:var(--muted);">#1a1a2e</span>
                 </div>
               </div>
-              <button class="btn-primary" style="width:100%;" onclick="previewCertificate()">👁️ Preview Certificate</button>
+              <button
+  type="button"
+  id="certPreviewBtn"
+  class="btn-primary"
+  style="width:100%;">
+  👁️ Preview Certificate
+</button>
             </div>
           </div>
 
@@ -506,7 +508,7 @@
           </div>
           <div class="card-footer" style="display:flex;justify-content:space-between;align-items:center;">
             <button class="btn-ghost" onclick="certGoStep(3)">← Back</button>
-            <button class="btn-primary" id="certGenerateBtn" onclick="generateCertificates()">
+            <button type="button" class="btn-primary" id="certGenerateBtn" onclick="generateCertificates()">
               🎓 Generate &amp; Download ZIP
             </button>
           </div>
@@ -546,7 +548,7 @@
       <div class="section-title">
         <div class="title-left">
           <button class="btn-back" onclick="switchPage('dashboard')">←</button>
-          Meet the Execom
+          Club Execom
         </div>
       </div>
       <div id="execomGrid" class="execom-grid">
@@ -613,11 +615,41 @@
           QR &amp; Tickets
         </div>
       </div>
-      <div class="card"><div class="empty-state"><span>🎫</span><p>Ticket scanning coming soon</p></div></div>
+      <div class="card" style="padding:20px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <h3 style="margin:0;">🎫 Ticket Scanner</h3>
+
+    <div style="display:flex;gap:10px;">
+      <button id="startScan" class="btn-primary">Start Camera</button>
+      <button id="stopScan" class="btn-ghost" disabled>Stop</button>
     </div>
   </div>
 
-</div><!-- /main -->
+  <div style="display:grid;grid-template-columns: 1fr 320px;gap:20px;align-items:start;">
+    <!-- Camera -->
+    <div>
+      <div id="qr-reader" style="width:100%;max-width:520px;"></div>
+      <p style="margin:10px 0 0;color:#7a7a7a;font-size:13px;">
+        Point the camera at the QR code on the student ticket.
+      </p>
+    </div>
+
+    <!-- Result -->
+    <div class="card" style="border:1px solid rgba(0,0,0,.08);">
+      <div class="card-header" style="padding:12px 14px;">
+        <h3 style="margin:0;font-size:16px;">Scan Result</h3>
+      </div>
+      <div id="scanResult" style="padding:14px;font-size:14px;line-height:1.45;">
+        Scan a ticket to verify entry.
+      </div>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+
+</div>
+<!-- /main -->
 
 <!-- MODALS -->
 <div class="modal-overlay" id="createEventModal">
@@ -708,6 +740,25 @@
 </div>
 
 <div id="toast" class="toast"></div>
+<!-- EXECOM EDIT / ADD MODAL -->
+<div class="modal-overlay" id="execomEditModal">
+  <div class="modal-box modal-box--sm">
+    <div class="modal-header">
+      <h3 id="execomModalTitle">✏️ Edit Member</h3>
+      <button class="modal-close" onclick="closeModal('execomEditModal')">✕</button>
+    </div>
+    <form id="execomEditForm" onsubmit="submitExecomEdit(event)" class="modal-form">
+      <input type="hidden" id="execomEditId">
+      <input type="text" id="execomEditName" class="form-input" placeholder="Full Name *" required>
+      <input type="text" id="execomEditPosition" class="form-input" placeholder="Position (e.g. Chairperson) *" required>
+      <input type="text" id="execomEditClass" class="form-input" placeholder="Class (e.g. S6 CSE-A)">
+      <input type="email" id="execomEditEmail" class="form-input" placeholder="Email">
+      <input type="tel" id="execomEditPhone" class="form-input" placeholder="Phone">
+      <button type="submit" class="btn-primary btn-submit">Save Changes</button>
+    </form>
+  </div>
+</div>
+<script src="https://unpkg.com/html5-qrcode"></script>
 <script src="orgscript.js"></script>
 </body>
 </html>

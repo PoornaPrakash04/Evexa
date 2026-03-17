@@ -1,7 +1,4 @@
-// ════════════════════════════════════════════════════════════
-//  FULL REPLACEMENT for routes/auth.js
-//  Key fix: /me now handles STUDENT | FACULTY | ORGANIZER
-// ════════════════════════════════════════════════════════════
+//auth.js
 
 const express = require("express");
 const bcrypt  = require("bcrypt");
@@ -27,8 +24,8 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ message: "Admission number and password are required." });
 
   db.query("SELECT * FROM organizers WHERE admission_no = ?", [admission_no], async (err, result) => {
-    if (err)              return res.status(500).json({ message: "Server error" });
-    if (!result.length)   return res.status(401).json({ message: "Organizer not found" });
+    if (err)            return res.status(500).json({ message: "Server error" });
+    if (!result.length) return res.status(401).json({ message: "Organizer not found" });
 
     const organizer = result[0];
     const match = await bcrypt.compare(password, organizer.password);
@@ -45,19 +42,17 @@ router.post("/login", async (req, res) => {
 
 // ── Student login ────────────────────────────────────────────
 router.post("/student-login", async (req, res) => {
-  console.log("Student login body:", req.body);
   const { admission_no, password } = req.body;
+
   if (!admission_no || !password)
     return res.status(400).json({ message: "Admission number and password are required." });
 
   db.query("SELECT * FROM students WHERE admission_no = ?", [admission_no], async (err, result) => {
-    console.log("DB result:", result);
     if (err)            return res.status(500).json({ message: "Server error" });
     if (!result.length) return res.status(401).json({ message: "Student not found" });
 
     const student = result[0];
     const match = await bcrypt.compare(password, student.password);
-    console.log("Password match:", match);
     if (!match) return res.status(401).json({ message: "Invalid password" });
 
     const token = jwt.sign(
@@ -71,7 +66,6 @@ router.post("/student-login", async (req, res) => {
 
 // ── Faculty login ────────────────────────────────────────────
 router.post("/faculty-login", async (req, res) => {
-  console.log("Faculty login body:", req.body);
   const { faculty_no, password } = req.body;
   if (!faculty_no || !password)
     return res.status(400).json({ message: "Faculty ID and password are required." });
@@ -109,9 +103,8 @@ router.get("/me", authorize(), (req, res) => {
     );
 
   } else if (role === "FACULTY") {
-    // ← THIS WAS MISSING — was falling into organizer query and crashing
     db.query(
-      "SELECT id, faculty_no, name, email, department, phone, phone_no FROM faculty WHERE id = ?",
+      "SELECT id, faculty_no, name, email, department, phone_no FROM faculty WHERE id = ?",
       [id],
       (err, result) => {
         if (err)            return res.status(500).json({ message: "Server error" });
@@ -134,19 +127,177 @@ router.get("/me", authorize(), (req, res) => {
   }
 });
 
-// ── Student register ─────────────────────────────────────────
-router.post("/student-register", async (req, res) => {
-  const { name, email, password, roll_no, admission_no, class: cls, phone } = req.body;
-  const hashed = await bcrypt.hash(password, 10);
+// ════════════════════════════════════════════════════════════
+//  DUPLICATE-CHECK ENDPOINTS
+// ════════════════════════════════════════════════════════════
+
+// ── Check student admission number ──────────────────────────
+router.post("/check-admission", (req, res) => {
+  const { admission_no } = req.body;
+  if (!admission_no)
+    return res.status(400).json({ exists: false, message: "admission_no is required." });
+
   db.query(
-    "INSERT INTO students (name, email, password, roll_no, admission_no, class, phone) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [name, email, hashed, roll_no, admission_no, cls, phone],
-    (err) => {
-      if (err) return res.status(500).json({ message: "Email already exists or DB error" });
-      res.json({ message: "Student registered successfully" });
+    "SELECT id FROM students WHERE admission_no = ? LIMIT 1",
+    [admission_no],
+    (err, rows) => {
+      if (err) return res.status(500).json({ exists: false, message: "Server error." });
+      return res.json({ exists: rows.length > 0 });
     }
   );
 });
+
+// ── Check organizer admission number ────────────────────────
+router.post("/check-organizer-admission", (req, res) => {
+  const { admission_no } = req.body;
+  if (!admission_no)
+    return res.status(400).json({ exists: false, message: "admission_no is required." });
+
+  db.query(
+    "SELECT id FROM organizers WHERE admission_no = ? LIMIT 1",
+    [admission_no],
+    (err, rows) => {
+      if (err) return res.status(500).json({ exists: false, message: "Server error." });
+      return res.json({ exists: rows.length > 0 });
+    }
+  );
+});
+
+// ── Check faculty ID ─────────────────────────────────────────
+router.post("/check-faculty-id", (req, res) => {
+  const { faculty_no } = req.body;
+  if (!faculty_no)
+    return res.status(400).json({ exists: false, message: "faculty_no is required." });
+
+  db.query(
+    "SELECT id FROM faculty WHERE faculty_no = ? LIMIT 1",
+    [faculty_no],
+    (err, rows) => {
+      if (err) return res.status(500).json({ exists: false, message: "Server error." });
+      return res.json({ exists: rows.length > 0 });
+    }
+  );
+});
+
+// ════════════════════════════════════════════════════════════
+//  REGISTER ENDPOINTS
+// ════════════════════════════════════════════════════════════
+
+// ── Student register ─────────────────────────────────────────
+router.post("/student-register", (req, res) => {
+  const { name, email, password, roll_no, admission_no, class: cls, department, phone } = req.body;
+
+  if (!name || !email || !password || !roll_no || !admission_no || !cls || !department)
+    return res.status(400).json({ message: "All required fields must be filled." });
+
+  db.query(
+    "SELECT id FROM students WHERE admission_no = ? LIMIT 1",
+    [admission_no],
+    async (err, rows) => {
+      if (err) return res.status(500).json({ message: "Server error" });
+      if (rows.length > 0)
+        return res.status(409).json({ message: "A student with this admission number is already registered." });
+
+      try {
+        const hashed = await bcrypt.hash(password, 10);
+        db.query(
+          "INSERT INTO students (name, email, password, roll_no, admission_no, class, department, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          [name, email, hashed, roll_no, admission_no, cls, department, phone || null],
+          (insertErr) => {
+            if (insertErr) {
+              if (insertErr.code === "ER_DUP_ENTRY")
+                return res.status(409).json({ message: "Email or Roll No. is already in use." });
+              return res.status(500).json({ message: "Server error" });
+            }
+            res.status(201).json({ success: true, message: "Student registered successfully" });
+          }
+        );
+      } catch (hashErr) {
+        console.error("bcrypt error:", hashErr);
+        res.status(500).json({ message: "Server error" });
+      }
+    }
+  );
+});
+
+// ── Organizer register ───────────────────────────────────────
+router.post("/organizer-register", (req, res) => {
+  const { name, email, password, roll_no, admission_no, class: cls, club, phone } = req.body;
+
+  if (!name || !email || !password || !admission_no || !roll_no || !cls || !club)
+    return res.status(400).json({ message: "All required fields must be filled." });
+
+  db.query(
+    "SELECT id FROM organizers WHERE admission_no = ? LIMIT 1",
+    [admission_no],
+    async (err, rows) => {
+      if (err) return res.status(500).json({ message: "Server error" });
+      if (rows.length > 0)
+        return res.status(409).json({ message: "An organizer with this admission number is already registered." });
+
+      try {
+        const hashed = await bcrypt.hash(password, 10);
+        db.query(
+          "INSERT INTO organizers (name, email, password, roll_no, admission_no, class, club, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          [name, email, hashed, roll_no, admission_no, cls, club, phone || null],
+          (insertErr) => {
+            if (insertErr) {
+              if (insertErr.code === "ER_DUP_ENTRY")
+                return res.status(409).json({ message: "Email is already in use." });
+              return res.status(500).json({ message: "Server error" });
+            }
+            res.status(201).json({ success: true, message: "Organizer registered successfully" });
+          }
+        );
+      } catch (hashErr) {
+        console.error("bcrypt error:", hashErr);
+        res.status(500).json({ message: "Server error" });
+      }
+    }
+  );
+});
+
+// ── Faculty register ─────────────────────────────────────────
+router.post("/faculty-register", (req, res) => {
+  const { name, email, password, faculty_no, department, phone_no } = req.body;
+
+  if (!name || !email || !password || !faculty_no || !department)
+    return res.status(400).json({ message: "All required fields must be filled." });
+
+  db.query(
+    "SELECT id FROM faculty WHERE faculty_no = ? LIMIT 1",
+    [faculty_no],
+    async (err, rows) => {
+      if (err) return res.status(500).json({ message: "Server error" });
+      if (rows.length > 0)
+        return res.status(409).json({ message: "A faculty member with this Faculty ID is already registered." });
+
+      try {
+        const hashed = await bcrypt.hash(password, 10);
+        // role_id defaults to 1 (base faculty role) — adjust as needed
+        db.query(
+          "INSERT INTO faculty (faculty_no, name, email, password, department, phone_no, role_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [faculty_no, name, email, hashed, department, phone_no || null, 1],
+          (insertErr) => {
+            if (insertErr) {
+              if (insertErr.code === "ER_DUP_ENTRY")
+                return res.status(409).json({ message: "Email or Faculty ID is already in use." });
+              return res.status(500).json({ message: "Server error" });
+            }
+            res.status(201).json({ success: true, message: "Faculty registered successfully" });
+          }
+        );
+      } catch (hashErr) {
+        console.error("bcrypt error:", hashErr);
+        res.status(500).json({ message: "Server error" });
+      }
+    }
+  );
+});
+
+// ════════════════════════════════════════════════════════════
+//  STUDENT PROFILE ROUTES
+// ════════════════════════════════════════════════════════════
 
 // ── Avatar upload ────────────────────────────────────────────
 router.post("/avatar", authorize(), upload.single("avatar"), (req, res) => {

@@ -71,13 +71,29 @@ async function loadEvents() {
 
 // ── Map backend status to badge labels ────────────────
 function getStatus(event) {
-  const now       = new Date();
-  const eventDate = new Date(event.date);
-  if (event.capacity && event.registered_count >= event.capacity) return "full";
-  if (eventDate > now) return "open";
-  return "upcoming";
-}
+  const now = new Date();
 
+  // Build proper event datetime (uses local time)
+  const eventDateTime = event.date
+    ? new Date(`${event.date}T${event.time || "00:00:00"}`)
+    : null;
+
+  // Full check
+  if (event.capacity && (event.registered_count || 0) >= event.capacity) return "full";
+
+  // If no date, treat as open
+  if (!eventDateTime || isNaN(eventDateTime.getTime())) return "open";
+
+  // Past event → not in open/upcoming buckets
+  if (eventDateTime < now) return "past";
+
+  // Upcoming = within next 7 days
+  const diffMs = eventDateTime - now;
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  if (diffDays <= 7) return "upcoming";
+  return "open";
+}
 // ── Build one event card ──────────────────────────────
 function renderCard(e) {
   const poster = (e.poster && e.poster !== "default.jpg")
@@ -89,7 +105,7 @@ function renderCard(e) {
     : "TBA";
 
   const status    = getStatus(e);
-  const statusMap = { open: "Open", full: "Full", upcoming: "Upcoming" };
+  const statusMap = { open: "Open", full: "Full", upcoming: "Upcoming", past: "Completed" };
   const fee       = e.registration_fee > 0 ? `₹${e.registration_fee}` : "Free";
   const capacity  = e.capacity || 0;
   const isRegistered = registeredEventIds.includes(String(e.id));

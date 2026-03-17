@@ -1,4 +1,4 @@
-//student, only for fetching their own registrations, no modifications allowed
+//student.js
 const express = require("express");
 const router = express.Router();
 const db = require("../db");

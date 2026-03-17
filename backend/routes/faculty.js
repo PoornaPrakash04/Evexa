@@ -13,7 +13,7 @@ function facultyOnly(req, res, next) {
 // GET /api/faculty/me
 router.get("/me", authorize(), facultyOnly, (req, res) => {
   db.query(
-    "SELECT id, faculty_no, name, email, department, phone, phone_no FROM faculty WHERE id = ?",
+    "SELECT id, faculty_no, name, email, department, phone_no FROM faculty WHERE id = ?",
     [req.user.id],
     (err, result) => {
       if (err)            return res.status(500).json({ message: "Server error", detail: err.message });
@@ -22,7 +22,6 @@ router.get("/me", authorize(), facultyOnly, (req, res) => {
     }
   );
 });
-
 // GET /api/faculty/proposals
 // Uses club_name (not name) to match your clubs table schema
 router.get("/proposals", authorize(), facultyOnly, (req, res) => {

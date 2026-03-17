@@ -4,7 +4,8 @@
 
 const API = "http://localhost:5000/api";
 const LOGIN_URL = "http://127.0.0.1:5501/frontend/organizer/ogsignin.html";
-
+// Cache for execom members — used by edit modal to avoid HTML-attribute encoding bugs
+let execomMembersCache = [];
 if (window.__EVEXA_INITIALIZED__) {
   console.warn("EVEXA already initialized — skipping");
 } else {
@@ -34,12 +35,13 @@ if (window.__EVEXA_INITIALIZED__) {
     setupPressBounce();
     setupEventCalendarNav();
 
-    await Promise.all([loadExecom(), loadVenues()]);
+    await Promise.all([loadVenues()]);
     await loadAnnouncements();
 
-    const savedPage = localStorage.getItem("currentPage") || "dashboard";
-switchPage(savedPage);
     await loadEvents();
+
+const savedPage = localStorage.getItem("currentPage") || "dashboard";
+switchPage(savedPage);
    
     wireStaticButtons();
 
@@ -268,11 +270,24 @@ function switchPage(name) {
   if (titleEl) titleEl.textContent = nav?.textContent.trim().replace(/\d+/g, "").trim() || "Dashboard";
 
   // Load data for pages
-  if (name === "registrations") loadRegistrations();
-  if (name === "announcements") loadAnnouncements();
-  if (name === "execom") loadExecom();
-  if (name === "venues") loadVenues();
+ if (name === "registrations") {
+  loadEventParticipantsTable();
 }
+  if (name === "announcements") loadAnnouncements();
+  
+  if (name === "venues") loadVenues();
+  if (name === "tickets") {
+    setTimeout(initTicketScanner, 150);
+  }
+  if (name === "certificates") {
+  loadCertificateEvents();     // fill step-1 list
+  setupCertificateUpload();    // enable PDF drop + excel upload + color sync
+  bindCertificateEventClick(); // ✅ NEW (event delegation)
+  checkCertStep2();            // update Next button
+}
+if (name === "execom") loadExecom();
+}
+  
 // ─────────────────────────────────────────────────────────────
 // LOAD EVENTS
 // ─────────────────────────────────────────────────────────────
@@ -286,6 +301,8 @@ async function loadEvents() {
     ]);
     events         = myRes.ok  ? await myRes.json()  : [];
     allEvents      = allRes.ok ? await allRes.json() : [];
+    events    = await hydrateRegistrationCounts(events);
+    allEvents = await hydrateRegistrationCounts(allEvents);
     filteredEvents = [...allEvents];
     localStorage.setItem("evexa_events", JSON.stringify(allEvents));
     window.allEvents = allEvents;   // ← ADD THIS
@@ -303,7 +320,45 @@ async function loadEvents() {
   populateFilterDropdowns();
   renderEventCalendar();   // ← ADD THIS
 }
+async function hydrateRegistrationCounts(list) {
+  if (!Array.isArray(list) || !list.length) return list;
 
+  // Fetch counts in parallel
+  const results = await Promise.allSettled(
+    list.map(e => apiFetch(`/registrations/count/${e.id}`))
+  );
+
+  results.forEach((r, idx) => {
+    if (r.status !== "fulfilled") return;
+
+    const res = r.value;
+    if (!res.ok) return;
+
+    // IMPORTANT: res.json() is async, so we do a small trick:
+    // we attach a promise and resolve it later
+  });
+
+  // Because we can't await inside forEach neatly, do a second pass:
+  const jsons = await Promise.all(
+    results.map(async (r) => {
+      if (r.status !== "fulfilled") return null;
+      const res = r.value;
+      if (!res.ok) return null;
+      try { return await res.json(); } catch { return null; }
+    })
+  );
+
+  jsons.forEach((data, idx) => {
+    if (!data) return;
+    const count = Number(data.count || 0);
+
+    // overwrite the event object
+    list[idx].registered_count = count;
+    list[idx].registered = count; // optional (keeps your createEventCard logic happy)
+  });
+
+  return list;
+}
 // ─────────────────────────────────────────────────────────────
 // DASHBOARD: EVENTS LIST
 // ─────────────────────────────────────────────────────────────
@@ -637,47 +692,6 @@ function populateFilterDropdowns() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// REGISTRATIONS PAGE
-// ─────────────────────────────────────────────────────────────
-
-async function loadRegistrations() {
-  const tbody = document.getElementById("registrationsBody");
-  if (!tbody) return;
-
-  try {
-    const res = await apiFetch("/registrations/my");
-    console.log("✅ /registrations/my status:", res.status);
-    
-    const responseText = await res.text();
-    console.log("✅ /registrations/my raw:", responseText);
-
-    const regs = JSON.parse(responseText);
-    console.log("✅ regs parsed:", regs);
-
-    // Update count
-    setText("registrationCount", regs.length);
-
-    // Handle empty or populate table
-    if (!Array.isArray(regs) || !regs.length) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted)">No registrations yet</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = regs.map((r, i) => `
-      <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:10px 18px;">${i + 1}</td>
-        <td style="padding:10px 18px;font-weight:500;">${r.name || r.participant_name || "—"}</td>
-        <td style="padding:10px 18px;">${r.event_title || "—"}</td>
-        <td style="padding:10px 18px;color:var(--muted);">${formatDate(r.registered_at)}</td>
-        <td style="padding:10px 18px;">${r.status || "Registered"}</td>
-      </tr>
-    `).join("");
-  } catch (e) {
-    console.error("❌ loadRegistrations error:", e);
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted)">Unable to load registrations</td></tr>`;
-  }
-}
-// ─────────────────────────────────────────────────────────────
 // VENUES
 // ─────────────────────────────────────────────────────────────
 
@@ -908,7 +922,11 @@ async function loadExecom() {
   if (!club) return;
   try {
     const res = await apiFetch(`/execom/club/${encodeURIComponent(club)}`);
-    if (res.ok) renderExecom(await res.json());
+    if (res.ok) {
+      const members      = await res.json();
+      execomMembersCache = members;   // ← save here
+      renderExecom(members);
+    }
   } catch (err) { console.error("Execom load error:", err); }
 }
 
@@ -925,7 +943,13 @@ function renderExecom(members) {
     const hash  = m.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
     const color = colors[hash % colors.length];
     return `
-      <div class="execom-card">
+      <div class="execom-card" style="position:relative;">
+        <button onclick="openEditExecomModal(${m.id})"
+          style="position:absolute;top:10px;right:10px;background:var(--bg);border:1px solid var(--line);
+          border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--violet);
+          transition:all 0.15s;"
+          onmouseover="this.style.background='var(--violet-light)'"
+          onmouseout="this.style.background='var(--bg)'">✏️ Edit</button>
         <img src="https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=${color}"
              alt="${m.name}" class="execom-avatar">
         <h4>${m.name}</h4>
@@ -946,7 +970,6 @@ function renderExecom(members) {
       </div>`;
   }).join("");
 }
-
 // ─────────────────────────────────────────────────────────────
 // CREATE EVENT
 // ─────────────────────────────────────────────────────────────
@@ -1188,7 +1211,6 @@ function wireStaticButtons() {
 
   document.getElementById("addEventBtn")?.addEventListener("click", () => openModal("createEventModal"));
   document.getElementById("createEventPageBtn")?.addEventListener("click", () => openModal("createEventModal"));
-  document.getElementById("exportRegsBtn")?.addEventListener("click", exportRegistrations);
 
   loadActivityFeed();
 
@@ -1408,14 +1430,17 @@ boxTitle.textContent = `Events on ${formatDateYMD(dateStr)}`;
 }
 // Certificate state
 let certState = {
-  step:         1,
-  eventId:      null,
-  eventTitle:   null,
+  step: 1,
+  eventId: null,
+  eventTitle: null,
   participantCount: 0,
   templateFile: null,
-  excelFile:    null,
-  source:       "db",   // "db" | "excel"
+  excelFile: null,
+  source: "db",
 };
+
+// prevent double-binding
+let certClickBound = false;
 
 // ── Navigation ───────────────────────────────────────────────
 function certGoStep(n) {
@@ -1442,9 +1467,10 @@ function updateCertSummary() {
 async function loadCertificateEvents() {
   const list = document.getElementById("certEventsList");
   if (!list) return;
+
   try {
-    const res  = await apiFetch("/certificates/events");
-    const data = res.ok ? await res.json() : events;  // fallback to local events
+    const res = await apiFetch("/certificates/events");
+    const data = res.ok ? await res.json() : (events || []);
 
     if (!data.length) {
       list.innerHTML = `<div class="empty-state"><span>📅</span><p>No events found</p></div>`;
@@ -1454,13 +1480,16 @@ async function loadCertificateEvents() {
     list.innerHTML = data.map(e => {
       const cnt = Number(e.registered_count || e.registered || 0);
       const ymd = toYMD(e.date);
+
       return `
         <div class="cert-event-item ${certState.eventId === e.id ? "selected" : ""}"
-             onclick="selectCertEvent(${e.id}, '${e.title.replace(/'/g,"\\'")}', ${cnt})">
+             data-event-id="${e.id}"
+             data-title="${String(e.title || "").replace(/"/g, "&quot;")}"
+             data-count="${cnt}">
           <div class="cei-left">
             <div class="cei-thumb">📅</div>
             <div class="cei-info">
-              <div class="cei-title">${e.title}</div>
+              <div class="cei-title">${e.title || "Untitled"}</div>
               <div class="cei-meta">${formatDateYMD(ymd)} · ${e.venue || "TBD"}</div>
             </div>
           </div>
@@ -1470,32 +1499,40 @@ async function loadCertificateEvents() {
           </div>
         </div>`;
     }).join("");
-  } catch {
+
+  } catch (err) {
+    console.error("loadCertificateEvents error:", err);
     list.innerHTML = `<div class="empty-state"><span>❌</span><p>Could not load events</p></div>`;
   }
 }
+function selectCertEvent(itemEl, eventId, title, participantCount) {
+  // clear previous selection
+  document.querySelectorAll("#certEventsList .cert-event-item.selected")
+    .forEach(x => x.classList.remove("selected"));
 
-function selectCertEvent(id, title, count) {
-  certState.eventId        = id;
-  certState.eventTitle     = title;
-  certState.participantCount = count;
+  itemEl.classList.add("selected");
 
-  document.querySelectorAll(".cert-event-item").forEach(el => el.classList.remove("selected"));
-  event.currentTarget.classList.add("selected");
+  // update state
+  certState.eventId = eventId;
+  certState.eventTitle = title;
+  certState.participantCount = participantCount;
 
+  // Step-1 badge + enable Next
   const badge = document.getElementById("certStep1Selection");
   if (badge) {
-    badge.style.display = "flex";
-    badge.textContent   = `✓ ${title} · ${count} participants`;
+    badge.style.display = "block";
+    badge.textContent = `Selected: ${title} (${participantCount})`;
   }
 
   const nextBtn = document.getElementById("certStep1Next");
   if (nextBtn) nextBtn.disabled = false;
 
-  // Preload participants
-  loadCertParticipants(id);
-}
+  // Load participants immediately (step-2 DB tab)
+  loadCertParticipants(eventId);
 
+  // keep step-2 next in sync
+  checkCertStep2();
+}
 async function loadCertParticipants(eventId) {
   const list = document.getElementById("certParticipantsList");
   if (!list) return;
@@ -1570,6 +1607,8 @@ function setupCertificateUpload() {
       if (el) el.textContent = this.value;
     });
   }
+  document.getElementById("certPreviewBtn")
+  ?.addEventListener("click", previewCertificate);
 }
 
 function setCertTemplate(file) {
@@ -1595,7 +1634,12 @@ function removeCertTemplate() {
 
 function checkCertStep2() {
   const hasTemplate = !!certState.templateFile;
-  const hasData     = certState.source === "db" ? certState.eventId !== null : !!certState.excelFile;
+
+  const hasData =
+    certState.source === "db"
+      ? !!certState.eventId
+      : !!certState.excelFile;
+
   const btn = document.getElementById("certStep2Next");
   if (btn) btn.disabled = !(hasTemplate && hasData);
 }
@@ -1717,4 +1761,334 @@ async function generateCertificates() {
     if (btn)      btn.disabled      = false;
     if (progress) progress.style.display = "none";
   }
+}
+// ─────────────────────────────────────────────────────────────
+// EXECOM EDIT
+// ─────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+// EXECOM EDIT / ADD
+// ─────────────────────────────────────────────────────────────
+
+function openEditExecomModal(memberId) {
+  // Look up member from cache by id — avoids HTML attribute encoding issues
+  const m = execomMembersCache.find(x => x.id === memberId);
+  if (!m) { showToast("❌ Member not found"); return; }
+
+  setText("execomModalTitle", "✏️ Edit Member");
+  document.getElementById("execomEditId").value       = m.id       || "";
+  document.getElementById("execomEditName").value     = m.name     || "";
+  document.getElementById("execomEditPosition").value = m.position || "";
+  document.getElementById("execomEditClass").value    = m.class    || "";
+  document.getElementById("execomEditEmail").value    = m.email    || "";
+  document.getElementById("execomEditPhone").value    = m.phone    || "";
+  openModal("execomEditModal");
+}
+
+function openAddExecomModal() {
+  setText("execomModalTitle", "➕ Add Member");
+  document.getElementById("execomEditForm").reset();
+  document.getElementById("execomEditId").value = "";
+  openModal("execomEditModal");
+}
+
+async function submitExecomEdit(e) {
+  e.preventDefault();
+
+  const id      = document.getElementById("execomEditId").value.trim();
+  const orgData = JSON.parse(localStorage.getItem("organizerData") || "{}");
+
+  const payload = {
+    name:     document.getElementById("execomEditName").value.trim(),
+    position: document.getElementById("execomEditPosition").value.trim(),
+    class:    document.getElementById("execomEditClass").value.trim(),
+    email:    document.getElementById("execomEditEmail").value.trim(),
+    phone:    document.getElementById("execomEditPhone").value.trim(),
+    club:     orgData.club || "",
+  };
+
+  if (!payload.name || !payload.position) {
+    showToast("⚠️ Name and Position are required");
+    return;
+  }
+
+  const url    = id ? `/execom/${id}` : `/execom`;
+  const method = id ? "PUT" : "POST";
+
+  try {
+    const res = await apiFetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      showToast("❌ " + (d.message || "Failed to save"));
+      return;
+    }
+
+    showToast(id ? "✅ Member updated!" : "✅ Member added!");
+    closeModal("execomEditModal");
+    await loadExecom();   // refresh the grid
+} catch (err) {
+    console.error("submitExecomEdit error:", err);
+    showToast("❌ Network error — check your connection");
+  }
+}
+async function loadEventParticipantsTable() {
+  const tbody = document.getElementById("eventParticipantsBody");
+  if (!tbody) return;
+
+  // Prefer my events for organizer
+  const myEvents = (events && events.length) ? events : (window.allEvents || []);
+  if (!myEvents.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="table-empty">No events found</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = myEvents.map((e, i) => `
+    <tr style="border-bottom:1px solid var(--line);">
+      <td style="padding:10px 18px;">${i + 1}</td>
+      <td style="padding:10px 18px;font-weight:500;">
+        ${e.title || "—"}
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">
+          ${formatEventDate(e.date)} ${e.time ? "· " + formatTime(e.time) : ""} ${e.venue ? "· " + e.venue : ""}
+        </div>
+      </td>
+      <td style="padding:10px 18px;">
+        <button class="btn-ghost" onclick="downloadParticipantsCSV(${e.id}, '${(e.title||"event").replace(/'/g,"\\'")}')">
+          ⬇️ Download CSV
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+async function downloadParticipantsCSV(eventId, eventTitle = "event") {
+  try {
+    const res = await apiFetch(`/registrations/event/${eventId}`);
+    if (!res.ok) { showToast("❌ Failed to fetch participants"); return; }
+
+    const data = await res.json();
+
+    console.log("📦 participants data:", data); // ✅ check fields here
+
+    if (!Array.isArray(data) || !data.length) {
+      showToast("⚠️ No participants for this event");
+      return;
+    }
+
+    // ✅ Include class + department
+    const headers = ["Sl No", "Name", "Email", "Phone", "Class", "Department", "Status", "Registered At"];
+
+    const rows = data.map((p, idx) => ([
+      idx + 1,
+      p.name || p.participant_name || "",
+      p.email || "",
+      p.phone || "",
+      p.class || "",
+      p.department || "",
+      p.status || "Registered",
+      p.registered_at ? formatDate(p.registered_at) : ""
+    ]));
+
+    const csv = [
+      headers.join(","),
+      ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `participants_${eventTitle.replace(/[^a-z0-9]+/gi,"_").toLowerCase()}_${eventId}.csv`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+    showToast("✅ Participants CSV downloaded");
+  } catch (err) {
+    console.error(err);
+    showToast("❌ Download failed");
+  }
+}
+// =========================
+// 🎫 QR Ticket Scanner (Organizer)
+// =========================
+
+let html5Qr;
+let lastToken = null;
+let scanning = false;
+
+function setScanResult(html) {
+  const el = document.getElementById("scanResult");
+  if (el) el.innerHTML = html;
+}
+
+function extractTokenFromQR(decodedText) {
+  try {
+    const obj = JSON.parse(decodedText);
+    if (obj && obj.t) return obj.t;
+  } catch (_) {}
+
+  if (decodedText && decodedText.length > 20) return decodedText;
+  return null;
+}
+
+async function verifyTicketToken(token) {
+  if (!token) {
+    setScanResult(`<b>❌ Invalid QR</b><br/>Token not found.`);
+    return;
+  }
+
+  if (token === lastToken) return;
+  lastToken = token;
+
+  setScanResult(`⏳ Verifying ticket...`);
+
+  try {
+    const res = await fetch(`${API}/tickets/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + localStorage.getItem("authToken"), // ✅ FIXED
+      },
+      body: JSON.stringify({ qr_token: token }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setScanResult(`<b>❌ ${data.message || "Verification failed"}</b>`);
+      return;
+    }
+
+    if (data.status === "VALID") {
+      setScanResult(`
+        <div style="padding:10px;border-radius:12px;background:#ecfdf5;border:1px solid #10b9811f;">
+          <b style="color:#059669;">✅ VALID ENTRY</b><br/>
+          <div style="margin-top:8px;">
+            <b>Name:</b> ${data.name}<br/>
+            <b>Roll:</b> ${data.roll_no}<br/>
+            <b>Dept:</b> ${data.department}<br/>
+            <b>Class:</b> ${data.class}<br/>
+            <b>Event:</b> ${data.event_title}<br/>
+            <b>Ticket:</b> ${data.ticket_id}
+          </div>
+        </div>
+      `);
+      return;
+    }
+
+    if (data.status === "ALREADY_USED") {
+      setScanResult(`
+        <div style="padding:10px;border-radius:12px;background:#fff7ed;border:1px solid #fb923c33;">
+          <b style="color:#c2410c;">⚠️ ALREADY USED</b><br/>
+          <div style="margin-top:8px;">
+            <b>Name:</b> ${data.name}<br/>
+            <b>Roll:</b> ${data.roll_no}<br/>
+            <b>Ticket:</b> ${data.ticket_id}<br/>
+            <b>Checked-in at:</b> ${data.checked_in_at || "—"}
+          </div>
+        </div>
+      `);
+      return;
+    }
+
+    setScanResult(`<b>ℹ️ ${data.status}</b>`);
+  } catch (err) {
+    console.error(err);
+    setScanResult(`<b>❌ Network / Server error</b>`);
+  }
+}
+
+function initTicketScanner() {
+  const readerEl = document.getElementById("qr-reader");
+  const startBtn = document.getElementById("startScan");
+  const stopBtn  = document.getElementById("stopScan");
+  if (!readerEl || !startBtn || !stopBtn) return;
+
+  if (startBtn.dataset.bound === "1") return;
+  startBtn.dataset.bound = "1";
+  stopBtn.dataset.bound  = "1";
+
+  if (!html5Qr) html5Qr = new Html5Qrcode("qr-reader");
+
+  startBtn.onclick = async () => {
+  if (scanning) return;
+  scanning = true;
+  lastToken = null;
+
+  setScanResult("📷 Starting camera...");
+
+  try {
+    // ✅ Always create a fresh instance
+    if (html5Qr) {
+      try { await html5Qr.stop(); } catch (_) {}
+      try { await html5Qr.clear(); } catch (_) {}
+    }
+    html5Qr = new Html5Qrcode("qr-reader");  // ✅ fresh instance every time
+
+    const cameras = await Html5Qrcode.getCameras();
+    if (!cameras || !cameras.length) {
+      scanning = false;
+      setScanResult("<b>❌ No camera found</b>");
+      return;
+    }
+
+    startBtn.disabled = true;
+    stopBtn.disabled  = false;
+
+    await html5Qr.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decodedText) => verifyTicketToken(extractTokenFromQR(decodedText)),
+      () => {}
+    );
+
+    setScanResult("✅ Camera started. Scan a ticket.");
+  } catch (e) {
+    console.error(e);
+    scanning = false;
+    startBtn.disabled = false;
+    stopBtn.disabled  = true;
+    setScanResult("<b>❌ Camera permission denied / not supported</b>");
+  }
+};
+
+  stopBtn.onclick = async () => {
+  if (!html5Qr || !scanning) return;
+
+  try { await html5Qr.stop(); } catch (_) {}
+  try { await html5Qr.clear(); } catch (_) {}
+  
+  html5Qr = null;  // ✅ fully reset so next start creates fresh instance
+  scanning = false;
+  startBtn.disabled = false;
+  stopBtn.disabled  = true;
+  lastToken = null;
+
+  // ✅ Clear the qr-reader div manually just in case
+  const readerEl = document.getElementById("qr-reader");
+  if (readerEl) readerEl.innerHTML = "";
+
+  setScanResult("🛑 Scanner stopped.");
+};
+}
+function bindCertificateEventClick() {
+  const list = document.getElementById("certEventsList");
+  if (!list || certClickBound) return;
+  certClickBound = true;
+
+  list.addEventListener("click", (e) => {
+    const item = e.target.closest(".cert-event-item");
+    if (!item) return;
+
+    const eventId = Number(item.dataset.eventId);
+    const title = item.dataset.title || "Event";
+    const cnt = Number(item.dataset.count || 0);
+
+    selectCertEvent(item, eventId, title, cnt);
+  });
 }

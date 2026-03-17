@@ -4,9 +4,9 @@
 
 const API_BASE = "http://localhost:5000/api";
 
-const form    = document.querySelector(".signin-form");
-const idInput = form.querySelector('input[type="text"]');
-const pwInput = form.querySelector('input[type="password"]');
+const form    = document.getElementById("signinForm");
+const idInput = document.getElementById("faculty_no");
+const pwInput = document.getElementById("password");
 const btn     = form.querySelector(".signin-btn");
 
 // ── Show inline error ─────────────────────────────────
@@ -38,11 +38,11 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearError();
 
-  const facultyId = idInput.value.trim();
-  const password  = pwInput.value;
+  const faculty_no = idInput.value.trim();
+  const password   = pwInput.value;
 
-  if (!facultyId || !password) {
-    showError("Please enter your Faculty ID and password.");
+  if (!faculty_no || !password) {
+    showError("Please enter your Faculty No. and password.");
     return;
   }
 
@@ -53,7 +53,7 @@ form.addEventListener("submit", async (e) => {
     const res = await fetch(`${API_BASE}/auth/faculty-login`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ faculty_no: facultyId, password }),
+      body: JSON.stringify({ faculty_no, password }),
     });
 
     const data = await res.json();

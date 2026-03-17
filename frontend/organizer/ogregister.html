@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Organizer Register | EVEXA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Poppins, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f7fb;
+      overflow-x: hidden;
+      position: relative;
+      padding: 40px 16px 60px;
+    }
+
+    /* -------- FLOATING SHAPES -------- */
+    .background {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .shape {
+      position: absolute;
+      border-radius: 50%;
+      opacity: .35;
+      animation: float 8s infinite ease-in-out;
+    }
+
+    .s1 {
+      width: 220px; height: 220px;
+      background: linear-gradient(45deg, #8e44ff, #5b86e5);
+      top: 40%; left: -60px;
+    }
+    .s2 {
+      width: 180px; height: 180px;
+      background: linear-gradient(45deg, #32d2aa, #21d4fd);
+      top: 10%; right: -60px;
+      animation-delay: 2s;
+    }
+    .s3 {
+      width: 140px; height: 140px;
+      background: linear-gradient(45deg, #b721ff, #fa71cd);
+      bottom: 80px; left: 40%;
+      animation-delay: 3s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-35px); }
+    }
+
+    /* -------- REGISTER CARD -------- */
+    .register-container {
+      background: rgba(255, 255, 255, .85);
+      backdrop-filter: blur(10px);
+      padding: 45px 40px;
+      border-radius: 22px;
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, .08);
+      position: relative;
+      z-index: 2;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #777;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    /* -------- FORM -------- */
+    .register-form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      text-align: left;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding-left: 2px;
+    }
+
+    input {
+      padding: 13px 14px;
+      border-radius: 12px;
+      border: 1px solid #e3e3e3;
+      font-size: 14px;
+      font-family: Poppins, sans-serif;
+      outline: none;
+      background: #fff;
+      color: #333;
+      transition: .25s;
+      width: 100%;
+    }
+
+    input::placeholder { color: #bbb; }
+
+    input:focus {
+      border-color: #8e44ff;
+      box-shadow: 0 0 0 3px rgba(142, 68, 255, .15);
+    }
+
+    input.error {
+      border-color: #ff5f6d;
+      box-shadow: 0 0 0 3px rgba(255, 95, 109, .12);
+    }
+
+    .error-msg {
+      font-size: 11px;
+      color: #ff5f6d;
+      padding-left: 2px;
+      display: none;
+    }
+
+    .error-msg.visible {
+      display: block;
+      animation: shake .3s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25%       { transform: translateX(-4px); }
+      75%       { transform: translateX(4px); }
+    }
+
+    /* -------- PASSWORD STRENGTH -------- */
+    .strength-bar {
+      display: flex;
+      gap: 4px;
+      margin-top: 5px;
+    }
+
+    .strength-seg {
+      flex: 1;
+      height: 3px;
+      border-radius: 99px;
+      background: #e3e3e3;
+      transition: background .3s ease;
+    }
+
+    .strength-label {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 3px;
+      padding-left: 2px;
+    }
+
+    /* -------- AVATAR UPLOAD -------- */
+    .avatar-upload {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .avatar-preview {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #8e44ff, #32d2aa);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: white;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .avatar-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .avatar-btn {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid #e3e3e3;
+      background: #fff;
+      font-size: 12px;
+      font-family: Poppins, sans-serif;
+      font-weight: 500;
+      color: #555;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .avatar-btn:hover {
+      border-color: #8e44ff;
+      color: #8e44ff;
+    }
+
+    #avatarInput { display: none; }
+
+    /* -------- SUBMIT -------- */
+    .register-btn {
+      margin-top: 6px;
+      padding: 14px;
+      border: none;
+      border-radius: 30px;
+      background: #8e44ff;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: Poppins, sans-serif;
+      cursor: pointer;
+      transition: .25s;
+      width: 100%;
+    }
+
+    .register-btn:hover {
+      transform: scale(1.04);
+      box-shadow: 0 10px 25px rgba(142, 68, 255, .35);
+    }
+
+    .register-btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* -------- SIGNIN REDIRECT -------- */
+    .signin-prompt {
+      margin-top: 18px;
+      font-size: 13px;
+      color: #888;
+      text-align: center;
+    }
+
+    .signin-link {
+      color: #8e44ff;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color .2s;
+    }
+
+    .signin-link:hover {
+      color: #6a22d0;
+      text-decoration: underline;
+    }
+
+    /* -------- BACK BUTTON -------- */
+    .back-wrapper {
+      position: fixed;
+      top: 30px;
+      left: 40px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 30px;
+      background: linear-gradient(135deg, #c950fc, #f2f2f2);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      color: #000;
+      transition: box-shadow .3s ease;
+      z-index: 10;
+    }
+
+    .back-wrapper .arrow {
+      font-size: 18px;
+      transition: transform .3s ease;
+    }
+
+    .back-wrapper:hover {
+      box-shadow: 0 12px 25px rgba(0, 0, 0, .12);
+    }
+
+    .back-wrapper:hover .arrow {
+      transform: translateX(-4px);
+    }
+
+    /* -------- SUCCESS OVERLAY -------- */
+    .success-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(245, 247, 251, .92);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .success-overlay.show {
+      display: flex;
+      animation: fadeIn .3s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .success-icon {
+      width: 70px; height: 70px;
+      border-radius: 50%;
+      background: linear-gradient(45deg, #8e44ff, #32d2aa);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: white;
+      animation: popIn .4s cubic-bezier(.34, 1.56, .64, 1) both;
+      box-shadow: 0 10px 30px rgba(142, 68, 255, .4);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(.4); opacity: 0; }
+      to   { transform: scale(1);  opacity: 1; }
+    }
+
+    .success-overlay h2 {
+      font-size: 22px;
+      color: #333;
+      margin-top: 4px;
+    }
+
+    .success-overlay p {
+      font-size: 14px;
+      color: #888;
+      text-align: center;
+      max-width: 260px;
+    }
+
+    .success-overlay a {
+      margin-top: 8px;
+      padding: 12px 32px;
+      border-radius: 30px;
+      background: #8e44ff;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      transition: .25s;
+      box-shadow: 0 8px 20px rgba(142, 68, 255, .3);
+    }
+
+    .success-overlay a:hover { transform: scale(1.04); }
+
+    @media (max-width: 480px) {
+      .row { grid-template-columns: 1fr; }
+      .register-container { padding: 35px 24px; }
+      .back-wrapper { top: 16px; left: 16px; padding: 8px 14px; font-size: 13px; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- Floating shapes -->
+<div class="background">
+  <div class="shape s1"></div>
+  <div class="shape s2"></div>
+  <div class="shape s3"></div>
+</div>
+
+<!-- Success overlay -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-icon">✓</div>
+  <h2>Welcome to EVEXA!</h2>
+  <p>Your organizer account has been successfully created.</p>
+  <a href="ogsignin.html">Go to Sign In</a>
+</div>
+
+<div class="register-container">
+
+  <h1>Organizer Register</h1>
+  <p class="subtitle">Create your EVEXA organizer account</p>
+
+  <form class="register-form" id="registerForm" novalidate>
+
+    <!-- Avatar -->
+    <div class="field-group">
+      <label>Profile Photo <span style="color:#bbb;font-weight:400;text-transform:none">(optional)</span></label>
+      <div class="avatar-upload">
+        <div class="avatar-preview" id="avatarPreview">👤</div>
+        <div>
+          <button type="button" class="avatar-btn" onclick="document.getElementById('avatarInput').click()">Upload Photo</button>
+          <input type="file" id="avatarInput" accept="image/*"/>
+          <div style="font-size:11px;color:#bbb;margin-top:4px;">JPG, PNG — max 2MB</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Name -->
+    <div class="field-group">
+      <label for="name">Full Name</label>
+      <input type="text" id="name" placeholder="e.g. Poorna Prakash" autocomplete="name" required/>
+      <span class="error-msg" id="err_name">Please enter your full name.</span>
+    </div>
+
+    <!-- Email & Phone -->
+    <div class="row">
+      <div class="field-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="organizer@mail.com" autocomplete="email" required/>
+        <span class="error-msg" id="err_email">Enter a valid email.</span>
+      </div>
+      <div class="field-group">
+        <label for="phone">Phone <span style="color:#bbb;font-weight:400;text-transform:none">(opt.)</span></label>
+        <input type="tel" id="phone" placeholder="+91 9876543210"/>
+      </div>
+    </div>
+
+    <!-- Admission No & Roll No -->
+    <div class="row">
+      <div class="field-group">
+        <label for="admission_no">Admission No.</label>
+        <input type="text" id="admission_no" placeholder="e.g. 2023B102" required/>
+        <span class="error-msg" id="err_admission">Required.</span>
+      </div>
+      <div class="field-group">
+        <label for="roll_no">Roll No.</label>
+        <input type="text" id="roll_no" placeholder="e.g. LBT23IT044" required/>
+        <span class="error-msg" id="err_roll">Required.</span>
+      </div>
+    </div>
+
+    <!-- Class & Club -->
+    <div class="row">
+      <div class="field-group">
+        <label for="class_name">Semester</label>
+        <input type="text" id="class_name" placeholder="e.g. S6" required/>
+        <span class="error-msg" id="err_class">Required.</span>
+      </div>
+      <div class="field-group">
+        <label for="club">Club / Society</label>
+        <input type="text" id="club" placeholder="e.g. IEEE" required/>
+        <span class="error-msg" id="err_club">Required.</span>
+      </div>
+    </div>
+
+    <!-- Password -->
+    <div class="field-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Create a strong password" autocomplete="new-password" required/>
+      <div class="strength-bar">
+        <div class="strength-seg" id="seg1"></div>
+        <div class="strength-seg" id="seg2"></div>
+        <div class="strength-seg" id="seg3"></div>
+        <div class="strength-seg" id="seg4"></div>
+      </div>
+      <span class="strength-label" id="strengthLabel"></span>
+      <span class="error-msg" id="err_password">Password must be at least 8 characters.</span>
+    </div>
+
+    <!-- Confirm Password -->
+    <div class="field-group">
+      <label for="confirm_password">Confirm Password</label>
+      <input type="password" id="confirm_password" placeholder="Re-enter your password" autocomplete="new-password" required/>
+      <span class="error-msg" id="err_confirm">Passwords do not match.</span>
+    </div>
+
+    <button type="submit" class="register-btn" id="submitBtn">Create Account</button>
+
+  </form>
+
+  <p class="signin-prompt">
+    Already have an account? <a href="ogsignin.html" class="signin-link">Sign In</a>
+  </p>
+
+</div>
+
+<a href="../index.html" class="back-wrapper">
+  <span class="arrow">←</span> Back
+</a>
+
+<script>
+  /* Avatar preview */
+  document.getElementById('avatarInput').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const prev = document.getElementById('avatarPreview');
+      prev.innerHTML = `<img src="${e.target.result}" alt="avatar"/>`;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  /* Password strength */
+  const passwordInput = document.getElementById('password');
+  const segs = ['seg1','seg2','seg3','seg4'].map(id => document.getElementById(id));
+  const strengthLabel = document.getElementById('strengthLabel');
+  const sColors = ['#ff5f6d','#ffc371','#8e44ff','#32d2aa'];
+  const sLabels = ['Weak','Fair','Good','Strong'];
+
+  function getStrength(pw) {
+    let s = 0;
+    if (pw.length >= 8)           s++;
+    if (/[A-Z]/.test(pw))         s++;
+    if (/[0-9]/.test(pw))         s++;
+    if (/[^A-Za-z0-9]/.test(pw))  s++;
+    return s;
+  }
+
+  passwordInput.addEventListener('input', () => {
+    const pw = passwordInput.value;
+    if (!pw) { segs.forEach(s => s.style.background = ''); strengthLabel.textContent = ''; return; }
+    const score = getStrength(pw);
+    segs.forEach((s, i) => s.style.background = i < score ? sColors[score - 1] : '');
+    strengthLabel.textContent = sLabels[score - 1] || '';
+    strengthLabel.style.color = sColors[score - 1] || '';
+  });
+
+  /* Validation helpers */
+  function showErr(id, msg) {
+    const el = document.getElementById(id);
+    if (msg) el.textContent = msg;
+    el.classList.add('visible');
+  }
+  function clearErr(id) { document.getElementById(id).classList.remove('visible'); }
+  function markField(id, valid) { document.getElementById(id).classList.toggle('error', !valid); }
+
+  /* Submit */
+  document.getElementById('registerForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const name             = document.getElementById('name').value.trim();
+    const email            = document.getElementById('email').value.trim();
+    const admission_no     = document.getElementById('admission_no').value.trim();
+    const roll_no          = document.getElementById('roll_no').value.trim();
+    const class_name       = document.getElementById('class_name').value.trim();
+    const club             = document.getElementById('club').value.trim();
+    const password         = document.getElementById('password').value;
+    const confirm_password = document.getElementById('confirm_password').value;
+
+    let valid = true;
+
+    if (!name)        { showErr('err_name','Please enter your full name.'); markField('name',false);        valid=false; } else { clearErr('err_name');      markField('name',true); }
+    if (!admission_no){ showErr('err_admission','Required.');               markField('admission_no',false); valid=false; } else { clearErr('err_admission'); markField('admission_no',true); }
+    if (!roll_no)     { showErr('err_roll','Required.');                    markField('roll_no',false);      valid=false; } else { clearErr('err_roll');      markField('roll_no',true); }
+    if (!class_name)  { showErr('err_class','Required.');                   markField('class_name',false);   valid=false; } else { clearErr('err_class');     markField('class_name',true); }
+    if (!club)        { showErr('err_club','Required.');                    markField('club',false);         valid=false; } else { clearErr('err_club');      markField('club',true); }
+
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(email)) { showErr('err_email','Enter a valid email address.'); markField('email',false); valid=false; } else { clearErr('err_email'); markField('email',true); }
+
+    if (password.length < 8)           { showErr('err_password','Password must be at least 8 characters.'); markField('password',false);         valid=false; } else { clearErr('err_password'); markField('password',true); }
+    if (password !== confirm_password)  { showErr('err_confirm','Passwords do not match.');                  markField('confirm_password',false); valid=false; } else { clearErr('err_confirm');  markField('confirm_password',true); }
+
+    if (!valid) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+
+    /* Step 1 — duplicate admission_no check */
+    try {
+      const checkRes = await fetch('http://localhost:5000/api/auth/check-organizer-admission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admission_no })
+      });
+      const checkData = await checkRes.json();
+
+      if (checkData.exists) {
+        showErr('err_admission', 'This admission number is already registered.');
+        markField('admission_no', false);
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        return;
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
+      alert('Could not verify admission number. Please try again.');
+      return;
+    }
+
+    /* Step 2 — proceed with registration */
+    btn.textContent = 'Creating Account…';
+
+    try {
+      const regRes = await fetch('/api/auth/organizer-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          phone: document.getElementById('phone').value.trim(),
+          admission_no,
+          roll_no,
+          class: class_name,
+          club,
+          password
+        })
+      });
+      const regData = await regRes.json();
+
+      if (regRes.ok && regData.success) {
+        document.getElementById('successOverlay').classList.add('show');
+      } else {
+        alert(regData.message || 'Registration failed. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    } catch (err) {
+      alert('Server error. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
+    }
+  });
+</script>
+
+</body>
+</html>

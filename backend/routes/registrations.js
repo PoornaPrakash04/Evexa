@@ -51,23 +51,34 @@ router.get("/my", authorize(), (req, res) => {
   });
 });
 // ✅ GET /api/registrations/event/:eventId
+// ✅ GET /api/registrations/event/:eventId
 router.get("/event/:eventId", authorize(), (req, res) => {
   const eventId = Number(req.params.eventId);
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  const organizerId = req.user?.id;
+  if (!organizerId) return res.status(401).json({ message: "No organizer id in token" });
 
   const sql = `
     SELECT
       r.id,
       COALESCE(s.name, 'Unknown Student') AS name,
+      s.email,
+      s.phone,
+      s.class,
+      s.department,
+      e.title AS event_title,
       r.registered_at,
       'Registered' AS status
     FROM registrations r
+    JOIN events e ON e.id = r.event_id
     LEFT JOIN students s ON s.id = r.student_id
     WHERE r.event_id = ?
+      AND e.organizer_id = ?
     ORDER BY r.registered_at DESC
   `;
 
-  db.query(sql, [eventId], (err, rows) => {
+  db.query(sql, [eventId, organizerId], (err, rows) => {
     if (err) {
       console.error("❌ registrations/event error:", err);
       return res.status(500).json({ message: "Failed to load event registrations", error: err.message });

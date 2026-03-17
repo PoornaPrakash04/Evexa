@@ -136,7 +136,7 @@ router.get("/", (req, res) => {
     `SELECT events.*, clubs.club_name AS club, clubs.club_logo 
      FROM events 
      LEFT JOIN clubs ON events.club_id = clubs.club_id
-     WHERE events.status = 'Approved' ORDER BY events.date DESC`,
+     WHERE events.status IN ('Approved', 'Completed') ORDER BY events.date DESC`,
     (err, result) => {
       if (err) return res.status(500).json({ message: "Server error" });
       res.json(result);

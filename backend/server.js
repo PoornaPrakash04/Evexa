@@ -1,6 +1,8 @@
+//server.js
 require("dotenv").config();
 const express = require("express");
-const cors = require("cors");
+const cors    = require("cors");
+const db      = require("./db");
 
 const authRoutes         = require("./routes/auth");
 const eventRoutes        = require("./routes/events");
@@ -13,16 +15,22 @@ const announcementRoutes = require("./routes/announcements");
 const execomRoutes       = require("./routes/execom");
 const ticketRoutes       = require("./routes/tickets");
 const registrationsRoute = require("./routes/registrations");
+const facultyRoutes      = require("./routes/faculty");
+
 const app = express();
-const facultyRoutes = require("./routes/faculty");
 
-
-app.use(cors());
+app.use(cors({
+  origin: ["http://localhost:5500", "http://127.0.0.1:5500",
+           "http://localhost:5501", "http://127.0.0.1:5501"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static("frontend"));
 app.use("/uploads", express.static("uploads"));
-app.use("/api/auth",          authRoutes);
-app.use("/api/user",          authRoutes);
+
+app.use("/api/auth",          authRoutes);       // ← check-admission & student-register live here
 app.use("/api/events",        eventRoutes);
 app.use("/api/attendance",    attendanceRoutes);
 app.use("/api/certificates",  certificateRoutes);
@@ -32,12 +40,10 @@ app.use("/api/execom",        execomRoutes);
 app.use("/api/student",       studentRoutes);
 app.use("/api/clubs",         clubRoutes);
 app.use("/api/tickets",       ticketRoutes);
-app.use("/api/faculty", require("./routes/faculty"));
 app.use("/api/registrations", registrationsRoute);
+app.use("/api/faculty",       facultyRoutes);
 app.get("/", (req, res) => res.send("EVEXA Backend is running"));
 
-
 app.listen(5000, () => {
-  console.log("Server running on http://localhost:5000");
-  console.log("JWT_SECRET:", process.env.JWT_SECRET);
+  console.log("🚀 Server running on http://localhost:5000");
 });

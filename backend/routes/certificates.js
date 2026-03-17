@@ -1,20 +1,22 @@
 // ============================================================
-// routes/certificates.js — EVEXA Certificate System
+// routes/certificates.js — EVEXA Certificate System (UPDATED)
+// Only organizer's COMPLETED events are returned in /events
+// Also fixes db.execute vs db.query mismatch (uses db.query everywhere)
 // ============================================================
 
 require("dotenv").config();
-const express    = require("express");
-const router     = express.Router();
-const multer     = require("multer");
-const XLSX       = require("xlsx");
-const fs         = require("fs");
-const path       = require("path");
+const express = require("express");
+const router = express.Router();
+const multer = require("multer");
+const XLSX = require("xlsx");
+const fs = require("fs");
+const path = require("path");
 const { PDFDocument, rgb, StandardFonts } = require("pdf-lib");
-const archiver   = require("archiver");
+const archiver = require("archiver");
 const { v4: uuidv4 } = require("uuid");
-const jwt        = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 
-const db = require("../db"); 
+const db = require("../db");
 
 // ─────────────────────────────────────────────────────────────
 // Auth middleware
@@ -38,7 +40,7 @@ function authorize(roles = []) {
 // ─────────────────────────────────────────────────────────────
 // Ensure upload directories exist on startup
 // ─────────────────────────────────────────────────────────────
-["uploads/templates", "uploads/excels", "generated_certificates"].forEach(dir => {
+["uploads/templates", "uploads/excels", "generated_certificates"].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -81,14 +83,14 @@ function hexToRgb(hex) {
 // ─────────────────────────────────────────────────────────────
 async function drawName(page, name, opts = {}) {
   const { width, height } = page.getSize();
-  const font     = opts.font;
+  const font = opts.font;
   const fontSize = opts.fontSize || 36;
-  const color    = opts.color    || rgb(0.1, 0.1, 0.1);
-  const xPct     = opts.xPct !== undefined ? opts.xPct : 0.5;
-  const yPct     = opts.yPct !== undefined ? opts.yPct : 0.52;
+  const color = opts.color || rgb(0.1, 0.1, 0.1);
+  const xPct = opts.xPct !== undefined ? opts.xPct : 0.5;
+  const yPct = opts.yPct !== undefined ? opts.yPct : 0.52;
 
   const textWidth = font.widthOfTextAtSize(name, fontSize);
-  const x = width  * xPct - textWidth / 2;
+  const x = width * xPct - textWidth / 2;
   const y = height * yPct;
 
   page.drawText(name, { x, y, size: fontSize, font, color });
@@ -96,64 +98,63 @@ async function drawName(page, name, opts = {}) {
 
 // ─────────────────────────────────────────────────────────────
 // [ORGANIZER] GET /api/certificates/events
-// Returns all events owned by the requesting organizer,
-// including registration count and how many certs issued.
+// ✅ Only events owned by organizer AND status = 'Completed'
+// Includes registration count and certs issued.
 // ─────────────────────────────────────────────────────────────
-router.get("/events", authorize(["ORGANIZER"]), async (req, res) => {
-  try {
-    const [rows] = await db.execute(
-      `SELECT e.id, e.title, e.date, e.venue,
-              COUNT(DISTINCT r.id) AS registered_count,
-              COUNT(DISTINCT c.id) AS certs_issued
-       FROM events e
-       LEFT JOIN registrations r ON r.event_id = e.id
-       LEFT JOIN certificates  c ON c.event_id = e.id
-       WHERE e.organizer_id = ?
-       GROUP BY e.id
-       ORDER BY e.date DESC`,
-      [req.user.id]
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error("GET /certificates/events error:", err);
-    res.status(500).json({ message: "Failed to load events" });
-  }
+router.get("/events", authorize(["ORGANIZER"]), (req, res) => {
+  const organizerId = req.user?.id;
+  if (!organizerId) return res.status(401).json({ message: "Unauthorized" });
+
+  const sql = `
+    SELECT e.id, e.title, e.date, e.venue,
+           COUNT(DISTINCT r.id) AS registered_count,
+           COUNT(DISTINCT c.id) AS certs_issued
+    FROM events e
+    LEFT JOIN registrations r ON r.event_id = e.id
+    LEFT JOIN certificates  c ON c.event_id = e.id
+    WHERE e.organizer_id = ?
+      AND e.status = 'Completed'
+    GROUP BY e.id
+    ORDER BY e.date DESC
+  `;
+
+  db.query(sql, [organizerId], (err, rows) => {
+    if (err) {
+      console.error("GET /certificates/events error:", err);
+      return res.status(500).json({ message: "Failed to load events" });
+    }
+    res.json(rows || []);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────
 // [ORGANIZER] GET /api/certificates/participants/:eventId
 // Returns all registered participants for a given event.
 // ─────────────────────────────────────────────────────────────
-router.get("/participants/:eventId", authorize(["ORGANIZER"]), async (req, res) => {
-  try {
-    const [rows] = await db.execute(
-      `SELECT r.id, s.id AS student_id, s.name, s.email, s.roll_no, r.status
-       FROM registrations r
-       JOIN students s ON s.id = r.student_id
-       WHERE r.event_id = ?
-       ORDER BY s.name ASC`,
-      [req.params.eventId]
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error("GET /certificates/participants error:", err);
-    res.status(500).json({ message: "Failed to load participants" });
-  }
+router.get("/participants/:eventId", authorize(["ORGANIZER"]), (req, res) => {
+  const eventId = Number(req.params.eventId);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  const sql = `
+    SELECT r.id, s.id AS student_id, s.name, s.email, s.roll_no, r.status
+    FROM registrations r
+    JOIN students s ON s.id = r.student_id
+    WHERE r.event_id = ?
+    ORDER BY s.name ASC
+  `;
+
+  db.query(sql, [eventId], (err, rows) => {
+    if (err) {
+      console.error("GET /certificates/participants error:", err);
+      return res.status(500).json({ message: "Failed to load participants" });
+    }
+    res.json(rows || []);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────
 // [ORGANIZER] POST /api/certificates/preview
 // Renders a single preview PDF with a sample name.
-//
-// Body (multipart/form-data):
-//   template     — PDF file (required)
-//   preview_name — string (default: "John Doe")
-//   font_size    — number (default: 36)
-//   x_pct        — 0-100 (default: 50)
-//   y_pct        — 0-100 (default: 52)
-//   color_hex    — hex color string (default: #1a1a2e)
-//
-// Response: PDF binary, inline
 // ─────────────────────────────────────────────────────────────
 router.post(
   "/preview",
@@ -164,30 +165,31 @@ router.post(
     if (!templatePath)
       return res.status(400).json({ message: "PDF template is required" });
 
-    const fontSize    = parseFloat(req.body.font_size) || 36;
-    const xPct        = (parseFloat(req.body.x_pct)    || 50) / 100;
-    const yPct        = (parseFloat(req.body.y_pct)    || 52) / 100;
-    const color       = hexToRgb(req.body.color_hex);
-    const previewName = req.body.preview_name           || "John Doe";
+    const fontSize = parseFloat(req.body.font_size) || 36;
+    const xPct = (parseFloat(req.body.x_pct) || 50) / 100;
+    const yPct = (parseFloat(req.body.y_pct) || 52) / 100;
+    const color = hexToRgb(req.body.color_hex);
+    const previewName = req.body.preview_name || "John Doe";
 
     try {
       const templateBytes = fs.readFileSync(templatePath);
-      const pdfDoc        = await PDFDocument.load(templateBytes);
-      const font          = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-      const idFont        = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const firstPage     = pdfDoc.getPages()[0];
+      const pdfDoc = await PDFDocument.load(templateBytes);
+      const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const idFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const firstPage = pdfDoc.getPages()[0];
 
       await drawName(firstPage, previewName, { font, fontSize, color, xPct, yPct });
 
       firstPage.drawText("Certificate ID: PREVIEW", {
-        x: 30, y: 28,
+        x: 30,
+        y: 28,
         size: 9,
         font: idFont,
         color: rgb(0.5, 0.5, 0.5),
       });
 
       const pdfBytes = await pdfDoc.save();
-      res.setHeader("Content-Type",        "application/pdf");
+      res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "inline; filename=preview.pdf");
       res.send(Buffer.from(pdfBytes));
     } catch (err) {
@@ -200,141 +202,143 @@ router.post(
 // ─────────────────────────────────────────────────────────────
 // [ORGANIZER] POST /api/certificates/generate
 // Generates one PDF per participant, saves them, zips & sends.
-//
-// Body (multipart/form-data):
-//   template     — PDF file (required)
-//   event_id     — number (required when source is DB)
-//   excel        — xlsx/csv file (optional, overrides DB source)
-//   font_size    — number (default: 36)
-//   x_pct        — 0-100 (default: 50)
-//   y_pct        — 0-100 (default: 52)
-//   color_hex    — hex color string (default: #1a1a2e)
-//
-// Response: ZIP download containing one PDF per participant
-//
-// Side effects:
-//   - Inserts/updates rows in `certificates` table
-//   - Updates events.certs_issued count
 // ─────────────────────────────────────────────────────────────
 router.post(
   "/generate",
   authorize(["ORGANIZER"]),
   upload.fields([
     { name: "template", maxCount: 1 },
-    { name: "excel",    maxCount: 1 },
+    { name: "excel", maxCount: 1 },
   ]),
   async (req, res) => {
     const templatePath = req.files?.template?.[0]?.path;
-    const excelPath    = req.files?.excel?.[0]?.path;
+    const excelPath = req.files?.excel?.[0]?.path;
 
     if (!templatePath)
       return res.status(400).json({ message: "PDF template is required" });
 
     const fontSize = parseFloat(req.body.font_size) || 36;
-    const xPct     = (parseFloat(req.body.x_pct)    || 50) / 100;
-    const yPct     = (parseFloat(req.body.y_pct)    || 52) / 100;
-    const color    = hexToRgb(req.body.color_hex);
-    const eventId  = req.body.event_id ? Number(req.body.event_id) : null;
+    const xPct = (parseFloat(req.body.x_pct) || 50) / 100;
+    const yPct = (parseFloat(req.body.y_pct) || 52) / 100;
+    const color = hexToRgb(req.body.color_hex);
+    const eventId = req.body.event_id ? Number(req.body.event_id) : null;
 
     // ── Collect participants ───────────────────────────────
     let participants = [];
-    const source     = excelPath ? "excel" : "db";
+    const source = excelPath ? "excel" : "db";
 
-    if (source === "excel") {
-      const wb    = XLSX.readFile(excelPath);
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows  = XLSX.utils.sheet_to_json(sheet);
+    try {
+      if (source === "excel") {
+        const wb = XLSX.readFile(excelPath);
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
 
-      participants = rows
-        .map(r => ({
-          student_id: r.student_id || r.StudentId || null,
-          name:       (r.Name || r.name || r.NAME || String(Object.values(r)[0])).trim(),
-          email:      r.Email || r.email || null,
-        }))
-        .filter(p => p.name && p.name !== "undefined");
-
-    } else if (eventId) {
-      const [rows] = await db.execute(
-        `SELECT s.id AS student_id, s.name, s.email
-         FROM registrations r
-         JOIN students s ON s.id = r.student_id
-         WHERE r.event_id = ?
-         ORDER BY s.name ASC`,
-        [eventId]
-      );
-      participants = rows;
+        participants = rows
+          .map((r) => ({
+            student_id: r.student_id || r.StudentId || null,
+            name: (r.Name || r.name || r.NAME || String(Object.values(r)[0] || "")).trim(),
+            email: r.Email || r.email || null,
+          }))
+          .filter((p) => p.name && p.name !== "undefined");
+      } else if (eventId) {
+        participants = await new Promise((resolve, reject) => {
+          db.query(
+            `
+            SELECT s.id AS student_id, s.name, s.email
+            FROM registrations r
+            JOIN students s ON s.id = r.student_id
+            WHERE r.event_id = ?
+            ORDER BY s.name ASC
+          `,
+            [eventId],
+            (err, rows) => {
+              if (err) return reject(err);
+              resolve(rows || []);
+            }
+          );
+        });
+      }
+    } catch (e) {
+      console.error("Participant fetch error:", e);
+      return res.status(500).json({ message: "Failed to fetch participants" });
     }
 
     if (!participants.length)
       return res.status(400).json({ message: "No participants found" });
 
     // ── Create output folder ───────────────────────────────
-    // Named by eventId so student downloads can find the files later
-    const folderName   = eventId ? String(eventId) : uuidv4();
+    const folderName = eventId ? String(eventId) : uuidv4();
     const outputFolder = path.join("generated_certificates", folderName);
     fs.mkdirSync(outputFolder, { recursive: true });
 
     const templateBytes = fs.readFileSync(templatePath);
 
-    // ── Generate one PDF per participant ───────────────────
+    // ── Generate PDFs ───────────────────────────────────────
     for (const person of participants) {
-      const pdfDoc    = await PDFDocument.load(templateBytes);
-      const font      = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-      const idFont    = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const pdfDoc = await PDFDocument.load(templateBytes);
+      const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const idFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const firstPage = pdfDoc.getPages()[0];
-      const certId    = uuidv4().slice(0, 8).toUpperCase();
+      const certId = uuidv4().slice(0, 8).toUpperCase();
 
       await drawName(firstPage, person.name, { font, fontSize, color, xPct, yPct });
 
       firstPage.drawText(`Certificate ID: ${certId}`, {
-        x: 30, y: 28,
+        x: 30,
+        y: 28,
         size: 9,
         font: idFont,
         color: rgb(0.5, 0.5, 0.5),
       });
 
       const pdfBytes = await pdfDoc.save();
-      const safeName = person.name.replace(/[^a-zA-Z0-9 _-]/g, "").trim() || "Participant";
+      const safeName =
+        person.name.replace(/[^a-zA-Z0-9 _-]/g, "").trim() || "Participant";
       const filePath = path.join(outputFolder, `${safeName}.pdf`);
 
       fs.writeFileSync(filePath, pdfBytes);
 
       // ── Save record to DB so student can download later ──
       if (eventId && person.student_id) {
-        try {
-          await db.execute(
-            `INSERT INTO certificates (event_id, student_id, student_name, file_path, cert_id)
-             VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-               file_path = VALUES(file_path),
-               cert_id   = VALUES(cert_id),
-               issued_at = NOW()`,
-            [eventId, person.student_id, person.name, filePath, certId]
+        await new Promise((resolve) => {
+          db.query(
+            `
+            INSERT INTO certificates (event_id, student_id, student_name, file_path, cert_id)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+              file_path = VALUES(file_path),
+              cert_id   = VALUES(cert_id),
+              issued_at = NOW()
+          `,
+            [eventId, person.student_id, person.name, filePath, certId],
+            (err) => {
+              if (err) {
+                console.warn(`DB cert record failed for ${person.name}:`, err.message);
+              }
+              resolve();
+            }
           );
-        } catch (dbErr) {
-          console.warn(`DB cert record failed for ${person.name}:`, dbErr.message);
-        }
+        });
       }
     }
 
     // ── Update event cert count ────────────────────────────
     if (eventId) {
-      try {
-        await db.execute(
-          `UPDATE events SET certs_issued = ? WHERE id = ?`,
-          [participants.length, eventId]
-        );
-      } catch (e) {
-        console.warn("Could not update certs_issued:", e.message);
-      }
+      db.query(
+        `UPDATE events SET certs_issued = ? WHERE id = ?`,
+        [participants.length, eventId],
+        (err) => {
+          if (err) console.warn("Could not update certs_issued:", err.message);
+        }
+      );
     }
 
-    // ── Zip all PDFs and stream download ───────────────────
+    // ── Zip and send ───────────────────────────────────────
     const zipPath = `${outputFolder}.zip`;
-    const output  = fs.createWriteStream(zipPath);
+    const output = fs.createWriteStream(zipPath);
     const archive = archiver("zip", { zlib: { level: 9 } });
 
-    archive.on("error", err => {
+    archive.on("error", (err) => {
       console.error("Archive error:", err);
       if (!res.headersSent) res.status(500).json({ message: "Zip creation failed" });
     });
@@ -346,7 +350,6 @@ router.post(
     output.on("close", () => {
       const zipName = eventId ? `certificates-event-${eventId}.zip` : "certificates.zip";
       res.download(zipPath, zipName, () => {
-        // Delete zip after download; keep individual PDFs for student access
         setTimeout(() => {
           fs.rmSync(zipPath, { force: true });
           if (excelPath) fs.rmSync(excelPath, { force: true });
@@ -358,74 +361,84 @@ router.post(
 
 // ─────────────────────────────────────────────────────────────
 // [STUDENT] GET /api/certificates/status/:eventId
-// Checks whether this student's certificate has been issued.
-//
-// Response:
-//   { available: false }
-//   { available: true, issued_at: "...", event_title: "..." }
 // ─────────────────────────────────────────────────────────────
-router.get("/status/:eventId", authorize(["STUDENT"]), async (req, res) => {
-  try {
-    const [rows] = await db.execute(
-      `SELECT c.id, c.file_path, c.issued_at, e.title AS event_title
-       FROM certificates c
-       JOIN events e ON e.id = c.event_id
-       WHERE c.event_id = ? AND c.student_id = ?`,
-      [req.params.eventId, req.user.id]
-    );
+router.get("/status/:eventId", authorize(["STUDENT"]), (req, res) => {
+  const eventId = Number(req.params.eventId);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
-    if (!rows.length)
-      return res.json({ available: false });
+  const sql = `
+    SELECT c.id, c.file_path, c.issued_at, e.title AS event_title
+    FROM certificates c
+    JOIN events e ON e.id = c.event_id
+    WHERE c.event_id = ? AND c.student_id = ?
+    LIMIT 1
+  `;
 
-    const filePath   = rows[0].file_path;
+  db.query(sql, [eventId, req.user.id], (err, rows) => {
+    if (err) {
+      console.error("Certificate status error:", err);
+      return res.status(500).json({ message: "Failed to check certificate status" });
+    }
+
+    if (!rows || !rows.length) return res.json({ available: false });
+
+    const filePath = rows[0].file_path;
     const fileExists = !!(filePath && fs.existsSync(filePath));
 
     res.json({
-      available:   fileExists,
-      issued_at:   rows[0].issued_at,
+      available: fileExists,
+      issued_at: rows[0].issued_at,
       event_title: rows[0].event_title,
     });
-  } catch (err) {
-    console.error("Certificate status error:", err);
-    res.status(500).json({ message: "Failed to check certificate status" });
-  }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────
 // [STUDENT] GET /api/certificates/download/:eventId
-// Streams the student's individual certificate PDF.
 // ─────────────────────────────────────────────────────────────
-router.get("/download/:eventId", authorize(["STUDENT"]), async (req, res) => {
-  try {
-    const [rows] = await db.execute(
-      `SELECT c.file_path, s.name AS student_name, e.title AS event_title
-       FROM certificates c
-       JOIN students s ON s.id = c.student_id
-       JOIN events   e ON e.id = c.event_id
-       WHERE c.event_id = ? AND c.student_id = ?`,
-      [req.params.eventId, req.user.id]
-    );
+router.get("/download/:eventId", authorize(["STUDENT"]), (req, res) => {
+  const eventId = Number(req.params.eventId);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
-    if (!rows.length)
-      return res.status(404).json({ message: "Certificate not found. It may not have been issued yet." });
+  const sql = `
+    SELECT c.file_path, s.name AS student_name, e.title AS event_title
+    FROM certificates c
+    JOIN students s ON s.id = c.student_id
+    JOIN events   e ON e.id = c.event_id
+    WHERE c.event_id = ? AND c.student_id = ?
+    LIMIT 1
+  `;
+
+  db.query(sql, [eventId, req.user.id], (err, rows) => {
+    if (err) {
+      console.error("Certificate download error:", err);
+      return res.status(500).json({ message: "Server error while downloading certificate" });
+    }
+
+    if (!rows || !rows.length)
+      return res.status(404).json({
+        message: "Certificate not found. It may not have been issued yet.",
+      });
 
     const filePath = rows[0].file_path;
 
     if (!filePath || !fs.existsSync(filePath))
-      return res.status(404).json({ message: "Certificate file missing on server. Please contact the organizer." });
+      return res.status(404).json({
+        message: "Certificate file missing on server. Please contact the organizer.",
+      });
 
-    const safeName     = (rows[0].student_name || "Student").replace(/[^a-zA-Z0-9 _-]/g, "").trim();
-    const eventSlug    = (rows[0].event_title  || "Event").replace(/[^a-zA-Z0-9 _-]/g, "-").slice(0, 40);
+    const safeName = (rows[0].student_name || "Student")
+      .replace(/[^a-zA-Z0-9 _-]/g, "")
+      .trim();
+    const eventSlug = (rows[0].event_title || "Event")
+      .replace(/[^a-zA-Z0-9 _-]/g, "-")
+      .slice(0, 40);
     const downloadName = `Certificate-${safeName}-${eventSlug}.pdf`;
 
-    res.setHeader("Content-Type",        "application/pdf");
+    res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${downloadName}"`);
     fs.createReadStream(filePath).pipe(res);
-
-  } catch (err) {
-    console.error("Certificate download error:", err);
-    res.status(500).json({ message: "Server error while downloading certificate" });
-  }
+  });
 });
 
 module.exports = router;
