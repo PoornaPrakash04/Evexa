@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,21 +29,12 @@
         <span class="icon">📋</span><span class="nav-label">Event Proposals</span>
         <span class="nav-badge orange" id="badge-proposals">–</span>
       </button>
-      <button class="nav-item" data-page="certificates" data-tooltip="Certificates">
-        <span class="icon">🎓</span><span class="nav-label">Certificates</span>
-        <span class="nav-badge green" id="badge-certs">–</span>
-      </button>
-      <button class="nav-item" data-page="pending" data-tooltip="Pending">
-        <span class="icon">⏳</span><span class="nav-label">Pending Queue</span>
-        <span class="nav-badge red" id="badge-pending">–</span>
-      </button>
+    
+      
 
       <div class="section-label">Events</div>
       <button class="nav-item" data-page="event-list" data-tooltip="All Events">
         <span class="icon">📅</span><span class="nav-label">Event List</span>
-      </button>
-      <button class="nav-item" data-page="calendar" data-tooltip="Calendar">
-        <span class="icon">🗓️</span><span class="nav-label">Calendar View</span>
       </button>
 
       <div class="section-label">Clubs & Reports</div>
@@ -62,10 +51,6 @@
       <div class="section-label">Communication</div>
       <button class="nav-item" data-page="announcements" data-tooltip="Announcements">
         <span class="icon">📢</span><span class="nav-label">Announcements</span>
-      </button>
-      <button class="nav-item" data-page="notif-history" data-tooltip="Notifications">
-        <span class="icon">🔔</span><span class="nav-label">Notif History</span>
-        <span class="nav-badge" id="badge-notif">–</span>
       </button>
     </nav>
 
@@ -89,7 +74,7 @@
         <button class="icon-btn" id="sidebarToggle" aria-label="Menu">☰</button>
         <div class="page-title">
           <div class="title" id="pageTitle">Dashboard</div>
-          <div class="subtitle" id="pageSub">Welcome back — here's your faculty overview.</div>
+          <div class="subtitle" id="pageSub">Welcome back - here's your faculty overview.</div>
         </div>
       </div>
       <div class="topbar-right">
@@ -130,7 +115,7 @@
         <div class="hero-strip" id="heroStrip">
           <div class="hero-left">
             <div class="hero-greeting" id="heroGreeting">Good Morning! Faculty</div>
-            <div class="hero-sub">You have <span id="heroPending" class="hero-accent">–</span> pending approvals and <span id="heroCerts" class="hero-accent">–</span> certificates awaiting review.</div>
+            <div class="hero-sub">You have <span id="heroPending" class="hero-accent">–</span> pending approvals.</div>
           </div>
           <div class="hero-right">
             <div class="hero-stat">
@@ -150,46 +135,59 @@
           </div>
         </div>
 
-        <!-- 3-col layout -->
-        <div class="dash-grid">
-
-          <!-- Pending Approvals -->
-          <div class="panel col-span-1">
-            <div class="panel-header">
-              <div>
-                <div class="panel-title">⏳ Pending Approvals</div>
-                <div class="panel-sub">Requires your attention</div>
-              </div>
-              <button class="btn ghost sm" onclick="navigateTo('proposals')">View All</button>
-            </div>
-            <div class="dash-list" id="dashPendingList"><div class="list-empty">Loading…</div></div>
-          </div>
-
-          <!-- Recent Notifications -->
-          <div class="panel col-span-1">
-            <div class="panel-header">
-              <div>
-                <div class="panel-title">🔔 Recent Notifications</div>
-                <div class="panel-sub">Latest activity</div>
-              </div>
-              <button class="btn ghost sm" onclick="navigateTo('notif-history')">View All</button>
-            </div>
-            <div class="dash-list" id="dashNotifList"><div class="list-empty">Loading…</div></div>
-          </div>
-
-          <!-- Announcement Board -->
-          <div class="panel col-span-1">
-            <div class="panel-header">
-              <div>
-                <div class="panel-title">📢 Announcement Board</div>
-                <div class="panel-sub">Messages from admin</div>
-              </div>
-              <button class="btn ghost sm" onclick="navigateTo('announcements')">View All</button>
-            </div>
-            <div class="panel-body" id="dashAnnouncements"><div class="list-empty">Loading…</div></div>
-          </div>
-
-        </div><!-- /dash-grid -->
+      <div class="panel">
+  <div class="panel-header">
+    <div>
+      <div class="panel-title">🗓️ Calendar Overview</div>
+      <div class="panel-sub">Events by date</div>
+    </div>
+    <div class="cal-controls">
+      <button class="cal-nav-btn" id="dashCalPrev">‹</button>
+      <span class="cal-month-label" id="dashCalMonthLabel"></span>
+      <button class="cal-nav-btn" id="dashCalNext">›</button>
+    </div>
+  </div>
+  <div class="panel-body">
+    <div class="cal-legend">
+      <span class="leg-item"><span class="leg-dot pending-dot"></span>Pending</span>
+      <span class="leg-item"><span class="leg-dot approved-dot"></span>Approved</span>
+      <span class="leg-item"><span class="leg-dot today-dot"></span>Today</span>
+    </div>
+    <div class="mini-calendar" id="dashMiniCalendar"></div>
+    <div class="cal-event-detail" id="dashCalEventDetail" style="display:none">
+      <div class="cal-detail-title" id="dashCalDetailTitle"></div>
+      <div class="cal-detail-meta" id="dashCalDetailMeta"></div>
+      <div class="cal-detail-actions" id="dashCalDetailActions"></div>
+    </div>
+    <div class="panel" id="dashSelectedDatePanel" style="display:none; margin-top:16px;">
+  <div class="panel-header">
+    <div>
+      <div class="panel-title">📋 Events on Selected Date</div>
+      <div class="panel-sub" id="dashSelectedDateSub">Event details</div>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Club</th>
+          <th>Organizer</th>
+          <th>Capacity</th>
+          <th>Venue</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="dashSelectedDateBody">
+        <tr>
+          <td colspan="6" class="td-empty">No events selected.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+  </div>
+</div>
 
         <!-- My Clubs quick view -->
         <div class="panel">
@@ -282,116 +280,25 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Event Name</th>
-                  <th>Organizer</th>
-                  <th>Date</th>
-                  <th>Venue</th>
-                  <th>Category</th>
-                  <th>Capacity</th>
-                  <th>Fee</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
+  <tr>
+    <th>Event Name</th>
+    <th>Organizer</th>
+    <th>Date</th>
+    <th>Venue</th>
+    <th>Category</th>
+    <th>Capacity</th>
+    <th>Fee</th>
+    <th>Status</th>
+    <th>Participants</th> <!-- ✅ NEW -->
+  </tr>
+</thead>
               <tbody id="eventListBody"><tr><td colspan="8" class="td-loading">Loading events…</td></tr></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- ══════════ CALENDAR ══════════ -->
-      <div id="pg-calendar" class="page-section" style="display:none">
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="panel-title">🗓️ Venue & Schedule Calendar</div>
-              <div class="panel-sub">Events requiring approval by date</div>
-            </div>
-            <div class="cal-controls">
-              <button class="cal-nav-btn" id="calPrev">‹</button>
-              <span class="cal-month-label" id="calMonthLabel"></span>
-              <button class="cal-nav-btn" id="calNext">›</button>
-            </div>
-          </div>
-          <div class="panel-body">
-            <div class="cal-legend">
-              <span class="leg-item"><span class="leg-dot pending-dot"></span>Pending</span>
-              <span class="leg-item"><span class="leg-dot approved-dot"></span>Approved</span>
-              <span class="leg-item"><span class="leg-dot today-dot"></span>Today</span>
-            </div>
-            <div class="mini-calendar" id="miniCalendar"></div>
-            <div class="cal-event-detail" id="calEventDetail" style="display:none">
-              <div class="cal-detail-title" id="calDetailTitle"></div>
-              <div class="cal-detail-meta" id="calDetailMeta"></div>
-              <div class="cal-detail-actions" id="calDetailActions"></div>
-            </div>
-          </div>
-        </div>
-        <div class="panel" id="calMonthEventsList">
-          <div class="panel-header">
-            <div class="panel-title">Events This Month</div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Event</th><th>Club</th><th>Date</th><th>Venue</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody id="calMonthBody"><tr><td colspan="6" class="td-loading">Loading…</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══════════ CERTIFICATES ══════════ -->
-      <div id="pg-certificates" class="page-section" style="display:none">
-        <div class="filter-bar">
-          <input class="search-input" id="certSearch" placeholder="🔍  Search student or event…"/>
-          <select class="filter-select" id="certStatusFilter">
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <div class="bulk-actions">
-            <button class="btn success sm" id="bulkCertBtn">✅ Bulk Approve Present</button>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th width="36"><input type="checkbox" class="cb" id="chkAllCerts"/></th>
-                  <th>Student Name</th>
-                  <th>Reg No</th>
-                  <th>Event</th>
-                  <th>Club</th>
-                  <th>Attendance</th>
-                  <th>Cert Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="certsBody"><tr><td colspan="8" class="td-loading">Loading certificates…</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══════════ PENDING QUEUE ══════════ -->
-      <div id="pg-pending" class="page-section" style="display:none">
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header">
-              <div><div class="panel-title">📋 Event Proposals</div><div class="panel-sub" id="pendProposalCount">–</div></div>
-            </div>
-            <div class="dash-list" id="pendingProposalList"><div class="list-empty">Loading…</div></div>
-          </div>
-          <div class="panel">
-            <div class="panel-header">
-              <div><div class="panel-title">🎓 Certificates</div><div class="panel-sub" id="pendCertCount">–</div></div>
-            </div>
-            <div class="dash-list" id="pendingCertList"><div class="list-empty">Loading…</div></div>
-          </div>
-        </div>
-      </div>
+      
 
       <!-- ══════════ CLUB OVERSIGHT ══════════ -->
       <div id="pg-clubs" class="page-section" style="display:none">
@@ -428,16 +335,6 @@
 
       <!-- ══════════ FEEDBACK ══════════ -->
       <div id="pg-feedback" class="page-section" style="display:none">
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">⭐ Ratings by Event</div><div class="panel-sub">Average ratings</div></div></div>
-            <div class="panel-body chart-box"><canvas id="feedbackChart" height="200"></canvas></div>
-          </div>
-          <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">📈 Rating Breakdown</div><div class="panel-sub">Overall distribution</div></div></div>
-            <div class="panel-body" id="ratingBreakdown"><div class="list-empty">Loading…</div></div>
-          </div>
-        </div>
         <div class="panel">
           <div class="panel-header">
             <div><div class="panel-title">💬 Student Comments</div><div class="panel-sub">Recent feedback</div></div>
@@ -483,16 +380,16 @@
       <!-- ══════════ NOTIFICATION HISTORY ══════════ -->
       <div id="pg-notif-history" class="page-section" style="display:none">
         <div class="filter-bar">
-          <select class="filter-select" id="notifTypeFilter">
-            <option value="all">All Types</option>
-            <option value="event">Events</option>
-            <option value="club">Clubs</option>
-            <option value="admin">Admin</option>
-            <option value="cert">Certificates</option>
-          </select>
-          <button class="btn ghost sm" id="markAllReadBtn">Mark all read</button>
-          <button class="btn danger sm" id="clearAllNotifBtn">Clear all</button>
-        </div>
+  <button class="btn ghost sm" id="backToDashboardBtn">← Back</button>
+  <select class="filter-select" id="notifTypeFilter">
+    <option value="all">All Types</option>
+    <option value="event">Events</option>
+    <option value="club">Clubs</option>
+    <option value="admin">Admin</option>
+    <option value="cert">Certificates</option>
+  </select>
+  <button class="btn ghost sm" id="markAllReadBtn">Mark all read</button>
+</div>
         <div class="panel">
           <div class="notif-hist-list" id="notifHistoryList"><div class="list-empty" style="padding:24px;">Loading…</div></div>
         </div>

@@ -20,11 +20,12 @@ router.get("/my-clubs", authorize(), (req, res) => {
     // Return clubs where faculty_id matches logged-in faculty
     db.query(
       `SELECT
-         c.club_id   AS id,
-         c.club_name AS name,
-         c.category,
-         c.club_logo AS logo,
-         c.status,
+         c.club_id           AS id,
+         c.club_name         AS name,
+         c.club_category     AS category,
+         c.club_logo         AS logo,
+         c.short_description AS description,
+         'Active'            AS status,
          COUNT(DISTINCT cm.student_id) AS member_count
        FROM clubs c
        LEFT JOIN club_members cm ON cm.club_id = c.club_id

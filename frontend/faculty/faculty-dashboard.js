@@ -40,7 +40,6 @@ let feedbackInited= false;
 // Data cache
 let cachedProfile   = null;
 let cachedProposals = [];
-let cachedCerts     = [];
 let cachedEvents    = [];
 let cachedClubs     = [];
 let cachedFeedback  = [];
@@ -64,14 +63,17 @@ async function boot() {
     window.innerWidth <= 768 ? s.classList.toggle("mobile-open") : s.classList.toggle("collapsed");
   });
   document.getElementById("themeToggle").addEventListener("click", toggleTheme);
-  document.getElementById("notifBtn").addEventListener("click", toggleNotifDropdown);
+
+  // changed here
+  document.getElementById("notifBtn").addEventListener("click", openNotifHistoryPage);
+
   document.getElementById("notifClearAll")?.addEventListener("click", clearAllNotifs);
   document.getElementById("profileBtn").addEventListener("click", openProfileDrawer);
   document.getElementById("miniUser")?.addEventListener("click", openProfileDrawer);
   document.getElementById("closeProfileBtn")?.addEventListener("click", closeProfileDrawer);
   document.getElementById("overlay")?.addEventListener("click", closeProfileDrawer);
   document.getElementById("markAllReadBtn")?.addEventListener("click", markAllNotifsRead);
-  document.getElementById("clearAllNotifBtn")?.addEventListener("click", clearAllNotifs);
+  document.getElementById("backToDashboardBtn")?.addEventListener("click", () => navigateTo("dashboard"));
   document.getElementById("closeDetail")?.addEventListener("click", () => {
     document.getElementById("proposalDetail").style.display = "none";
   });
@@ -84,21 +86,16 @@ async function boot() {
     if (dd && !wrap?.contains(e.target)) dd.classList.remove("open");
   });
 
-  // Bulk handlers
   initBulk();
   initSearchFilters();
   initCalNav();
 
-  // Load faculty profile — try faculty-specific endpoint first, fallback to /auth/me
   let profile = await apiFetch("/faculty/me");
-
   if (!profile) {
     profile = await apiFetch("/auth/me");
   }
-
   if (!profile) return;
 
-  // Guard: if token belongs to a student (has roll_no but no faculty fields), redirect
   if (!profile.faculty_no && !profile.department && profile.roll_no) {
     localStorage.removeItem("authToken");
     showToast("Please log in with your faculty account.", "error");
@@ -108,7 +105,6 @@ async function boot() {
 
   cachedProfile = profile;
 
-  // Map faculty DB columns: id, faculty_no, name, email, department, role_id
   const name       = profile.name || "Faculty";
   const initials   = name.split(" ").filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2) || "FA";
   const department = profile.department || "Faculty Advisor";
@@ -120,33 +116,37 @@ async function boot() {
   el("topAvatar")?.text(initials);
   el("rolePill")?.text(`Faculty · ${department}`);
 
-  // Greeting
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   el("heroGreeting")?.text(`${greet}, ${name.split(" ")[0]}`);
 
-  // Fetch all data in parallel
   await refreshAll();
 
-  // Render initial page
   renderDashboard();
   updateNotifBadge();
   syncNotifs();
 }
+function openNotifHistoryPage(e) {
+  if (e) e.stopPropagation();
 
+  localNotifs = localNotifs.map(n => ({ ...n, read: true }));
+  saveNotifs();
+  updateNotifBadge();
+
+  navigateTo("notif-history");
+  renderNotifHistory();
+}
 async function refreshAll() {
-  const [proposals, certs, events, clubs, feedback] = await Promise.all([
-    apiFetch("/faculty/proposals"),
-    apiFetch("/faculty/certificates"),
-    fetch(`${API}/events`).then(r => r.ok ? r.json() : []).catch(() => []),
-    apiFetch("/clubs/my-clubs"),
-    apiFetch("/faculty/feedback"),
-  ]);
-  cachedProposals = Array.isArray(proposals) ? proposals : [];
-  cachedCerts     = Array.isArray(certs)     ? certs     : [];
-  cachedEvents    = Array.isArray(events)    ? events    : [];
-  cachedClubs     = Array.isArray(clubs)     ? clubs     : [];
-  cachedFeedback  = Array.isArray(feedback)  ? feedback  : [];
+ const [proposals, events, clubs, feedback] = await Promise.all([
+  apiFetch("/faculty/proposals"),
+  fetch(`${API}/events`).then(r => r.ok ? r.json() : []).catch(() => []),
+  apiFetch("/clubs/my-clubs"),
+  apiFetch("/faculty/feedback"),
+]);
+cachedProposals = Array.isArray(proposals) ? proposals : [];
+cachedEvents    = Array.isArray(events)    ? events    : [];
+cachedClubs     = Array.isArray(clubs)     ? clubs     : [];
+cachedFeedback  = Array.isArray(feedback)  ? feedback  : [];
   updateBadges();
 }
 
@@ -155,8 +155,7 @@ const PAGE_META = {
   "dashboard":     ["Dashboard",              "Welcome back — here's your faculty overview."],
   "proposals":     ["Event Proposal Review",  "Review, approve or reject submitted proposals."],
   "event-list":    ["All Events",             "Complete event list across your clubs."],
-  "calendar":      ["Calendar View",          "Venue & schedule overview by date."],
-  "certificates":  ["Certificate Approvals",  "Verify attendance and issue student certificates."],
+  
   "pending":       ["Pending Queue",          "All items requiring your immediate action."],
   "clubs":         ["Club & Academic Oversight","Your incharge clubs and their activity."],
   "analytics":     ["Reports & Analytics",    "Events, participation, and academic statistics."],
@@ -184,9 +183,7 @@ function navigateTo(page) {
     "dashboard":    renderDashboard,
     "proposals":    renderProposals,
     "event-list":   renderEventList,
-    "calendar":     renderCalendar,
-    "certificates": renderCerts,
-    "pending":      renderPendingPage,
+    
     "clubs":        renderClubs,
     "announcements":renderAnnouncements,
     "notif-history":renderNotifHistory,
@@ -198,68 +195,151 @@ function navigateTo(page) {
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────
 async function renderDashboard() {
-  // Hero stats
   const pending  = cachedProposals.filter(p => p.status === "pending" || p.status === "review");
-  const pendCert = cachedCerts.filter(c => (c.certificate_status || c.status) === "pending");
   const now      = new Date();
-  const activeEv = cachedEvents.filter(e => new Date(e.date) >= now);
-  const students = cachedCerts.reduce((s, c) => s + 1, 0); // total unique in certs
+const activeEv = cachedEvents.filter(e => {
+  const dt = parseEventDate(e.date || e.event_date || e.start_date);
+  return dt && dt >= now;
+});
 
   el("heroPending")?.text(pending.length);
-  el("heroCerts")?.text(pendCert.length);
   el("heroClubs")?.text(cachedClubs.length);
   el("heroEvents")?.text(activeEv.length);
-  el("heroStudents")?.text(cachedCerts.length);
+  el("heroStudents")?.text(0);
 
-  // Pending list
-  const pl = document.getElementById("dashPendingList");
-  if (pl) {
-    pl.innerHTML = pending.length
-      ? pending.slice(0, 5).map(p => `
-          <div class="dash-item">
-            <div class="dot ${p.status === "pending" ? "dot-orange" : "dot-blue"}"></div>
-            <div class="di-text">
-              <div class="di-title">${p.title || p.name || "Untitled"}</div>
-              <div class="di-sub">${p.club || p.organizer || "—"} · ${fmtDate(p.date || p.event_date)}</div>
-            </div>
-            <div style="display:flex;gap:5px;">
-              <button class="mini-btn approve" onclick="quickApprove(${p.id})">✅</button>
-              <button class="mini-btn reject"  onclick="quickReject(${p.id})">❌</button>
-            </div>
-          </div>`).join("")
-      : `<div class="list-empty">No pending proposals 🎉</div>`;
-  }
-
-  // Notifications
-  const nl = document.getElementById("dashNotifList");
-  if (nl) {
-    const recent = localNotifs.slice(0, 5);
-    nl.innerHTML = recent.length
-      ? recent.map(n => `
-          <div class="dash-item">
-            <div class="dot ${n.read ? "dot-blue" : "dot-pink"}"></div>
-            <div class="di-text">
-              <div class="di-title">${n.icon || "🔔"} ${n.title}</div>
-              <div class="di-sub">${timeAgo(n.time)}</div>
-            </div>
-          </div>`).join("")
-      : `<div class="list-empty">No notifications yet.</div>`;
-  }
-
-  // Announcements
-  await loadAnnouncementBoard();
-
-  // Clubs quick
+  renderDashboardCalendar();
   renderClubsQuick();
 }
+function renderDashboardCalendar() {
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  el("dashCalMonthLabel")?.text(`${MONTHS[calMonth]} ${calYear}`);
 
+  const calEl = document.getElementById("dashMiniCalendar");
+  if (!calEl) return;
+
+  const today = new Date();
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const total = new Date(calYear, calMonth + 1, 0).getDate();
+
+  const dayMap = {};
+
+  cachedEvents.forEach(e => {
+    const dt = parseEventDate(e.date || e.event_date || e.start_date);
+    if (!dt) return;
+
+    if (dt.getFullYear() === calYear && dt.getMonth() === calMonth) {
+      const day = dt.getDate();
+      if (!dayMap[day]) dayMap[day] = [];
+      dayMap[day].push(e);
+    }
+  });
+
+  const days = ["SU","MO","TU","WE","TH","FR","SA"];
+  let html = `<div class="cal-weekdays">${days.map(d => `<div class="cal-weekday">${d}</div>`).join("")}</div><div class="cal-days">`;
+
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div class="cal-day empty"></div>`;
+  }
+
+  for (let d = 1; d <= total; d++) {
+    const isToday =
+      d === today.getDate() &&
+      calMonth === today.getMonth() &&
+      calYear === today.getFullYear();
+
+    const evs = dayMap[d] || [];
+    const hasPend = evs.some(e => (e.status || "").toLowerCase() === "pending" || (e.status || "").toLowerCase() === "review");
+    const hasAppr = evs.some(e => {
+      const s = (e.status || "approved").toLowerCase();
+      return s === "approved";
+    });
+
+    const cls = [
+      "cal-day",
+      isToday ? "today" : "",
+      hasPend ? "has-pending" : "",
+      !hasPend && hasAppr ? "has-approved" : ""
+    ].filter(Boolean).join(" ");
+
+    const enc = evs.length ? encodeURIComponent(JSON.stringify(evs)) : "";
+
+    html += `
+      <div class="${cls}" onclick="dashCalDayClick(this, ${d})" data-events="${enc.replace(/"/g, "&quot;")}">
+        ${d}
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+  calEl.innerHTML = html;
+}
+function dashCalDayClick(el2, day) {
+  const det = document.getElementById("dashCalEventDetail");
+  const panel = document.getElementById("dashSelectedDatePanel");
+  const tbody = document.getElementById("dashSelectedDateBody");
+
+  if (!det || !panel || !tbody) return;
+
+  if (el2.classList.contains("selected")) {
+    el2.classList.remove("selected");
+    det.style.display = "none";
+    panel.style.display = "none";
+    return;
+  }
+
+  document.querySelectorAll("#dashMiniCalendar .cal-day.selected").forEach(d =>
+    d.classList.remove("selected")
+  );
+  el2.classList.add("selected");
+
+  const raw = el2.getAttribute("data-events")?.replace(/&quot;/g, '"');
+  if (!raw) {
+    det.style.display = "none";
+    panel.style.display = "none";
+    return;
+  }
+
+  const evs = JSON.parse(decodeURIComponent(raw));
+
+  el("dashCalDetailTitle")?.text(`${evs.length} event${evs.length > 1 ? "s" : ""} on ${fmtDate(new Date(calYear, calMonth, day))}`);
+  el("dashCalDetailMeta")?.text(evs.map(e => `${e.title} · ${e.club || e.organizer || "—"}`).join(" | "));
+
+  const actions = document.getElementById("dashCalDetailActions");
+  if (actions) {
+    actions.innerHTML = evs.map(e => `
+      <button class="mini-btn" onclick="navigateTo('event-list')">📅 ${e.title}</button>
+    `).join("");
+  }
+
+  det.style.display = "";
+
+  el("dashSelectedDateSub")?.text(`Showing ${evs.length} event${evs.length > 1 ? "s" : ""} on ${fmtDate(new Date(calYear, calMonth, day))}`);
+
+  tbody.innerHTML = evs.map(e => `
+    <tr>
+      <td><span class="ev-name">${e.title || "Untitled"}</span></td>
+      <td>${e.club || "—"}</td>
+      <td>${e.organizer || e.created_by || "—"}</td>
+      <td>${e.capacity || e.expected_participants || "—"}</td>
+      <td>${e.venue || "—"}</td>
+      <td><span class="badge ${e.status || "approved"}">${cap(e.status || "approved")}</span></td>
+    </tr>
+  `).join("");
+
+  panel.style.display = "";
+}
 async function loadAnnouncementBoard() {
   const ab = document.getElementById("dashAnnouncements");
   if (!ab) return;
-  const ann = await apiFetch("/announcements/faculty");
-  if (!ann?.length) { ab.innerHTML = `<div class="list-empty">No announcements.</div>`; return; }
+  const [ann, mine] = await Promise.all([
+    apiFetch("/announcements/faculty"),
+    apiFetch("/announcements/my-posts"),
+  ]);
+  const myIds = new Set((Array.isArray(mine) ? mine : []).map(a => a.id));
+  const filtered = (Array.isArray(ann) ? ann : []).filter(a => !myIds.has(a.id));
+  if (!filtered.length) { ab.innerHTML = `<div class="list-empty">No announcements.</div>`; return; }
   const ICONS = { Urgent: "🚨", Event: "📅", Info: "ℹ️", General: "📣" };
-  ab.innerHTML = ann.slice(0, 3).map(a => `
+  ab.innerHTML = filtered.slice(0, 3).map(a => `
     <div class="announce-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div class="announce-title">${ICONS[a.type] || "📣"} ${a.title}</div>
@@ -424,6 +504,11 @@ async function renderEventList(search = "", status = "all") {
       <td>${e.capacity || "—"}</td>
       <td>${e.registration_fee > 0 ? "₹" + e.registration_fee : "Free"}</td>
       <td><span class="badge ${e.status || "approved"}">${cap(e.status || "approved")}</span></td>
+      <td>
+  <button class="mini-btn" onclick="downloadParticipants(${e.id})">
+    ⬇️ Download
+  </button>
+</td>
     </tr>`).join("")
     : `<tr><td colspan="8" class="td-empty">No events found.</td></tr>`;
 }
@@ -521,88 +606,32 @@ function renderCalMonthEvents() {
 }
 
 function initCalNav() {
-  document.getElementById("calPrev")?.addEventListener("click", () => {
-    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
-    if (currentPage === "calendar") renderCalendar();
+  document.getElementById("dashCalPrev")?.addEventListener("click", () => {
+    calMonth--;
+    if (calMonth < 0) {
+      calMonth = 11;
+      calYear--;
+    }
+    renderDashboardCalendar();
   });
-  document.getElementById("calNext")?.addEventListener("click", () => {
-    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
-    if (currentPage === "calendar") renderCalendar();
+
+  document.getElementById("dashCalNext")?.addEventListener("click", () => {
+    calMonth++;
+    if (calMonth > 11) {
+      calMonth = 0;
+      calYear++;
+    }
+    renderDashboardCalendar();
   });
-}
-
-// ── CERTIFICATES ──────────────────────────────────────────────────────────
-async function renderCerts(search = "", statusFil = "all") {
-  const fresh = await apiFetch("/faculty/certificates");
-  if (fresh) cachedCerts = fresh;
-
-  const tbody = document.getElementById("certsBody");
-  if (!tbody) return;
-
-  let list = cachedCerts;
-  const getStatus = c => c.certificate_status || c.status || "pending";
-  if (statusFil !== "all") list = list.filter(c => getStatus(c) === statusFil);
-  if (search) list = list.filter(c =>
-    (c.student_name || c.student || "").toLowerCase().includes(search) ||
-    (c.event_title  || c.event  || "").toLowerCase().includes(search)
-  );
-
-  tbody.innerHTML = list.length ? list.map(c => {
-    const name   = c.student_name || c.student || "—";
-    const reg    = c.roll_no || c.reg_no || "—";
-    const event  = c.event_title || c.event || "—";
-    const club   = c.club || "—";
-    const att    = c.attended ?? c.attendance ?? false;
-    const status = getStatus(c);
-    return `
-      <tr>
-        <td><input type="checkbox" class="cb cert-cb" data-id="${c.id}" ${status==="approved"?"disabled":""}></td>
-        <td style="font-weight:700;color:var(--text);">${name}</td>
-        <td style="font-family:'Courier New',monospace;font-size:11px;color:var(--text-3);">${reg}</td>
-        <td>${event}</td>
-        <td>${club}</td>
-        <td><span class="badge ${att?"approved":"rejected"}">${att?"✅ Present":"❌ Absent"}</span></td>
-        <td><span class="badge ${status}">${cap(status)}</span></td>
-        <td>
-          <div style="display:flex;gap:5px;flex-wrap:wrap;">
-            ${status==="pending" ? `<button class="mini-btn approve" onclick="approveCert(${c.id})">✅</button>
-                                    <button class="mini-btn reject"  onclick="rejectCert(${c.id})">❌</button>` :
-              `<span style="font-size:11px;color:var(--text-3);">${cap(status)}</span>`}
-          </div>
-        </td>
-      </tr>`;
-  }).join("")
-    : `<tr><td colspan="8" class="td-empty">No certificates found.</td></tr>`;
-
-  updateBadges();
-}
-
-async function approveCert(id) {
-  const res = await apiFetch(`/faculty/certificates/${id}/approve`, { method: "PATCH" });
-  if (res !== null) {
-    const c = cachedCerts.find(x => x.id === id);
-    if (c) { c.certificate_status = "approved"; c.status = "approved"; }
-    renderCerts(); showToast("🎓 Certificate approved!", "success");
-  } else showToast("Failed to approve.", "error");
-}
-async function rejectCert(id) {
-  const res = await apiFetch(`/faculty/certificates/${id}/reject`, { method: "PATCH" });
-  if (res !== null) {
-    const c = cachedCerts.find(x => x.id === id);
-    if (c) { c.certificate_status = "rejected"; c.status = "rejected"; }
-    renderCerts(); showToast("Certificate rejected.", "error");
-  } else showToast("Failed to reject.", "error");
 }
 
 // ── PENDING PAGE ──────────────────────────────────────────────────────────
 async function renderPendingPage() {
   await refreshAll();
 
-  const pending  = cachedProposals.filter(p => p.status === "pending" || p.status === "review");
-  const pendCert = cachedCerts.filter(c => (c.certificate_status || c.status) === "pending");
+  const pending = cachedProposals.filter(p => p.status === "pending" || p.status === "review");
 
   el("pendProposalCount")?.text(`${pending.length} pending`);
-  el("pendCertCount")?.text(`${pendCert.length} pending`);
 
   const pl = document.getElementById("pendingProposalList");
   if (pl) {
@@ -616,23 +645,6 @@ async function renderPendingPage() {
         <div style="display:flex;gap:5px;">
           <button class="mini-btn approve" onclick="approveProposal(${p.id});renderPendingPage()">✅</button>
           <button class="mini-btn reject"  onclick="rejectProposal(${p.id});renderPendingPage()">❌</button>
-        </div>
-      </div>`).join("")
-      : `<div class="list-empty">All clear! 🎉</div>`;
-  }
-
-  const cl = document.getElementById("pendingCertList");
-  if (cl) {
-    cl.innerHTML = pendCert.length ? pendCert.map(c => `
-      <div class="dash-item">
-        <div class="dot dot-purple"></div>
-        <div class="di-text">
-          <div class="di-title">${c.student_name || c.student || "—"}</div>
-          <div class="di-sub">${c.event_title || c.event || "—"}</div>
-        </div>
-        <div style="display:flex;gap:5px;">
-          <button class="mini-btn approve" onclick="approveCert(${c.id});renderPendingPage()">✅</button>
-          <button class="mini-btn reject"  onclick="rejectCert(${c.id});renderPendingPage()">❌</button>
         </div>
       </div>`).join("")
       : `<div class="list-empty">All clear! 🎉</div>`;
@@ -699,7 +711,7 @@ function initCharts() {
   const now      = new Date();
   const approved = cachedProposals.filter(p => p.status === "approved").length;
   const pending  = cachedProposals.filter(p => p.status === "pending" || p.status === "review").length;
-  const totalReg = cachedCerts.length;
+  const totalReg = 0;
   const avgRating = cachedFeedback.length
     ? (cachedFeedback.reduce((s, f) => s + (f.rating || 0), 0) / cachedFeedback.length).toFixed(1)
     : "—";
@@ -732,11 +744,7 @@ function initCharts() {
     });
     evCounts.push(mEvs.length);
 
-    const mRegs = cachedCerts.filter(c => {
-      const cd = new Date(c.registered_at || c.created_at || 0);
-      return cd.getFullYear() === d.getFullYear() && cd.getMonth() === d.getMonth();
-    });
-    regCounts.push(mRegs.length);
+   regCounts.push(0);
   }
 
   const chartDefaults = {
@@ -821,40 +829,13 @@ async function renderFeedback(search = "") {
   if (fresh) cachedFeedback = fresh;
 
   const comments = cachedFeedback.filter(f =>
-    !search || (f.comment || f.text || "").toLowerCase().includes(search) ||
-    (f.student_name || "").toLowerCase().includes(search)
-  );
+  !search ||
+  (f.comment || f.text || "").toLowerCase().includes(search) ||
+  (f.student_name || "").toLowerCase().includes(search) ||
+  (f.organizer_reply || f.reply || "").toLowerCase().includes(search) ||
+  (f.event_title || f.event || "").toLowerCase().includes(search)
+);
 
-  // Rating breakdown
-  const rb = document.getElementById("ratingBreakdown");
-  if (rb) {
-    if (!comments.length) { rb.innerHTML = `<div class="list-empty">No feedback yet.</div>`; }
-    else {
-      const avg = (comments.reduce((s, f) => s + (f.rating || 0), 0) / comments.length).toFixed(1);
-      const breakdown = [5,4,3,2,1].map(star => {
-        const cnt = comments.filter(f => Math.round(f.rating || 0) === star).length;
-        return { star, pct: Math.round((cnt / comments.length) * 100), cnt };
-      });
-      const colors = { 5:"#4ade80", 4:"#a78bfa", 3:"#fbbf24", 2:"#fb923c", 1:"#f87171" };
-      rb.innerHTML = `
-        <div class="rating-overview">
-          <div class="rating-big">${avg}</div>
-          <div class="rating-sub">Overall Average · ${comments.length} reviews</div>
-          <div class="comment-stars" style="font-size:18px;margin-top:6px;">${starStr(+avg)}</div>
-        </div>`
-        + breakdown.map(d => `
-          <div class="rating-row">
-            <div class="rating-star-lbl">${d.star}</div>
-            <span style="color:var(--amber);font-size:12px;">★</span>
-            <div class="rating-bar-wrap">
-              <div class="rating-bar-fill" style="width:${d.pct}%;background:${colors[d.star]};"></div>
-            </div>
-            <div class="rating-pct">${d.pct}%</div>
-          </div>`).join("");
-    }
-  }
-
-  // Comments grid
   const cg = document.getElementById("commentsGrid");
   if (cg) {
     cg.innerHTML = comments.length ? comments.slice(0, 12).map(f => `
@@ -866,52 +847,26 @@ async function renderFeedback(search = "") {
           </div>
           <div class="comment-stars">${starStr(f.rating || 0)}</div>
         </div>
-        <div class="comment-text">"${f.comment || f.text || "No comment."}"</div>
+       <div class="comment-text">"${f.comment || f.text || "No comment."}"</div>
+<div class="comment-reply-box">
+  <div class="comment-reply-label">Organizer Reply</div>
+  <div class="comment-reply-text">${f.organizer_reply || f.reply || "No reply yet."}</div>
+</div>
       </div>`).join("")
       : `<div class="list-empty" style="padding:20px;">No feedback yet.</div>`;
-  }
-
-  // Chart
-  if (cachedFeedback.length && !feedbackInited) {
-    feedbackInited = true;
-    const eventMap = {};
-    cachedFeedback.forEach(f => {
-      const k = f.event_title || f.event || "Other";
-      if (!eventMap[k]) eventMap[k] = [];
-      eventMap[k].push(f.rating || 0);
-    });
-    const lbls = Object.keys(eventMap).slice(0, 7).map(l => l.length > 14 ? l.slice(0,14)+"…" : l);
-    const vals = lbls.map((l, i) => {
-      const key = Object.keys(eventMap)[i];
-      const arr = eventMap[key] || [];
-      return arr.length ? +(arr.reduce((s,r)=>s+r,0)/arr.length).toFixed(1) : 0;
-    });
-    tryChart("feedbackChart", {
-      type: "bar",
-      data: {
-        labels: lbls,
-        datasets: [{ data: vals, backgroundColor: vals.map(v => v>=4.5?"rgba(34,197,94,.7)":v>=4?"rgba(139,92,246,.7)":"rgba(245,158,11,.7)"), borderRadius: 7, borderSkipped: false }],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid:{display:false}, ticks:{color:"rgba(240,242,255,.4)",font:{size:11,weight:600},maxRotation:30} },
-          y: { min:0, max:5, grid:{color:"rgba(255,255,255,.05)"}, ticks:{color:"rgba(240,242,255,.4)",font:{size:11,weight:600}} },
-        },
-      },
-    });
   }
 }
 
 // ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────
 async function renderAnnouncements() {
-  const [mine, admin] = await Promise.all([
+  const [mine, all] = await Promise.all([
     apiFetch("/announcements/my-posts"),
     apiFetch("/announcements/faculty"),
   ]);
 
   const ICONS = { Urgent:"🚨", Event:"📅", Info:"ℹ️", General:"📣" };
+
+  // "My Posts" — announcements posted by this faculty
   const al = document.getElementById("announceList");
   if (al) {
     const list = Array.isArray(mine) ? mine : [];
@@ -927,9 +882,12 @@ async function renderAnnouncements() {
       : `<div class="list-empty">No posts yet.</div>`;
   }
 
+  // "Admin / Club Announcements" — posted by others (organisers, admins),
+  // exclude entries whose id appears in mine so faculty posts dont show twice
   const aal = document.getElementById("adminAnnounceList");
   if (aal) {
-    const list = Array.isArray(admin) ? admin : [];
+    const myIds = new Set((Array.isArray(mine) ? mine : []).map(a => a.id));
+    const list  = (Array.isArray(all) ? all : []).filter(a => !myIds.has(a.id));
     aal.innerHTML = list.length ? list.map(a => `
       <div class="announce-card">
         <div style="display:flex;justify-content:space-between;gap:8px;">
@@ -939,7 +897,7 @@ async function renderAnnouncements() {
         <div class="announce-meta">${a.club||"Admin"} · ${fmtDate(a.created_at)}</div>
         <div class="announce-body">${a.message}</div>
       </div>`).join("")
-      : `<div class="list-empty">No admin announcements.</div>`;
+      : `<div class="list-empty">No announcements from clubs or admin.</div>`;
   }
 }
 
@@ -1005,19 +963,10 @@ function addLocalNotif(type, icon, title, sub) {
 function updateNotifBadge() {
   const unread = localNotifs.filter(n => !n.read).length;
   const cnt = document.getElementById("notifCount");
-  if (cnt) { cnt.textContent = unread > 9 ? "9+" : unread; cnt.style.display = unread > 0 ? "flex" : "none"; }
-  updateBadge("badge-notif", unread);
-}
 
-function toggleNotifDropdown(e) {
-  e.stopPropagation();
-  const dd = document.getElementById("notifDropdown");
-  dd.classList.toggle("open");
-  if (dd.classList.contains("open")) {
-    setTimeout(() => {
-      localNotifs = localNotifs.map(n => ({ ...n, read: true }));
-      saveNotifs(); updateNotifBadge(); renderNotifDropdown();
-    }, 900);
+  if (cnt) {
+    cnt.textContent = unread > 9 ? "9+" : unread;
+    cnt.style.display = unread > 0 ? "flex" : "none";
   }
 }
 
@@ -1109,7 +1058,7 @@ function openProfileDrawer() {
         <span class="club-card-status" style="margin-left:auto;">${c.status||"Active"}</span>
       </div>`).join("") || `<div class="list-empty">No clubs assigned.</div>`}
     <div style="margin-top:16px;">
-      <button class="btn primary" onclick="window.location.href='account-setting.html'">⚙️ Edit Profile</button>
+      <button class="btn primary" onclick="window.location.href='account-settings.html'">⚙️ Edit Profile</button>
     </div>`;
 }
 
@@ -1120,16 +1069,6 @@ function closeProfileDrawer() {
 
 // ── BULK HANDLERS ─────────────────────────────────────────────────────────
 function initBulk() {
-  document.getElementById("chkAllProposals")?.addEventListener("change", e => {
-    document.querySelectorAll(".proposal-cb").forEach(cb => cb.checked = e.target.checked);
-  });
-  document.getElementById("bulkApproveBtn")?.addEventListener("click", async () => {
-    const ids = [...document.querySelectorAll(".proposal-cb:checked")].map(cb => +cb.dataset.id);
-    if (!ids.length) { showToast("Select proposals first.", "error"); return; }
-    await Promise.all(ids.map(id => apiFetch(`/faculty/proposals/${id}/approve`, { method: "PATCH" })));
-    ids.forEach(id => { const p = cachedProposals.find(x=>x.id===id); if (p) p.status="approved"; });
-    renderProposals(); showToast(`✅ ${ids.length} approved!`, "success");
-  });
   document.getElementById("bulkRejectBtn")?.addEventListener("click", async () => {
     const ids = [...document.querySelectorAll(".proposal-cb:checked")].map(cb => +cb.dataset.id);
     if (!ids.length) { showToast("Select proposals first.", "error"); return; }
@@ -1166,12 +1105,6 @@ function initSearchFilters() {
   ));
   document.getElementById("eventListStatus")?.addEventListener("change", e =>
     renderEventList(document.getElementById("eventListSearch")?.value.toLowerCase(), e.target.value)
-  );
-  document.getElementById("certSearch")?.addEventListener("input", debounce(e =>
-    renderCerts(e.target.value.toLowerCase(), document.getElementById("certStatusFilter")?.value)
-  ));
-  document.getElementById("certStatusFilter")?.addEventListener("change", e =>
-    renderCerts(document.getElementById("certSearch")?.value.toLowerCase(), e.target.value)
   );
   document.getElementById("feedbackSearch")?.addEventListener("input", debounce(e =>
     renderFeedback(e.target.value.toLowerCase())
@@ -1226,12 +1159,9 @@ function logout() {
 
 // ── BADGES ────────────────────────────────────────────────────────────────
 function updateBadges() {
-  const getStatus = c => c.certificate_status || c.status || "pending";
-  const pending   = cachedProposals.filter(p => p.status==="pending"||p.status==="review").length;
-  const pendCerts = cachedCerts.filter(c => getStatus(c)==="pending").length;
-  updateBadge("badge-proposals", cachedProposals.filter(p=>p.status==="pending").length);
-  updateBadge("badge-certs",     pendCerts);
-  updateBadge("badge-pending",   pending + pendCerts);
+  const pending = cachedProposals.filter(p => p.status === "pending" || p.status === "review").length;
+  updateBadge("badge-proposals", cachedProposals.filter(p => p.status === "pending").length);
+  updateBadge("badge-pending", pending);
 }
 
 function updateBadge(id, count) {
@@ -1248,13 +1178,36 @@ function el(id) {
 }
 
 function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : "—"; }
+function parseEventDate(value) {
+  if (!value) return null;
 
-function fmtDate(d) {
-  if (!d) return "—";
-  try { return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); }
-  catch { return "—"; }
+  // Already a Date object
+  if (value instanceof Date) return value;
+
+  // Handle YYYY-MM-DD safely without timezone shift
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  // Handle ISO / other formats
+  const dt = new Date(value);
+  return isNaN(dt.getTime()) ? null : dt;
 }
+function fmtDate(d) {
+  const dt = parseEventDate(d);
+  if (!dt) return "—";
 
+  try {
+    return dt.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  } catch {
+    return "—";
+  }
+}
 function timeAgo(iso) {
   if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
@@ -1293,3 +1246,38 @@ function tryChart(id, config) {
 
 // ── START ─────────────────────────────────────────────────────────────────
 boot();
+async function downloadParticipants(eventId) {
+  try {
+    const data = await apiFetch(`/faculty/events/${eventId}/participants`);
+
+    if (!data || !data.length) {
+      showToast("No participants found.", "error");
+      return;
+    }
+
+    const headers = ["Name", "Email", "Department", "Phone"];
+    const rows = data.map(p => [
+      p.name,
+      p.email,
+      p.department,
+      p.phone
+    ]);
+
+    const csv =
+      "data:text/csv;charset=utf-8," +
+      [headers, ...rows].map(r => r.join(",")).join("\n");
+
+    const link = document.createElement("a");
+    link.href = encodeURI(csv);
+    link.download = `event_${eventId}_participants.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast("⬇️ Download started!", "success");
+
+  } catch (err) {
+    console.error(err);
+    showToast("Download failed.", "error");
+  }
+}

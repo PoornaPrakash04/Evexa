@@ -1,5 +1,5 @@
 /* ================================================================
-   EVEXA  —  Faculty Dashboard
+   EVEXA  —  Faculty Dashboard.css
    Dark glass · Vivid neon · Full light/dark mode support
    ================================================================ */
 
@@ -984,4 +984,26 @@ body.light .toast.info    { color: #6d28d9; }
   .analytics-kpi-row { grid-template-columns: 1fr 1fr; }
   .filter-bar { flex-direction: column; align-items: stretch; }
   .bulk-actions { margin-left: 0; }
+}
+.comment-reply-box{
+  margin-top:12px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(139,92,246,.06);
+  border:1px solid rgba(139,92,246,.16);
+}
+
+.comment-reply-label{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  color:var(--text-3);
+  margin-bottom:6px;
+}
+
+.comment-reply-text{
+  font-size:14px;
+  line-height:1.5;
+  color:var(--text);
 }

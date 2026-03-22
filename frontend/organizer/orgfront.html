@@ -110,16 +110,23 @@
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <button class="icon-btn" id="sidebarToggle" title="Toggle Sidebar">☰</button>
-    <div class="topbar-title" id="topbarTitle">Dashboard</div>
-    
-    <div class="topbar-actions">
-      <div class="icon-btn" id="notifBtn" title="Notifications">
-        🔔<div class="dot" id="notifDot"></div>
-      </div>
-      <button class="btn-primary" id="addEventBtn">＋ Add Event</button>
+  <button class="icon-btn" id="sidebarToggle" title="Toggle Sidebar">☰</button>
+  <div class="topbar-title" id="topbarTitle">Dashboard</div>
+ 
+  <div class="topbar-actions">
+    <a class="nav-item" data-page="clubs">
+  <div class="nav-icon">🏛️</div> Clubs
+</a>
+    <div class="icon-btn" id="notifBtn" title="Notifications">
+      🔔<div class="dot" id="notifDot"></div>
     </div>
-  </header>
+    <button class="icon-btn theme-topbar-btn" id="themeTopbarBtn" title="Switch theme" aria-label="Toggle light/dark mode">
+      <span class="theme-icon-moon">🌙</span>
+      <span class="theme-icon-sun">☀️</span>
+    </button>
+    <button class="btn-primary" id="logoutTopBtn" onclick="logout()">🚪 Logout</button>
+  </div>
+</header>
 
   <!-- PAGE: DASHBOARD -->
   <div class="page active" id="page-dashboard">
@@ -298,6 +305,60 @@
       </div>
     </div>
 
+  </div>
+</div>
+<!-- PAGE: CLUBS -->
+<div class="page" id="page-clubs">
+  <div class="content">
+ 
+    <div class="section-title">
+      <div class="title-left">
+        <button class="btn-back" onclick="switchPage('dashboard')">←</button>
+        Clubs
+      </div>
+    </div>
+ 
+    <!-- Filter pills + search -->
+    <div class="org-club-filter-bar">
+      <div class="org-club-pills" id="clubPillBar">
+        <button class="org-club-pill active" data-filter="all">All</button>
+        <button class="org-club-pill" data-filter="Technical">Technical</button>
+        <button class="org-club-pill" data-filter="Non-Technical">Non-Technical</button>
+      </div>
+      <input
+        type="text"
+        id="clubSearch"
+        class="org-club-search"
+        placeholder="Search clubs…"
+        oninput="filterClubs()"
+      />
+    </div>
+ 
+    <!-- Grid -->
+    <div id="clubsGrid" class="org-clubs-grid">
+      <div class="empty-state empty-state--full">
+        <span>⏳</span><p>Loading clubs…</p>
+      </div>
+    </div>
+ 
+  </div>
+</div>
+<!-- PAGE: CLUB SINGLE -->
+<div class="page" id="page-club-single">
+  <div class="content">
+ 
+    <div class="section-title" style="margin-bottom:16px;">
+      <div class="title-left">
+        <button class="btn-back" onclick="switchPage('clubs')">←</button>
+        <span id="orgClubSingleTitle">Club Details</span>
+      </div>
+    </div>
+ 
+    <!-- Dynamic content injected by JS -->
+    <div id="orgClubSingleContent">
+      <div class="empty-state"><span>⏳</span><p>Loading…</p></div>
+    </div>
+ 
   </div>
 </div>
   <!-- PAGE: VENUES -->
@@ -593,14 +654,7 @@
             <div class="account-field"><span class="field-label">Admission No</span><span id="pfAdmissionNo">—</span></div>
             <div class="account-field account-field--last"><span class="field-label">Class</span><span id="pfClass">—</span></div>
           </div>
-          <h3 class="account-section-title account-section-title--spaced">Preferences</h3>
-          <div class="pref-row">
-            <span class="pref-label">Dark Mode</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="darkModeToggle">
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            </label>
-          </div>
+          
         </div>
       </div>
     </div>

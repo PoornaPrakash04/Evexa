@@ -168,4 +168,28 @@ router.get("/feedback", authorize(), facultyOnly, (req, res) => {
   });
 });
 
+
+// GET /api/faculty/events/:id/participants
+// Any faculty can download participants for any event
+router.get("/events/:id/participants", authorize(), facultyOnly, (req, res) => {
+  const sql = `
+    SELECT
+      s.name,
+      s.email,
+      s.department,
+      s.phone
+    FROM registrations r
+    JOIN students s ON s.id = r.student_id
+    WHERE r.event_id = ?
+    ORDER BY s.name ASC
+  `;
+  db.query(sql, [req.params.id], (err, result) => {
+    if (err) {
+      console.error("GET /faculty/events/:id/participants error:", err);
+      return res.status(500).json({ message: "Server error", detail: err.message });
+    }
+    res.json(result);
+  });
+});
+
 module.exports = router;

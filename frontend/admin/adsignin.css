@@ -15,13 +15,15 @@ overflow:hidden;
 position:relative;
 }
 
-/* FLOATING SHAPES */
+/* -------- FLOATING SHAPES -------- */
 
 .background{
-position:absolute;
+position:fixed;
 width:100%;
 height:100%;
+inset:0;
 z-index:0;
+pointer-events:none;
 }
 
 .shape{
@@ -29,6 +31,7 @@ position:absolute;
 border-radius:50%;
 opacity:.35;
 animation:float 8s infinite ease-in-out;
+will-change:transform;
 }
 
 /* Admin Green Theme */
@@ -59,21 +62,12 @@ left:40%;
 animation-delay:3s;
 }
 
-.s4{
-width:200px;
-height:200px;
-background:linear-gradient(45deg,#56ab2f,#a8e063);
-bottom:-60px;
-right:20%;
-animation-delay:1s;
-}
-
 @keyframes float{
 0%,100%{transform:translateY(0)}
 50%{transform:translateY(-35px)}
 }
 
-/* CARD */
+/* -------- SIGNIN CARD -------- */
 
 .signin-container{
 background:rgba(255,255,255,.85);
@@ -85,18 +79,12 @@ text-align:center;
 box-shadow:0 20px 40px rgba(0,0,0,.08);
 position:relative;
 z-index:2;
+transform:none !important;
 }
 
 h1{
 font-size:30px;
 margin-bottom:10px;
-}
-
-h1 span{
-background:linear-gradient(90deg,#11998e,#38ef7d);
- background-clip:text;
--webkit-background-clip:text;
-color:transparent;
 }
 
 .subtitle{
@@ -142,9 +130,62 @@ transform:scale(1.05);
 box-shadow:0 10px 25px rgba(17,153,142,.35);
 }
 
-.extra{
-margin-top:18px;
+/* -------- REGISTER PROMPT -------- */
+
+.register-prompt{
+margin-top:1.2rem;
+text-align:center;
+font-size:0.9rem;
+color:#888;
+}
+
+.register-link{
+color:#11998e;
+font-weight:600;
+text-decoration:none;
+transition:color 0.2s ease;
+}
+
+.register-link:hover{
+color:#0d7a70;
+text-decoration:underline;
+}
+
+/* -------- BACK BUTTON -------- */
+
+.back-wrapper{
+position:fixed;
+top:30px;
+left:40px;
+z-index:3;
+
+display:flex;
+align-items:center;
+gap:8px;
+
+padding:10px 18px;
+border-radius:30px;
+
+background:linear-gradient(135deg,#38ef7d,#f2f2f2);
+box-shadow:0 8px 20px rgba(0,0,0,.08);
+
+text-decoration:none;
+font-weight:600;
 font-size:14px;
-color:#777;
-cursor:pointer;
+color:#000;
+
+transition:box-shadow 0.3s ease;
+}
+
+.back-wrapper .arrow{
+font-size:18px;
+transition:transform 0.3s ease;
+}
+
+.back-wrapper:hover{
+box-shadow:0 12px 25px rgba(0,0,0,.12);
+}
+
+.back-wrapper:hover .arrow{
+transform:translateX(-4px);
 }
