@@ -1,3 +1,4 @@
+//faculty.js
 const express  = require("express");
 const router   = express.Router();
 const db       = require("../db");
@@ -22,31 +23,33 @@ router.get("/me", authorize(), facultyOnly, (req, res) => {
     }
   );
 });
+
 // GET /api/faculty/proposals
-// Uses club_name (not name) to match your clubs table schema
+// Uses the events table (no separate event_proposals table)
 router.get("/proposals", authorize(), facultyOnly, (req, res) => {
   const sql = `
     SELECT
-      ep.id,
-      ep.title,
-      ep.description,
-      ep.objectives,
-      ep.venue,
-      ep.date              AS event_date,
-      ep.capacity,
-      ep.registration_fee,
-      ep.category,
-      ep.status,
-      ep.document_url,
-      ep.created_at,
-      c.club_name          AS club,
+      e.id,
+      e.title,
+      e.description,
+      e.venue,
+      e.date              AS event_date,
+      e.time              AS event_time,
+      e.capacity,
+      e.registration_fee,
+      e.category,
+      e.type,
+      e.status,
+      e.poster            AS document_url,
+      e.created_at,
+      c.club_name         AS club,
       c.club_id,
-      o.name               AS organizer
-    FROM event_proposals ep
-    LEFT JOIN clubs      c ON c.club_id = ep.club_id
-    LEFT JOIN organizers o ON o.id      = ep.organizer_id
+      o.name              AS organizer
+    FROM events e
+    LEFT JOIN clubs      c ON c.club_id = e.club_id
+    LEFT JOIN organizers o ON o.id      = e.organizer_id
     WHERE c.faculty_id = ?
-    ORDER BY ep.created_at DESC
+    ORDER BY e.created_at DESC
   `;
   db.query(sql, [req.user.id], (err, result) => {
     if (err) {
@@ -60,12 +63,12 @@ router.get("/proposals", authorize(), facultyOnly, (req, res) => {
 // PATCH /api/faculty/proposals/:id/approve
 router.patch("/proposals/:id/approve", authorize(), facultyOnly, (req, res) => {
   db.query(
-    "UPDATE event_proposals SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
-    [req.user.id, req.params.id],
+    "UPDATE events SET status = 'Approved' WHERE id = ?",
+    [req.params.id],
     (err, result) => {
       if (err)                  return res.status(500).json({ message: "Server error", detail: err.message });
-      if (!result.affectedRows) return res.status(404).json({ message: "Proposal not found" });
-      res.json({ message: "Proposal approved" });
+      if (!result.affectedRows) return res.status(404).json({ message: "Event not found" });
+      res.json({ message: "Event approved" });
     }
   );
 });
@@ -73,12 +76,12 @@ router.patch("/proposals/:id/approve", authorize(), facultyOnly, (req, res) => {
 // PATCH /api/faculty/proposals/:id/reject
 router.patch("/proposals/:id/reject", authorize(), facultyOnly, (req, res) => {
   db.query(
-    "UPDATE event_proposals SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
-    [req.user.id, req.params.id],
+    "UPDATE events SET status = 'Rejected' WHERE id = ?",
+    [req.params.id],
     (err, result) => {
       if (err)                  return res.status(500).json({ message: "Server error", detail: err.message });
-      if (!result.affectedRows) return res.status(404).json({ message: "Proposal not found" });
-      res.json({ message: "Proposal rejected" });
+      if (!result.affectedRows) return res.status(404).json({ message: "Event not found" });
+      res.json({ message: "Event rejected" });
     }
   );
 });
@@ -96,7 +99,7 @@ router.get("/certificates", authorize(), facultyOnly, (req, res) => {
       e.date                        AS event_date,
       c.club_name                   AS club,
       COALESCE(att.attended, 0)     AS attended
-    FROM certificate_requests cr
+    FROM certificates cr
     JOIN students  s   ON s.id       = cr.student_id
     JOIN events    e   ON e.id       = cr.event_id
     JOIN clubs     c   ON c.club_id  = e.club_id
@@ -118,7 +121,7 @@ router.get("/certificates", authorize(), facultyOnly, (req, res) => {
 // PATCH /api/faculty/certificates/:id/approve
 router.patch("/certificates/:id/approve", authorize(), facultyOnly, (req, res) => {
   db.query(
-    "UPDATE certificate_requests SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
+    "UPDATE certificates SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
     [req.user.id, req.params.id],
     (err, result) => {
       if (err)                  return res.status(500).json({ message: "Server error", detail: err.message });
@@ -131,7 +134,7 @@ router.patch("/certificates/:id/approve", authorize(), facultyOnly, (req, res) =
 // PATCH /api/faculty/certificates/:id/reject
 router.patch("/certificates/:id/reject", authorize(), facultyOnly, (req, res) => {
   db.query(
-    "UPDATE certificate_requests SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
+    "UPDATE certificates SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
     [req.user.id, req.params.id],
     (err, result) => {
       if (err)                  return res.status(500).json({ message: "Server error", detail: err.message });
@@ -145,19 +148,20 @@ router.patch("/certificates/:id/reject", authorize(), facultyOnly, (req, res) =>
 router.get("/feedback", authorize(), facultyOnly, (req, res) => {
   const sql = `
     SELECT
-      f.id,
+      f.feedback_id       AS id,
       f.rating,
-      f.comment,
-      f.created_at,
-      s.name        AS student_name,
-      e.title       AS event_title,
-      c.club_name   AS club
+      f.message           AS comment,
+      f.feedback_date     AS created_at,
+      f.subject,
+      s.name              AS student_name,
+      e.title             AS event_title,
+      c.club_name         AS club
     FROM feedback f
-    JOIN students s  ON s.id      = f.student_id
+    JOIN students s  ON s.id      = f.user_id
     JOIN events   e  ON e.id      = f.event_id
     JOIN clubs    c  ON c.club_id = e.club_id
     WHERE c.faculty_id = ?
-    ORDER BY f.created_at DESC
+    ORDER BY f.feedback_date DESC
   `;
   db.query(sql, [req.user.id], (err, result) => {
     if (err) {
@@ -168,9 +172,7 @@ router.get("/feedback", authorize(), facultyOnly, (req, res) => {
   });
 });
 
-
 // GET /api/faculty/events/:id/participants
-// Any faculty can download participants for any event
 router.get("/events/:id/participants", authorize(), facultyOnly, (req, res) => {
   const sql = `
     SELECT

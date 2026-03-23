@@ -1,12 +1,24 @@
 // adminRoutes.js  —  EVEXA Admin API
 // Mount at: app.use("/api/admin", require("./routes/adminRoutes"))
 
-const express = require("express");
-const bcrypt  = require("bcrypt");
-const jwt     = require("jsonwebtoken");
-const db      = require("../db");
+const express    = require("express");
+const bcrypt     = require("bcrypt");
+const jwt        = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+const db         = require("../db");
 
 const router  = express.Router();
+
+// ─────────────────────────────────────────────────────────────
+//  EMAIL TRANSPORTER
+// ─────────────────────────────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 // ─────────────────────────────────────────────────────────────
 //  MIDDLEWARE
@@ -55,12 +67,12 @@ router.post("/login", async (req, res) => {
     if (!match) return res.status(401).json({ message: "Invalid password." });
 
     const token = jwt.sign(
-      { id: admin.id, role: "ADMIN", name: admin.name },
+      { id: admin.admin_id, role: "ADMIN", name: admin.admin_name },
       process.env.JWT_SECRET,
       { expiresIn: "8h" }
     );
-    pushLog("user", "🛡️", "purple", `Admin login: ${admin.name}`, admin.name);
-    res.json({ token, name: admin.name, email: admin.email });
+    pushLog("user", "🛡️", "purple", `Admin login: ${admin.admin_name}`, admin.admin_name);
+    res.json({ token, name: admin.admin_name, email: admin.email });
   });
 });
 
@@ -69,7 +81,7 @@ router.post("/login", async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.get("/profile", adminOnly, (req, res) => {
   db.query(
-    "SELECT id, name, email, phone, department, created_at FROM admin WHERE id = ?",
+    "SELECT admin_id AS id, admin_name AS name, email, phone, created_at FROM admin WHERE admin_id = ?",
     [req.admin.id],
     (err, rows) => {
       if (err || !rows.length) return res.status(500).json({ message: "Server error." });
@@ -81,8 +93,8 @@ router.get("/profile", adminOnly, (req, res) => {
 router.put("/profile", adminOnly, (req, res) => {
   const { name, email, phone, department } = req.body;
   db.query(
-    "UPDATE admin SET name=?, email=?, phone=?, department=? WHERE id=?",
-    [name, email, phone || null, department || null, req.admin.id],
+    "UPDATE admin SET admin_name=?, email=?, phone=? WHERE admin_id=?",
+    [name, email, phone || null, req.admin.id],
     (err) => {
       if (err) return res.status(500).json({ message: "Server error." });
       pushLog("system", "⚙️", "blue", "Admin profile updated", req.admin.name || "Admin");
@@ -96,12 +108,12 @@ router.put("/change-password", adminOnly, async (req, res) => {
   if (!currentPassword || !newPassword)
     return res.status(400).json({ message: "Both fields are required." });
 
-  db.query("SELECT password FROM admin WHERE id=?", [req.admin.id], async (err, rows) => {
+  db.query("SELECT password FROM admin WHERE admin_id=?", [req.admin.id], async (err, rows) => {
     if (err || !rows.length) return res.status(500).json({ message: "Server error." });
     const match = await bcrypt.compare(currentPassword, rows[0].password);
     if (!match) return res.status(401).json({ message: "Current password is incorrect." });
     const hashed = await bcrypt.hash(newPassword, 10);
-    db.query("UPDATE admin SET password=? WHERE id=?", [hashed, req.admin.id], (err2) => {
+    db.query("UPDATE admin SET password=? WHERE admin_id=?", [hashed, req.admin.id], (err2) => {
       if (err2) return res.status(500).json({ message: "Server error." });
       pushLog("system", "🔒", "red", "Admin password changed", req.admin.name || "Admin");
       res.json({ message: "Password updated." });
@@ -121,6 +133,9 @@ router.get("/dashboard", adminOnly, (req, res) => {
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const weekStartStr = weekStart.toISOString().slice(0, 10);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekEndStr = weekEnd.toISOString().slice(0, 10);
 
   Promise.all([
     q("SELECT COUNT(*) AS total FROM events"),
@@ -130,23 +145,31 @@ router.get("/dashboard", adminOnly, (req, res) => {
     q("SELECT COUNT(*) AS total FROM organizers"),
     q("SELECT COUNT(*) AS total FROM faculty"),
     q("SELECT COUNT(*) AS total FROM certificates"),
-    q("SELECT COUNT(*) AS total FROM events WHERE DATE(created_at) >= ?", [weekStartStr]),
-    q("SELECT COALESCE(SUM(registered_count),0) AS total FROM events"),
-    q(`SELECT c.club_name AS club, COUNT(*) AS event_count,
-              COALESCE(SUM(e.registered_count),0) AS total_participants
-       FROM events e LEFT JOIN clubs c ON e.club_id = c.club_id
-       GROUP BY e.club_id, c.club_name ORDER BY event_count DESC LIMIT 5`),
-    q(`SELECT SUM(CASE WHEN type IN ('Technical','Workshop','Science') THEN 1 ELSE 0 END) AS academic,
-              SUM(CASE WHEN type NOT IN ('Technical','Workshop','Science') THEN 1 ELSE 0 END) AS non_academic
+    q("SELECT COUNT(*) AS total FROM events WHERE DATE(date) BETWEEN ? AND ?", [weekStartStr, weekEndStr]),
+    q("SELECT COUNT(*) AS total FROM registrations"),
+    q(`SELECT c.club_name AS club,
+              COUNT(DISTINCT e.id)  AS event_count,
+              COUNT(r.id)           AS total_participants
+       FROM events e
+       LEFT JOIN clubs         c ON c.club_id   = e.club_id
+       LEFT JOIN registrations r ON r.event_id  = e.id
+       GROUP BY e.club_id, c.club_name
+       ORDER BY event_count DESC LIMIT 5`),
+    q(`SELECT SUM(CASE WHEN category = 'Technical' THEN 1 ELSE 0 END) AS academic,
+              SUM(CASE WHEN category != 'Technical' OR category IS NULL THEN 1 ELSE 0 END) AS non_academic
        FROM events`),
-    q(`SELECT c.club_name AS club, COALESCE(SUM(e.registered_count),0) AS total_participants,
-              COUNT(*) AS events
-       FROM events e LEFT JOIN clubs c ON e.club_id = c.club_id
+    q(`SELECT c.club_name AS club,
+              COUNT(r.id)          AS total_participants,
+              COUNT(DISTINCT e.id) AS events
+       FROM events e
+       LEFT JOIN clubs         c ON c.club_id  = e.club_id
+       LEFT JOIN registrations r ON r.event_id = e.id
        GROUP BY e.club_id, c.club_name ORDER BY total_participants DESC LIMIT 5`),
     q(`SELECT e.id, e.title AS name,
               COALESCE(c.club_name, CONCAT('Club #', e.club_id)) AS organizer,
-              e.date, e.type AS category,
-              e.registered_count AS participants, e.status
+              e.date, e.category,
+              (SELECT COUNT(*) FROM registrations r WHERE r.event_id = e.id) AS participants,
+              e.status
        FROM events e LEFT JOIN clubs c ON e.club_id = c.club_id
        ORDER BY e.id DESC LIMIT 5`),
     q("SELECT * FROM activity_logs ORDER BY id DESC LIMIT 5"),
@@ -207,9 +230,9 @@ router.get("/events", adminOnly, (req, res) => {
              FROM events e LEFT JOIN clubs c ON e.club_id = c.club_id WHERE 1=1`;
   const params = [];
 
-  if (search)           { sql += " AND e.title LIKE ?";    params.push(`%${search}%`); }
-  if (status !== "all") { sql += " AND e.status = ?";      params.push(status); }
-  if (category !== "all") { sql += " AND e.type = ?";      params.push(category); }
+  if (search)             { sql += " AND e.title LIKE ?"; params.push(`%${search}%`); }
+  if (status !== "all")   { sql += " AND e.status = ?";  params.push(status); }
+  if (category !== "all") { sql += " AND e.type = ?";    params.push(category); }
 
   sql += " ORDER BY e.id DESC";
   db.query(sql, params, (err, rows) => {
@@ -224,7 +247,7 @@ router.post("/events", adminOnly, (req, res) => {
     return res.status(400).json({ message: "Required fields missing." });
 
   db.query(
-    "INSERT INTO events (title, club_id, date, type, registered_count, status) VALUES (?,?,?,?,0,'Pending')",
+    "INSERT INTO events (title, club_id, date, type, status) VALUES (?,?,?,?,'Pending')",
     [name, club_id || null, date, category],
     (err, result) => {
       if (err) return res.status(500).json({ message: err.message });
@@ -289,29 +312,176 @@ router.post("/events/bulk-delete", adminOnly, (req, res) => {
   });
 });
 
+// GET /api/admin/events/:id/participants — full participant list
+router.get("/events/:id/participants", adminOnly, (req, res) => {
+  db.query(
+    `SELECT
+       r.id          AS registration_id,
+       s.name        AS student_name,
+       s.roll_no,
+       s.admission_no,
+       s.email,
+       s.phone,
+       s.department,
+       s.class,
+       CASE WHEN cert.id IS NOT NULL THEN 'Yes' ELSE 'No' END AS certificate_issued
+     FROM registrations r
+     JOIN students s ON r.student_id = s.id
+     LEFT JOIN certificates cert ON cert.event_id = r.event_id AND cert.student_id = r.student_id
+     WHERE r.event_id = ?
+     ORDER BY s.name ASC`,
+    [req.params.id],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+// GET /api/admin/events/:id/participants/csv — download as CSV
+router.get("/events/:id/participants/csv", adminOnly, (req, res) => {
+  db.query(
+    "SELECT title AS event_title, date AS event_date FROM events WHERE id = ?",
+    [req.params.id],
+    (evErr, evRows) => {
+      if (evErr || !evRows.length)
+        return res.status(404).json({ message: "Event not found." });
+
+      const { event_title, event_date } = evRows[0];
+
+      db.query(
+        `SELECT
+           s.name         AS Name,
+           s.roll_no      AS Roll_No,
+           s.admission_no AS Admission_No,
+           s.email        AS Email,
+           s.phone        AS Phone,
+           s.department   AS Department,
+           s.class        AS Class,
+           CASE WHEN cert.id IS NOT NULL THEN 'Yes' ELSE 'No' END AS Certificate_Issued
+         FROM registrations r
+         JOIN students s ON r.student_id = s.id
+         LEFT JOIN certificates cert ON cert.event_id = r.event_id AND cert.student_id = r.student_id
+         WHERE r.event_id = ?
+         ORDER BY s.name ASC`,
+        [req.params.id],
+        (err, rows) => {
+          if (err) return res.status(500).json({ message: err.message });
+
+          if (!rows.length) {
+            return res.status(200)
+              .header("Content-Type", "text/csv")
+              .send("No participants registered yet.");
+          }
+
+          const headers = Object.keys(rows[0]).join(",");
+          const csvRows = rows.map(r =>
+            Object.values(r).map(v =>
+              v === null ? "" : `"${String(v).replace(/"/g, '""')}"`
+            ).join(",")
+          );
+          const csv      = [headers, ...csvRows].join("\n");
+          const filename = `${event_title.replace(/[^a-z0-9]/gi, "_")}_participants_${event_date}.csv`;
+
+          res.header("Content-Type", "text/csv");
+          res.header("Content-Disposition", `attachment; filename="${filename}"`);
+          res.send(csv);
+        }
+      );
+    }
+  );
+});
+
+// POST /api/admin/send-message — send email to event organizer
+router.post("/send-message", adminOnly, (req, res) => {
+  const { event_id, to_email, subject, message } = req.body;
+
+  if (!to_email || !subject || !message)
+    return res.status(400).json({ message: "to_email, subject, and message are required." });
+
+  // Optionally verify the email belongs to the organizer of this event
+  const verifySql = `
+    SELECT o.name AS organizer_name, o.email AS organizer_email, e.title
+    FROM events e
+    JOIN organizers o ON o.id = e.organizer_id
+    WHERE e.id = ? AND o.email = ?
+    LIMIT 1
+  `;
+
+  db.query(verifySql, [event_id || 0, to_email], (err, rows) => {
+    if (err) {
+      console.error("send-message verify error:", err);
+      return res.status(500).json({ message: "Server error" });
+    }
+
+    const organizer_name = rows[0]?.organizer_name || "Organizer";
+    const event_title    = rows[0]?.title          || "your event";
+
+    transporter.sendMail(
+      {
+        from:    `EVEXA Admin <${process.env.EMAIL_USER}>`,
+        to:      to_email,
+        subject: subject,
+        html: `
+          <div style="font-family:sans-serif;max-width:560px;margin:auto;">
+            <h2 style="color:#6d5efc;">EVEXA Admin Message</h2>
+            <p>Hi <strong>${organizer_name}</strong>,</p>
+            <p>You have received a message from the EVEXA Admin regarding
+               <strong>${event_title}</strong>:</p>
+            <blockquote style="border-left:4px solid #6d5efc;padding:10px 16px;
+                               background:#f5f3ff;border-radius:6px;color:#374151;">
+              ${message.replace(/\n/g, "<br/>")}
+            </blockquote>
+            <p style="color:#6b7280;font-size:13px;margin-top:24px;">
+              This message was sent via the EVEXA Admin Portal.
+              Please do not reply to this email directly.
+            </p>
+          </div>
+        `,
+      },
+      (mailErr) => {
+        if (mailErr) {
+          console.error("send-message mail error:", mailErr);
+          return res.status(500).json({ message: "Failed to send email: " + mailErr.message });
+        }
+        pushLog("event", "✉️", "blue", `Admin messaged organizer of event ${event_id}`, req.admin.name || "Admin");
+        res.json({ message: "Message sent successfully." });
+      }
+    );
+  });
+});
+
 // ─────────────────────────────────────────────────────────────
 //  CLUB PERFORMANCE
 // ─────────────────────────────────────────────────────────────
 router.get("/clubs/performance", adminOnly, (req, res) => {
+  const { academic_year } = req.query;
+  let where = "WHERE 1=1";
+  const params = [];
+  if (academic_year && academic_year !== "all") {
+    where += " AND e.academic_year = ?";
+    params.push(academic_year);
+  }
+
   const sql = `
     SELECT
       COALESCE(c.club_name, CONCAT('Club #', e.club_id)) AS club,
-      COUNT(*)                             AS events_conducted,
-      COALESCE(SUM(e.registered_count), 0) AS total_participants,
-      COALESCE(AVG(e.registered_count), 0) AS avg_attendance,
-      0                                    AS avg_feedback,
-      MIN(e.date)                          AS first_event,
-      MAX(e.date)                          AS last_event
+      COUNT(DISTINCT e.id)                               AS events_conducted,
+      COUNT(r.id)                                        AS total_participants,
+      ROUND(COUNT(r.id) / NULLIF(COUNT(DISTINCT e.id), 0), 1) AS avg_attendance,
+      DATE_FORMAT(MAX(e.date), "%Y-%m-%d")              AS last_event
     FROM events e
-    LEFT JOIN clubs c ON e.club_id = c.club_id
+    LEFT JOIN clubs         c ON c.club_id  = e.club_id
+    LEFT JOIN registrations r ON r.event_id = e.id
+    ${where}
     GROUP BY e.club_id, c.club_name
     ORDER BY total_participants DESC
   `;
-  db.query(sql, (err, rows) => {
+  db.query(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ message: err.message });
     res.json(rows.map(r => ({
       ...r,
-      avg_attendance: parseFloat(r.avg_attendance).toFixed(1),
+      avg_attendance: r.avg_attendance ?? "0",
       avg_feedback:   "N/A",
     })));
   });
@@ -322,12 +492,14 @@ router.get("/clubs/growth", adminOnly, (req, res) => {
     SELECT
       COALESCE(c.club_name, CONCAT('Club #', e.club_id)) AS club,
       DATE_FORMAT(e.date, '%b %Y')                        AS month,
-      COALESCE(SUM(e.registered_count), 0)                AS participants
+      DATE_FORMAT(e.date, '%Y-%m')                        AS month_sort,
+      COUNT(r.id)                                         AS participants
     FROM events e
-    LEFT JOIN clubs c ON e.club_id = c.club_id
+    LEFT JOIN clubs         c ON c.club_id  = e.club_id
+    LEFT JOIN registrations r ON r.event_id = e.id
     WHERE e.date >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
     GROUP BY e.club_id, c.club_name, DATE_FORMAT(e.date, '%Y-%m')
-    ORDER BY DATE_FORMAT(e.date, '%Y-%m'), c.club_name
+    ORDER BY month_sort ASC, c.club_name ASC
   `;
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json({ message: err.message });
@@ -342,10 +514,10 @@ router.get("/users", adminOnly, (req, res) => {
   const { search = "", role = "all" } = req.query;
 
   const queries = {
-    student:   "SELECT id, name, email, 'student' AS role, department, status, admission_no, NULL AS last FROM students",
-    organizer: "SELECT id, name, email, 'organizer' AS role, club AS department, 'active' AS status, admission_no, created_at AS last FROM organizers",
-    faculty:   "SELECT id, name, email, 'faculty' AS role, department, 'active' AS status, faculty_no AS admission_no, NULL AS last FROM faculty",
-    admin:     "SELECT id, name, email, 'admin' AS role, department, 'active' AS status, '' AS admission_no, created_at AS last FROM admin",
+    student:   "SELECT id, name, email, 'student' AS role, department AS department, 'active' AS status, admission_no AS admission_no, phone AS phone, NULL AS last FROM students",
+    organizer: "SELECT id,       name,       email, 'organizer' AS role, COALESCE(club,'')             AS department, 'active'  AS status, COALESCE(admission_no,'') AS admission_no, phone AS phone, created_at AS last FROM organizers",
+    faculty:   "SELECT id,       name,       email, 'faculty'   AS role, department                    AS department, 'active'  AS status, faculty_no   AS admission_no, phone_no AS phone, NULL       AS last FROM faculty",
+    admin:     "SELECT admin_id AS id, admin_name AS name, email, 'admin' AS role, ''                  AS department, 'active'  AS status, ''           AS admission_no, phone    AS phone, created_at AS last FROM admin",
   };
 
   const roleList = role === "all" ? ["student", "organizer", "faculty", "admin"] : [role];
@@ -368,8 +540,8 @@ router.post("/users", adminOnly, async (req, res) => {
   const hashed = await bcrypt.hash(password, 10);
 
   const inserts = {
-    student:   [
-      "INSERT INTO students (name,email,password,department,phone,admission_no,roll_no,class,status) VALUES (?,?,?,?,?,?,?,?,'active')",
+    student: [
+      "INSERT INTO students (name,email,password,department,phone,admission_no,roll_no,class) VALUES (?,?,?,?,?,?,?,?)",
       [name, email, hashed, department||null, phone||null, admission_no||null, roll_no||null, cls||null],
     ],
     organizer: [
@@ -381,8 +553,8 @@ router.post("/users", adminOnly, async (req, res) => {
       [name, email, hashed, department||null, phone||null, faculty_no||null],
     ],
     admin: [
-      "INSERT INTO admin (name,email,password,department,phone) VALUES (?,?,?,?,?)",
-      [name, email, hashed, department||null, phone||null],
+      "INSERT INTO admin (admin_name,email,password,phone) VALUES (?,?,?,?)",
+      [name, email, hashed, phone||null],
     ],
   };
 
@@ -404,9 +576,9 @@ router.put("/users/:id", adminOnly, (req, res) => {
   const { name, email, role, status, department, phone, club, faculty_no } = req.body;
 
   const updates = {
-    student:   [
-      "UPDATE students SET name=?,email=?,status=?,department=?,phone=? WHERE id=?",
-      [name, email, status||"active", department||null, phone||null, req.params.id],
+    student: [
+      "UPDATE students SET name=?,email=?,department=?,phone=? WHERE id=?",
+      [name, email, department||null, phone||null, req.params.id],
     ],
     organizer: [
       "UPDATE organizers SET name=?,email=?,club=?,phone=? WHERE id=?",
@@ -417,8 +589,8 @@ router.put("/users/:id", adminOnly, (req, res) => {
       [name, email, department||null, phone||null, faculty_no||null, req.params.id],
     ],
     admin: [
-      "UPDATE admin SET name=?,email=?,department=?,phone=? WHERE id=?",
-      [name, email, department||null, phone||null, req.params.id],
+      "UPDATE admin SET admin_name=?,email=?,phone=? WHERE admin_id=?",
+      [name, email, phone||null, req.params.id],
     ],
   };
 
@@ -463,9 +635,9 @@ router.get("/logs", adminOnly, (req, res) => {
   let sql      = "SELECT * FROM activity_logs WHERE 1=1";
   const params = [];
 
-  if (type !== "all") { sql += " AND type = ?";                params.push(type); }
-  if (from)           { sql += " AND DATE(created_at) >= ?";   params.push(from); }
-  if (to)             { sql += " AND DATE(created_at) <= ?";   params.push(to); }
+  if (type !== "all") { sql += " AND type = ?";                      params.push(type); }
+  if (from)           { sql += " AND DATE(created_at) >= ?";         params.push(from); }
+  if (to)             { sql += " AND DATE(created_at) <= ?";         params.push(to); }
   if (search)         { sql += " AND (action LIKE ? OR user LIKE ?)"; params.push(`%${search}%`, `%${search}%`); }
 
   sql += " ORDER BY id DESC LIMIT 500";
@@ -493,51 +665,49 @@ router.get("/analytics", adminOnly, (req, res) => {
     );
 
   Promise.all([
-    q(`SELECT DATE_FORMAT(date,'%b') AS month, COUNT(*) AS count
+    // GROUP BY and SELECT use identical expressions to satisfy only_full_group_by
+    q(`SELECT DATE_FORMAT(date,'%Y-%m') AS ym, DATE_FORMAT(date,'%b') AS month, COUNT(*) AS count
        FROM events
        WHERE date >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
-       GROUP BY DATE_FORMAT(date,'%Y-%m')
-       ORDER BY DATE_FORMAT(date,'%Y-%m')`),
+       GROUP BY DATE_FORMAT(date,'%Y-%m'), DATE_FORMAT(date,'%b')
+       ORDER BY ym`),
 
     q(`SELECT COALESCE(type,'Other') AS category, COUNT(*) AS count
-       FROM events
-       GROUP BY type`),
+       FROM events GROUP BY COALESCE(type,'Other')`),
 
     q(`SELECT
-         SUM(CASE WHEN type IN ('Technical','Workshop','Science') THEN 1 ELSE 0 END) AS academic,
-         SUM(CASE WHEN type NOT IN ('Technical','Workshop','Science') THEN 1 ELSE 0 END) AS non_academic
+         SUM(CASE WHEN category = 'Technical' THEN 1 ELSE 0 END) AS academic,
+         SUM(CASE WHEN category != 'Technical' OR category IS NULL THEN 1 ELSE 0 END) AS non_academic
        FROM events`),
 
-    q(`SELECT DATE_FORMAT(date,'%b') AS month, COALESCE(SUM(registered_count),0) AS participants
-       FROM events
-       WHERE date >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
-       GROUP BY DATE_FORMAT(date,'%Y-%m')
-       ORDER BY DATE_FORMAT(date,'%Y-%m')`),
+    q(`SELECT DATE_FORMAT(e.date,'%Y-%m') AS ym, DATE_FORMAT(e.date,'%b') AS month, COUNT(r.id) AS participants
+       FROM events e
+       LEFT JOIN registrations r ON r.event_id = e.id
+       WHERE e.date >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
+       GROUP BY DATE_FORMAT(e.date,'%Y-%m'), DATE_FORMAT(e.date,'%b')
+       ORDER BY ym`),
 
     q(`SELECT
          SUM(CASE WHEN MONTH(date) BETWEEN 8 AND 12 THEN 1 ELSE 0 END) AS sem1,
          SUM(CASE WHEN MONTH(date) BETWEEN 1  AND 7  THEN 1 ELSE 0 END) AS sem2
        FROM events`),
 
-    q(`SELECT DATE_FORMAT(created_at,'%b') AS month, COUNT(*) AS count
+    q(`SELECT DATE_FORMAT(created_at,'%Y-%m') AS ym, DATE_FORMAT(created_at,'%b') AS month, COUNT(*) AS count
        FROM students
        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
-       GROUP BY DATE_FORMAT(created_at,'%Y-%m')
-       ORDER BY DATE_FORMAT(created_at,'%Y-%m')`),
+       GROUP BY DATE_FORMAT(created_at,'%Y-%m'), DATE_FORMAT(created_at,'%b')
+       ORDER BY ym`),
 
-    q(`SELECT DATE_FORMAT(created_at,'%b') AS month, COUNT(*) AS count
+    q(`SELECT DATE_FORMAT(created_at,'%Y-%m') AS ym, DATE_FORMAT(created_at,'%b') AS month, COUNT(*) AS count
        FROM certificates
        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
-       GROUP BY DATE_FORMAT(created_at,'%Y-%m')
-       ORDER BY DATE_FORMAT(created_at,'%Y-%m')`),
+       GROUP BY DATE_FORMAT(created_at,'%Y-%m'), DATE_FORMAT(created_at,'%b')
+       ORDER BY ym`),
 
     q(`SELECT 'Students'   AS role, COUNT(*) AS count FROM students
-       UNION ALL
-       SELECT 'Faculty',    COUNT(*) FROM faculty
-       UNION ALL
-       SELECT 'Organizers', COUNT(*) FROM organizers
-       UNION ALL
-       SELECT 'Admins',     COUNT(*) FROM admin`),
+       UNION ALL SELECT 'Faculty',    COUNT(*) FROM faculty
+       UNION ALL SELECT 'Organizers', COUNT(*) FROM organizers
+       UNION ALL SELECT 'Admins',     COUNT(*) FROM admin`),
   ])
     .then(([eventsPerMonth, categories, [acadSplit], participationPerMonth, [semesters], userGrowth, certs, roles]) => {
       res.json({ eventsPerMonth, categories, acadSplit, participationPerMonth, semesters, userGrowth, certs, roles });

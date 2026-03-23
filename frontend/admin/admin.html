@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Admin Dashboard | EVEXA</title>
   <link rel="stylesheet" href="admin.css"/>
+  <script>
+    (function () {
+      if (localStorage.getItem('evexa_theme') === 'light') {
+        document.addEventListener('DOMContentLoaded', function () {
+          document.body.classList.add('light');
+        });
+      }
+    })();
+  </script>
 </head>
 <body>
 <div class="app">
@@ -46,7 +55,7 @@
 
       <div class="section-label">Reports</div>
       <a class="nav-item" href="#" data-page="analytics">
-        <span class="icon">📊</span><span>Analytics & Reports</span>
+        <span class="icon">📊</span><span>Analytics &amp; Reports</span>
       </a>
 
       <div class="section-label">System</div>
@@ -55,18 +64,13 @@
         <span class="nav-badge red" id="badge-activity">—</span>
       </a>
       <a class="nav-item" href="#" data-page="backup">
-        <span class="icon">🗄️</span><span>Backup & Restore</span>
-      </a>
-
-      <div class="section-label">Account</div>
-      <a class="nav-item" href="#" data-page="profile">
-        <span class="icon">👤</span><span>Admin Profile</span>
+        <span class="icon">🗄️</span><span>Backup &amp; Restore</span>
       </a>
 
     </nav>
 
     <div class="sidebar-bottom">
-      <div class="mini-user">
+      <div class="mini-user" id="sidebarUserBtn" title="View Profile" style="cursor:pointer;">
         <div class="mini-avatar" id="sidebarAvatar">SA</div>
         <div class="mini-meta">
           <div class="mini-name" id="sidebarName">Super Admin</div>
@@ -90,8 +94,13 @@
       </div>
       <div class="topbar-right">
         <span class="role-pill">🛡️ Super Admin</span>
-        <button class="icon-btn" id="notifBtn" title="Notifications">
-          🔔<div class="notif-dot"></div>
+        <button class="icon-btn" id="notifBtn" title="Notifications" style="position:relative;">
+          🔔
+          <div class="notif-dot" id="notifDot"></div>
+        </button>
+        <button class="icon-btn theme-topbar-btn" id="themeTopbarBtn" title="Switch theme" aria-label="Toggle light/dark mode">
+          <span class="theme-icon-moon">🌙</span>
+          <span class="theme-icon-sun">☀️</span>
         </button>
         <button class="top-link danger" id="logoutBtn">Logout</button>
       </div>
@@ -115,45 +124,9 @@
             <div class="card-icon">👥</div>
             <div class="card-info"><div class="card-value" id="stat-totalUsers">—</div><div class="card-label">Total Users</div></div>
           </div>
-          <div class="card accent-green">
-            <div class="card-icon">✅</div>
-            <div class="card-info"><div class="card-value" id="stat-approved">—</div><div class="card-label">Events Approved</div></div>
-          </div>
           <div class="card accent-orange">
-            <div class="card-icon">⏳</div>
-            <div class="card-info"><div class="card-value" id="stat-pending">—</div><div class="card-label">Pending Review</div></div>
-          </div>
-          <div class="card accent-pink">
-            <div class="card-icon">🎓</div>
-            <div class="card-info"><div class="card-value" id="stat-certs">—</div><div class="card-label">Certs Issued</div></div>
-          </div>
-          <div class="card accent-teal">
             <div class="card-icon">🏆</div>
             <div class="card-info"><div class="card-value" id="stat-participation">—</div><div class="card-label">Total Participation</div></div>
-          </div>
-          <div class="card accent-red">
-            <div class="card-icon">🔴</div>
-            <div class="card-info"><div class="card-value" id="stat-pendingRoles">—</div><div class="card-label">Pending Roles</div></div>
-          </div>
-        </div>
-
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header">
-              <div><div class="panel-title">Recent Events</div><div class="panel-sub">Latest across all clubs</div></div>
-              <button class="btn ghost sm" onclick="navigateTo('events')">View All</button>
-            </div>
-            <div class="list" id="dashEventsList"><div style="padding:20px;text-align:center;color:#9ca3af;font-weight:700;">Loading…</div></div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-header">
-              <div><div class="panel-title">📚 Academic vs Non-Academic</div><div class="panel-sub">Event distribution</div></div>
-            </div>
-            <div class="panel-body" style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
-              <div style="width:180px;height:180px;flex-shrink:0;"><canvas id="dashAcadChart"></canvas></div>
-              <div id="dashAcadLegend"></div>
-            </div>
           </div>
         </div>
 
@@ -168,26 +141,30 @@
 
           <div class="panel">
             <div class="panel-header">
-              <div><div class="panel-title">🏆 Top Performing Clubs</div><div class="panel-sub">By total participation</div></div>
+              <div><div class="panel-title">📊 Technical vs Non-Technical</div><div class="panel-sub">Event distribution</div></div>
             </div>
-            <div id="dashTopClubs" style="padding:8px 0;"></div>
+            <div class="panel-body" style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+              <div style="width:180px;height:180px;flex-shrink:0;"><canvas id="dashAcadChart"></canvas></div>
+              <div id="dashAcadLegend"></div>
+            </div>
           </div>
         </div>
 
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header">
-              <div><div class="panel-title">Recent Activity</div><div class="panel-sub">Latest system actions</div></div>
-              <button class="btn ghost sm" onclick="navigateTo('activity')">View All</button>
+        <div style="display:flex;justify-content:center;">
+          <div class="panel" id="adminCalendarPanel" style="width:100%;max-width:420px;">
+            <div class="panel-header cal-header-row">
+              <div><div class="panel-title">📅 Event Calendar</div><div class="panel-sub">All upcoming events</div></div>
+              <div class="cal-nav-group">
+                <button class="cal-nav-btn" id="calPrev">‹</button>
+                <span class="cal-month-label" id="calMonthLabel"></span>
+                <button class="cal-nav-btn" id="calNext">›</button>
+              </div>
             </div>
-            <div id="dashActivityList"><div style="padding:20px;text-align:center;color:#9ca3af;font-weight:700;">Loading…</div></div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-header">
-              <div><div class="panel-title">👥 User Role Breakdown</div><div class="panel-sub">Distribution across the platform</div></div>
+            <div class="panel-body" style="padding-top:10px;">
+              <div id="calGrid"></div>
+              <div id="calSelectedInfo" class="cal-selected-info"></div>
+              <div id="calEventList" class="cal-event-list"></div>
             </div>
-            <div class="panel-body" id="dashRoleBreakdown"></div>
           </div>
         </div>
 
@@ -197,58 +174,38 @@
       <div id="pg-events" style="display:none">
         <div class="panel">
           <div class="panel-header">
-            <div><div class="panel-title">All Events</div><div class="panel-sub">Manage, approve and delete events across all clubs</div></div>
+            <div><div class="panel-title">All Events</div><div class="panel-sub">View and manage events across all clubs</div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <input class="search" placeholder="Search events…" id="evSearchInput" style="width:160px"/>
-              <select class="search select-input" id="evStatusFilter" style="width:130px">
-                <option value="all">All Status</option>
-                <option value="upcoming">Upcoming</option>
-                <option value="live">Live</option>
-                <option value="completed">Completed</option>
-                <option value="approved">Approved</option>
-                <option value="pending">Pending</option>
-                <option value="rejected">Rejected</option>
-              </select>
-              <select class="search select-input" id="evCatFilter" style="width:130px">
-                <option value="all">All Categories</option>
-                <option value="Technical">Technical</option>
-                <option value="Cultural">Cultural</option>
-                <option value="Workshop">Workshop</option>
-                <option value="Creative">Creative</option>
-                <option value="Science">Science</option>
-                <option value="Social">Social</option>
-              </select>
-              <select class="search select-input" id="evYearFilter" style="width:140px">
+              <input class="search" placeholder="Search events…" id="evSearchInput" style="width:180px"/>
+              <select class="search select-input" id="evYearFilter" style="width:150px">
                 <option value="all">All Years</option>
-                <option value="2025-26">2025–26</option>
-                <option value="2024-25">2024–25</option>
-                <option value="2023-24">2023–24</option>
+                <option value="2026">2026</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
               </select>
-              <button class="btn primary sm" id="addEventBtn">+ Add Event</button>
             </div>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th><input type="checkbox" class="cb" id="chkAllEvents"/></th>
-                  <th>Event Name</th><th>Club</th><th>Category</th>
-                  <th>Date</th><th>Participants</th><th>Status</th><th>Actions</th>
+                  <th>Event Name</th>
+                  <th>Club</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th>Participants</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="eventsBody"></tbody>
             </table>
-          </div>
-          <div style="padding:12px 20px;display:flex;gap:8px;border-top:1px solid rgba(229,231,235,.7);flex-wrap:wrap;">
-            <button class="btn success sm" id="bulkApproveEvBtn">✅ Approve Selected</button>
-            <button class="btn danger sm"  id="bulkDeleteEvBtn">🗑 Delete Selected</button>
           </div>
         </div>
       </div>
 
       <!-- ═══ CLUB PERFORMANCE ═══ -->
       <div id="pg-clubs" style="display:none">
-
         <div class="panel">
           <div class="panel-header">
             <div><div class="panel-title">🏷️ Club Performance Metrics</div><div class="panel-sub">Attendance, feedback ratings and event counts</div></div>
@@ -267,20 +224,17 @@
                   <th>Events Conducted</th>
                   <th>Avg Attendance</th>
                   <th>Total Participants</th>
-                  <th>Avg Feedback Rating</th>
                   <th>Last Event</th>
                 </tr>
               </thead>
-              <tbody id="clubsBody"><tr><td colspan="6" style="padding:24px;text-align:center;color:#9ca3af;font-weight:700;">Loading…</td></tr></tbody>
+              <tbody id="clubsBody"><tr><td colspan="6" style="padding:24px;text-align:center;opacity:.5;font-weight:700;">Loading…</td></tr></tbody>
             </table>
           </div>
         </div>
-
         <div class="panel">
           <div class="panel-header"><div><div class="panel-title">📈 Participation Growth Trends</div><div class="panel-sub">Monthly participation per club (last 8 months)</div></div></div>
           <div class="panel-body chart-box"><canvas id="growthChart"></canvas></div>
         </div>
-
       </div>
 
       <!-- ═══ USERS ═══ -->
@@ -304,9 +258,12 @@
             <table>
               <thead>
                 <tr>
-                  <th><input type="checkbox" class="cb" id="chkAllUsers"/></th>
-                  <th>Name</th><th>Email</th><th>Role</th>
-                  <th>Department / Club</th><th>Status</th><th>Actions</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Department / Club</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="usersBody"></tbody>
@@ -346,7 +303,7 @@
 
         <div class="two-col">
           <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">📚 Academic vs Non-Academic</div><div class="panel-sub">Event type breakdown</div></div></div>
+            <div class="panel-header"><div><div class="panel-title">📊 Technical vs Non-Technical</div><div class="panel-sub">Event type breakdown</div></div></div>
             <div class="panel-body" style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
               <div style="width:180px;height:180px;flex-shrink:0;"><canvas id="academicChart"></canvas></div>
               <div id="academicLegend"></div>
@@ -398,6 +355,7 @@
               <input class="search" placeholder="Search logs…" id="logSearch" style="width:160px"/>
               <select class="search select-input" id="logTypeFilter" style="width:140px">
                 <option value="all">All Types</option>
+                <option value="login">Login Activity</option>
                 <option value="event">Event Actions</option>
                 <option value="user">User Actions</option>
                 <option value="cert">Certificates</option>
@@ -406,7 +364,6 @@
               <input type="date" class="search" id="logFromDate" title="From date" style="width:140px"/>
               <input type="date" class="search" id="logToDate" title="To date" style="width:140px"/>
               <button class="btn ghost sm" id="logApplyBtn">Apply</button>
-              <button class="btn danger sm" id="clearLogsBtn">🗑 Clear Logs</button>
             </div>
           </div>
           <div id="activityLogList"></div>
@@ -434,7 +391,7 @@
             <div class="panel">
               <div class="panel-header"><div><div class="panel-title">🔄 Restore Data</div><div class="panel-sub">Restore from a previous backup</div></div></div>
               <div class="panel-body" style="display:flex;flex-direction:column;gap:10px;">
-                <div style="padding:14px;border-radius:14px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);font-size:13px;font-weight:700;color:#dc2626;">⚠️ Restoring will overwrite current data. This cannot be undone.</div>
+                <div style="padding:14px;border-radius:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.22);font-size:13px;font-weight:700;color:#f87171;">⚠️ Restoring will overwrite current data. This cannot be undone.</div>
                 <label class="field-label">Select Backup to Restore</label>
                 <select class="field-input" id="restoreSelect">
                   <option>Full Backup — Feb 20, 2026 10:42 AM</option>
@@ -459,89 +416,61 @@
 
       <!-- ═══ ADMIN PROFILE ═══ -->
       <div id="pg-profile" style="display:none">
-
         <div class="two-col">
-
           <div class="panel">
             <div class="panel-header">
               <div><div class="panel-title">👤 Admin Profile</div><div class="panel-sub">Your account details</div></div>
               <button class="btn primary sm" id="saveProfileBtn">💾 Save Changes</button>
             </div>
             <div class="panel-body" style="display:flex;flex-direction:column;gap:14px;">
-              <div style="display:flex;align-items:center;gap:16px;padding:14px;border-radius:16px;background:rgba(109,94,252,.05);border:1px solid rgba(109,94,252,.12);">
-                <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#6d5efc,#ff6aa0);display:grid;place-items:center;color:white;font-weight:900;font-size:22px;" id="profileAvatar">SA</div>
+              <div style="display:flex;align-items:center;gap:16px;padding:14px;border-radius:16px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.18);">
+                <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#8b5cf6,#ec4899);display:grid;place-items:center;color:white;font-weight:900;font-size:22px;box-shadow:0 0 20px rgba(139,92,246,.35);" id="profileAvatar">SA</div>
                 <div>
-                  <div style="font-weight:900;font-size:16px;" id="profileDisplayName">Super Admin</div>
-                  <div style="font-size:12px;color:#9ca3af;font-weight:700;" id="profileDisplayEmail">admin@college.edu</div>
+                  <div style="font-weight:800;font-size:16px;color:var(--text);" id="profileDisplayName">Super Admin</div>
+                  <div style="font-size:12px;color:var(--text-3);font-weight:500;margin-top:3px;" id="profileDisplayEmail">admin@example.com</div>
                 </div>
               </div>
-              <div>
-                <label class="field-label">Full Name</label>
-                <input class="field-input" id="profileName" placeholder="Full name"/>
-              </div>
-              <div>
-                <label class="field-label">Email Address</label>
-                <input class="field-input" id="profileEmail" type="email" placeholder="admin@college.edu"/>
-              </div>
-              <div>
-                <label class="field-label">Phone Number</label>
-                <input class="field-input" id="profilePhone" placeholder="+91 XXXXX XXXXX"/>
-              </div>
-              <div>
-                <label class="field-label">Department</label>
-                <input class="field-input" id="profileDept" placeholder="e.g. Admin Office"/>
-              </div>
+              <div><label class="field-label">Full Name</label><input class="field-input" id="profileName" placeholder="Full name"/></div>
+              <div><label class="field-label">Phone Number</label><input class="field-input" id="profilePhone" placeholder="+91 XXXXX XXXXX"/></div>
+              <div><label class="field-label">Role</label><input class="field-input" id="profileRole" readonly style="opacity:.6;cursor:default;"/></div>
             </div>
           </div>
-
           <div class="panel">
             <div class="panel-header">
               <div><div class="panel-title">🔒 Change Password</div><div class="panel-sub">Update your login password</div></div>
             </div>
             <div class="panel-body" style="display:flex;flex-direction:column;gap:14px;">
-              <div>
-                <label class="field-label">Current Password</label>
-                <input class="field-input" id="pwCurrent" type="password" placeholder="Enter current password"/>
-              </div>
-              <div>
-                <label class="field-label">New Password</label>
-                <input class="field-input" id="pwNew" type="password" placeholder="Min 8 characters"/>
-              </div>
-              <div>
-                <label class="field-label">Confirm New Password</label>
-                <input class="field-input" id="pwConfirm" type="password" placeholder="Re-enter new password"/>
-              </div>
-              <div style="height:6px;border-radius:999px;background:rgba(229,231,235,.7);overflow:hidden;">
+              <div><label class="field-label">Current Password</label><input class="field-input" id="pwCurrent" type="password" placeholder="Enter current password"/></div>
+              <div><label class="field-label">New Password</label><input class="field-input" id="pwNew" type="password" placeholder="Min 8 characters"/></div>
+              <div><label class="field-label">Confirm New Password</label><input class="field-input" id="pwConfirm" type="password" placeholder="Re-enter new password"/></div>
+              <div style="height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden;">
                 <div id="pwStrengthFill" style="height:100%;width:0;border-radius:999px;transition:.3s;"></div>
               </div>
-              <div id="pwStrengthLabel" style="font-size:11px;font-weight:700;color:#9ca3af;"></div>
+              <div id="pwStrengthLabel" style="font-size:11px;font-weight:700;color:var(--text-3);"></div>
               <button class="btn primary" id="changePasswordBtn" style="width:100%;">🔒 Update Password</button>
             </div>
           </div>
-
         </div>
-
         <div class="panel">
           <div class="panel-header">
-            <div><div class="panel-title">🛡️ Session & Security</div><div class="panel-sub">Current session information</div></div>
+            <div><div class="panel-title">🛡️ Session &amp; Security</div><div class="panel-sub">Current session information</div></div>
             <button class="btn danger sm" id="logoutBtn2">Logout</button>
           </div>
           <div class="panel-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">
-            <div style="padding:14px;border-radius:14px;border:1px solid rgba(229,231,235,.8);">
-              <div style="font-size:11px;font-weight:900;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;">Role</div>
-              <div style="font-weight:900;font-size:15px;margin-top:4px;">Super Admin</div>
+            <div style="padding:14px;border-radius:14px;border:1px solid var(--border-2);background:var(--surface);">
+              <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;">Role</div>
+              <div style="font-weight:800;font-size:15px;margin-top:4px;color:var(--text);">Super Admin</div>
             </div>
-            <div style="padding:14px;border-radius:14px;border:1px solid rgba(229,231,235,.8);">
-              <div style="font-size:11px;font-weight:900;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;">Session Expires</div>
-              <div style="font-weight:900;font-size:15px;margin-top:4px;" id="sessionExpiry">—</div>
+            <div style="padding:14px;border-radius:14px;border:1px solid var(--border-2);background:var(--surface);">
+              <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;">Session Expires</div>
+              <div style="font-weight:800;font-size:15px;margin-top:4px;color:var(--text);" id="sessionExpiry">—</div>
             </div>
-            <div style="padding:14px;border-radius:14px;border:1px solid rgba(34,197,94,.2);background:rgba(34,197,94,.05);">
-              <div style="font-size:11px;font-weight:900;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;">Status</div>
-              <div style="font-weight:900;font-size:15px;margin-top:4px;color:#16a34a;">🟢 Active</div>
+            <div style="padding:14px;border-radius:14px;border:1px solid rgba(34,197,94,.25);background:rgba(34,197,94,.08);">
+              <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;">Status</div>
+              <div style="font-weight:800;font-size:15px;margin-top:4px;color:#4ade80;">🟢 Active</div>
             </div>
           </div>
         </div>
-
       </div>
 
     </section>
@@ -561,7 +490,7 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="admin.js"></script>
 </body>
 </html>

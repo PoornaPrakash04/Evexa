@@ -10,7 +10,7 @@ window.API = API;
 // ── AUTH ──────────────────────────────────────────────────────────────────
 async function apiFetch(endpoint, opts = {}) {
   const token = localStorage.getItem("authToken");
-  if (!token) { window.location.href = "faculty-signin.html"; return null; }
+  if (!token) { window.location.href = "fcsignin.html"; return null; }
   try {
     const base = (typeof API !== "undefined" ? API : window.API) || "http://localhost:5000/api";
     const res = await fetch(`${base}${endpoint}`, {
@@ -99,7 +99,7 @@ async function boot() {
   if (!profile.faculty_no && !profile.department && profile.roll_no) {
     localStorage.removeItem("authToken");
     showToast("Please log in with your faculty account.", "error");
-    setTimeout(() => window.location.href = "faculty-signin.html", 1500);
+    setTimeout(() => window.location.href = "fcsignin.html", 1500);
     return;
   }
 
@@ -1145,7 +1145,7 @@ function logout() {
                 style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">
           Cancel
         </button>
-        <button onclick="localStorage.removeItem('authToken');window.location.href='faculty-signin.html';"
+        <button onclick="localStorage.removeItem('authToken');window.location.href='fcsignin.html';"
                 style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">
           Yes, Logout
         </button>

@@ -1,3 +1,4 @@
+//registrations.js
 const express = require("express");
 const db = require("../db");
 const authorize = require("../middleware/authMiddleware");

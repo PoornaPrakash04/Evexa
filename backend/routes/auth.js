@@ -17,6 +17,16 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 const router = express.Router();
 
+// ── Activity log helper ──────────────────────────────────────
+function pushLog(type, icon, color, action, user) {
+  const ts = new Date().toISOString().slice(0, 19).replace("T", " ");
+  db.query(
+    "INSERT INTO activity_logs (type, icon, color, action, user, created_at) VALUES (?,?,?,?,?,?)",
+    [type, icon, color, action, user, ts],
+    () => {}
+  );
+}
+
 // ── Organizer login ──────────────────────────────────────────
 router.post("/login", async (req, res) => {
   const { admission_no, password } = req.body;
@@ -36,6 +46,7 @@ router.post("/login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
+    pushLog("login", "🏷️", "teal", `Organizer login: ${organizer.name}`, organizer.name);
     res.json({ token });
   });
 });
@@ -60,6 +71,7 @@ router.post("/student-login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
+    pushLog("login", "🎓", "blue", `Student login: ${student.name}`, student.name);
     res.json({ token });
   });
 });
@@ -83,6 +95,7 @@ router.post("/faculty-login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
+    pushLog("login", "👨‍🏫", "orange", `Faculty login: ${faculty.name}`, faculty.name);
     res.json({ token });
   });
 });
@@ -274,7 +287,6 @@ router.post("/faculty-register", (req, res) => {
 
       try {
         const hashed = await bcrypt.hash(password, 10);
-        // role_id defaults to 1 (base faculty role) — adjust as needed
         db.query(
           "INSERT INTO faculty (faculty_no, name, email, password, department, phone_no, role_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
           [faculty_no, name, email, hashed, department, phone_no || null, 1],
