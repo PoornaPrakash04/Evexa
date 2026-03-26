@@ -6,6 +6,7 @@
 <title>EVEXA — Organizer Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="orgstyle.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 <style>
   .btn-back {
     display: inline-flex;
@@ -87,7 +88,7 @@
 
     <div class="nav-section">
       <div class="nav-label">Team</div>
-     <a class="nav-item" href="orgexecom.html">Club Execom</a> 
+     <a class="nav-item" data-page="execom"><div class="nav-icon">👥</div> Club Execom</a>
     </div>
   </nav>
 
@@ -599,10 +600,18 @@
           <button class="btn-back" onclick="switchPage('dashboard')">←</button>
           Club Execom
         </div>
+        <button class="btn-primary" id="addExecomBtn">＋ Add Member</button>
       </div>
       <div id="execomGrid" class="execom-grid">
         <div class="empty-state empty-state--full"><span>⏳</span><p>Loading execom…</p></div>
       </div>
+    </div>
+  </div>
+
+  <!-- PAGE: EVENT DETAIL (merged from org.html) -->
+  <div class="page" id="page-event-detail">
+    <div class="content">
+      <div id="edContainer"></div>
     </div>
   </div>
 

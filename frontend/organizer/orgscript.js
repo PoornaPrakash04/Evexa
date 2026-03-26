@@ -38,12 +38,18 @@ if (window.__EVEXA_INITIALIZED__) {
     await Promise.all([loadVenues()]);
     await loadAnnouncements();
     await loadEvents();
+    await loadDashboardStats();
 
         const savedPage = "dashboard";
     localStorage.removeItem("currentPage");
     switchPage(savedPage);
 
     wireStaticButtons();
+
+    // Wire Add Member button (merged from orgexecom.js)
+    document.getElementById("addExecomBtn")?.addEventListener("click", openAddExecomModal);
+    document.getElementById("execomEditForm")?.addEventListener("submit", submitExecomEdit);
+
     console.log("✅ Dashboard ready");
   });
 }
@@ -233,6 +239,38 @@ function updateProfileStats() {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// DASHBOARD STATS  (real data from /api/organizer/dashboard)
+// ─────────────────────────────────────────────────────────────
+async function loadDashboardStats() {
+  try {
+    const res = await apiFetch("/organizer/dashboard");
+    if (!res.ok) return;
+    const d = await res.json();
+
+    // Update any stat-card nums that exist in the HTML
+    const statMap = {
+      statTotalEvents:        d.total_events        ?? 0,
+      statApprovedEvents:     d.approved_events     ?? 0,
+      statTotalRegistrations: d.total_registrations ?? 0,
+      statOpenIssues:         d.open_issues         ?? 0,
+    };
+    Object.entries(statMap).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    });
+
+    // Update profile sidebar stat rows
+    const nums = document.querySelectorAll(".pstat-num");
+    if (nums.length >= 2) {
+      nums[0].textContent = d.total_events ?? events.length;
+      nums[1].textContent = d.draft_events ?? events.filter(e => ["Draft","Pending"].includes(e.status)).length;
+    }
+  } catch (err) {
+    console.warn("Dashboard stats (non-critical):", err.message);
+  }
+}
+
 function setupProfile() {
   const logoutBtn = document.getElementById("profileLogoutBtn");
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
@@ -341,8 +379,9 @@ function switchPage(name) {
       titleEl.textContent = nav.textContent.trim().replace(/\d+/g, "").trim();
     } else {
       const fallbackTitles = {
-        "club-single": "Club Details",
-        "settings":    "Profile & Settings",
+        "club-single":    "Club Details",
+        "settings":       "Profile & Settings",
+        "event-detail":   "Event Detail",
       };
       titleEl.textContent = fallbackTitles[name] || "Dashboard";
     }
@@ -455,7 +494,7 @@ function renderDashEventList() {
   }).join("");
 
   container.querySelectorAll(".event-row").forEach((row, i) => {
-    row.addEventListener("click", () => { window.location.href = `org.html?id=${events[i].id}`; });
+    row.addEventListener("click", () => { openEventDetail(events[i].id); });
   });
 }
 
@@ -616,7 +655,7 @@ function renderEventsGrid() {
   if (!filteredEvents.length) { grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><span>📅</span><p>No events found</p></div>`; return; }
   grid.innerHTML = filteredEvents.map(e => createEventCard(e)).join("");
   grid.querySelectorAll(".event-card").forEach((card, i) => {
-    card.addEventListener("click", () => { window.location.href = `org.html?id=${filteredEvents[i].id}`; });
+    card.addEventListener("click", () => { openEventDetail(filteredEvents[i].id); });
   });
 }
 
@@ -645,7 +684,7 @@ function createEventCard(e) {
             <span class="seat-total">/ ${capacity} total</span>
           </div>
           <div class="seat-progress"><div class="seat-progress-bar" style="width:${percent}%"></div></div>
-          <a class="view-details" href="org.html?id=${e.id}" onclick="event.stopPropagation()">View details →</a>
+          <a class="view-details" href="#" onclick="event.preventDefault();event.stopPropagation();openEventDetail(${e.id})">View details →</a>
         </div>
       </div>
     </div>`;
@@ -912,10 +951,16 @@ function renderExecom(members) {
     const color = colors[hash % colors.length];
     return `
       <div class="execom-card" style="position:relative;">
-        <button onclick="openEditExecomModal(${m.id})"
-          style="position:absolute;top:10px;right:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--violet);transition:all 0.15s;"
-          onmouseover="this.style.background='var(--violet-light)'"
-          onmouseout="this.style.background='var(--bg)'">✏️ Edit</button>
+        <div style="position:absolute;top:10px;right:10px;display:flex;gap:6px;">
+          <button onclick="openEditExecomModal(${m.id})"
+            style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--violet);transition:all 0.15s;"
+            onmouseover="this.style.background='var(--violet-light)'"
+            onmouseout="this.style.background='var(--bg)'">✏️</button>
+          <button onclick="deleteExecomMember(${m.id})"
+            style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--rose);transition:all 0.15s;"
+            onmouseover="this.style.background='var(--rose-light)'"
+            onmouseout="this.style.background='var(--bg)'">🗑️</button>
+        </div>
         <img src="https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=${color}" alt="${m.name}" class="execom-avatar">
         <h4>${m.name}</h4>
         <div class="pos">${m.position}</div>
@@ -926,6 +971,16 @@ function renderExecom(members) {
         </div>
       </div>`;
   }).join("");
+}
+
+async function deleteExecomMember(id) {
+  if (!confirm("Delete this member?")) return;
+  try {
+    const res = await apiFetch(`/execom/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); showToast("❌ " + (d.message || "Delete failed")); return; }
+    showToast("🗑️ Member deleted");
+    await loadExecom();
+  } catch { showToast("❌ Network error"); }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1207,7 +1262,7 @@ function renderEventsForSelectedDate(dateStr) {
   boxTitle.textContent = `Events on ${formatDateYMD(dateStr)}`;
   if (!evs.length) { listBox.innerHTML = `<div class="empty-state" style="padding:14px;border:1px dashed var(--line);border-radius:14px;"><span>📭</span><p style="margin:6px 0 0;">No events on this day</p></div>`; return; }
   listBox.innerHTML = evs.map(e => `
-    <div class="event-row" style="cursor:pointer;" onclick="window.location.href='org.html?id=${e.id}'">
+    <div class="event-row" style="cursor:pointer;" onclick="openEventDetail(${e.id})">
       <div class="event-thumb" style="${e.posterUrl ? `background:url(${e.posterUrl}) center/cover;` : "background:linear-gradient(135deg,#5b3ff8,#f04e6e);"}">${e.posterUrl ? "" : "📅"}</div>
       <div class="event-info">
         <h4 style="margin:0;">${e.title}</h4>
@@ -1794,7 +1849,7 @@ function renderOrgClubSingle(club, memberCount, clubEvents, execom, content) {
       const reg     = ev.registered_count || ev.filled_seats || 0;
       const left    = cap > 0 ? Math.max(0, cap - reg) : null;
       return `
-        <div class="ocs-event-card" onclick="window.location.href='org.html?id=${evId}'" style="cursor:pointer;">
+        <div class="ocs-event-card" onclick="openEventDetail(${evId})" style="cursor:pointer;">
           <div class="ocs-event-banner" style="background:${theme.bg};"><span style="font-size:28px;">📅</span></div>
           <div class="ocs-event-body">
             <div class="ocs-event-name">${evName}</div>
@@ -1873,4 +1928,339 @@ function renderOrgClubSingle(club, memberCount, clubEvents, execom, content) {
         </div>
       </div>
     </div>`;
+}
+// ═══════════════════════════════════════════════════════════════
+// EVENT DETAIL PAGE  (merged from org.js + org.html + org.css)
+// Call openEventDetail(id) from anywhere in the SPA instead of
+// navigating to org.html?id=...
+// ═══════════════════════════════════════════════════════════════
+
+let _edCurrentId   = null;
+let _edCurrentData = null;
+
+async function openEventDetail(id, mode = "view") {
+  _edCurrentId = id;
+  switchPage("event-detail");
+
+  const container = document.getElementById("edContainer");
+  if (!container) return;
+  container.innerHTML = `<div class="empty-state"><span>⏳</span><p>Loading event…</p></div>`;
+
+  // Fetch event data
+  let eData = null;
+  try {
+    const allRes = await apiFetch("/events/all");
+    if (allRes.ok) {
+      const all = await allRes.json();
+      eData = all.find(e => String(e.id) === String(id)) || null;
+    }
+    if (!eData) {
+      const singleRes = await apiFetch(`/events/${id}`);
+      if (singleRes.ok) eData = await singleRes.json();
+    }
+  } catch (err) { console.error("Event fetch:", err); }
+
+  if (!eData) {
+    container.innerHTML = `<div class="card" style="padding:24px;"><b>Event not found.</b><p style="color:var(--muted);margin-top:8px;">It may have been deleted or you lack permission.</p></div>`;
+    return;
+  }
+
+  // Hydrate registration count
+  try {
+    const cRes = await apiFetch(`/registrations/count/${id}`);
+    if (cRes.ok) { const cData = await cRes.json(); eData.registered = Number(cData.count || 0); }
+  } catch (_) {}
+
+  _edCurrentData = eData;
+  if (mode === "edit") renderEventEdit(container, eData, id);
+  else                 renderEventView(container, eData, id);
+}
+
+// ─── helpers ──────────────────────────────────────────────────
+function edFormatDate(dateStr) {
+  if (!dateStr) return "N/A";
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
+}
+function edFormatTime(t) {
+  if (!t) return "N/A";
+  const [h, m] = t.split(":").map(Number);
+  return `${h > 12 ? h - 12 : h || 12}:${String(m).padStart(2,"0")} ${h >= 12 ? "PM" : "AM"}`;
+}
+function edCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
+
+// ─── VIEW ─────────────────────────────────────────────────────
+function renderEventView(container, eData, id) {
+  const posterBg = { Workshop:"#6c63ff", Seminar:"#ff6584", Hackathon:"#43d9a2", Cultural:"#f4a261", Sports:"#ffd166" };
+  const bg       = posterBg[eData.type] || "#6c63ff";
+  const bannerImg = eData.poster ? `http://localhost:5000/uploads/${eData.poster}` : null;
+  const seatsLeft = Math.max((Number(eData.capacity)||0) - (Number(eData.registered)||0), 0);
+  const pct       = Number(eData.capacity) > 0 ? Math.min(100, Math.round((Number(eData.registered||0)/Number(eData.capacity))*100)) : 0;
+  const statusCls = { open:"", draft:"draft", closed:"closed" }[eData.status] || "";
+
+  container.innerHTML = `
+    <div class="ed-banner">
+      ${bannerImg
+        ? `<img src="${bannerImg}" alt="${eData.title}" />`
+        : `<div style="height:100%;background:linear-gradient(135deg,${bg},#ff6584);"></div>`}
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
+      <div style="display:flex;gap:10px;">
+        <button class="btn-ghost" onclick="switchPage('events')" style="font-size:13px;">← Back</button>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-ghost" id="edShareBtn" style="font-size:13px;">🔗 Share</button>
+        <button class="btn-primary" id="edEditBtn" style="font-size:13px;">✏️ Edit</button>
+      </div>
+    </div>
+
+    <div class="ed-layout">
+      <!-- LEFT: Main card -->
+      <div class="ed-main">
+        <div class="ed-head">
+          <div>
+            <div class="ed-title">${eData.title}</div>
+            <div class="ed-badges">
+              <span class="ed-badge primary">${eData.type || "Event"}</span>
+              <span class="ed-badge">${eData.club || "No Club"}</span>
+              <span class="ed-badge">${edCap(eData.status)}</span>
+              <span class="ed-badge">${eData.registration_fee > 0 ? "₹" + eData.registration_fee : "Free"}</span>
+            </div>
+            <div class="ed-meta">
+              <span><i class="fa fa-calendar"></i>${edFormatDate(eData.date)}</span>
+              <span><i class="fa fa-clock"></i>${edFormatTime(eData.time)}</span>
+              <span><i class="fa fa-map-marker-alt"></i>${eData.venue || "TBD"}</span>
+              <span><i class="fa fa-users"></i>${eData.registered ?? 0} / ${eData.capacity ?? 0} registered</span>
+            </div>
+          </div>
+          <span class="ed-status ${statusCls}">${edCap(eData.status || "Open")}</span>
+        </div>
+
+        <div class="ed-tabs">
+          <button class="ed-tab active" data-panel="info">Description</button>
+          <button class="ed-tab" data-panel="participants">Participants</button>
+          <button class="ed-tab" data-panel="qr">QR / Attendance</button>
+        </div>
+
+        <div class="ed-panel active" id="edp-info">
+          <p class="ed-desc">${eData.description || "No description added."}</p>
+        </div>
+
+        <div class="ed-panel" id="edp-participants">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <b style="color:var(--ink);">Registered Participants</b>
+            <button class="btn-ghost" id="edDownloadBtn" style="font-size:12px;">⬇️ Download CSV</button>
+          </div>
+          <div id="edParticipantsWrap"><p class="ed-desc">Click tab to load…</p></div>
+        </div>
+
+        <div class="ed-panel" id="edp-qr">
+          <p class="ed-desc">Use the QR scanner in the <b>QR &amp; Tickets</b> section of the sidebar to scan tickets for this event.</p>
+        </div>
+      </div>
+
+      <!-- RIGHT: Sidebar -->
+      <aside class="ed-side">
+        <div class="ed-reg-label">Registration</div>
+        <div class="ed-reg-row">
+          <span>${seatsLeft} seats left</span>
+          <span>${eData.registered ?? 0} / ${eData.capacity ?? 0}</span>
+        </div>
+        <div class="ed-progress"><div class="ed-progress-fill" style="width:${pct}%"></div></div>
+
+        <div class="ed-kpi-grid">
+          <div class="ed-kpi">
+            <div class="ed-kpi-icon"><i class="fa fa-users"></i></div>
+            <div><b>${eData.registered ?? 0}</b><small>Registered</small></div>
+          </div>
+          <div class="ed-kpi">
+            <div class="ed-kpi-icon"><i class="fa fa-chair"></i></div>
+            <div><b>${eData.capacity ?? 0}</b><small>Capacity</small></div>
+          </div>
+        </div>
+
+        <div class="ed-hr"></div>
+        <div class="ed-detail-row"><b>Fee:</b> ${eData.registration_fee > 0 ? "₹" + eData.registration_fee : "Free"}</div>
+        <div class="ed-detail-row"><b>Venue:</b> ${eData.venue || "TBD"}</div>
+        <div class="ed-detail-row"><b>Date:</b> ${edFormatDate(eData.date)}</div>
+        <div class="ed-detail-row"><b>Time:</b> ${edFormatTime(eData.time)}</div>
+        <div class="ed-detail-row"><b>Club:</b> ${eData.club || "—"}</div>
+      </aside>
+    </div>`;
+
+  // Tabs
+  let participantsLoaded = false;
+  container.querySelectorAll(".ed-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      container.querySelectorAll(".ed-tab").forEach(t => t.classList.remove("active"));
+      container.querySelectorAll(".ed-panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      container.querySelector(`#edp-${btn.dataset.panel}`)?.classList.add("active");
+      if (btn.dataset.panel === "participants" && !participantsLoaded) {
+        participantsLoaded = true;
+        edLoadParticipants(id);
+      }
+    });
+  });
+
+  // Buttons
+  document.getElementById("edEditBtn")?.addEventListener("click", () => openEventDetail(id, "edit"));
+  document.getElementById("edShareBtn")?.addEventListener("click", async () => {
+    const url = `${location.origin}${location.pathname}?eventId=${id}`;
+    try { await navigator.share?.({ title: eData.title, url }); }
+    catch { await navigator.clipboard.writeText(url); showToast("🔗 Link copied!"); }
+  });
+  document.getElementById("edDownloadBtn")?.addEventListener("click", () => edDownloadCSV(id));
+}
+
+// ─── load participants table ───────────────────────────────────
+async function edLoadParticipants(id) {
+  const wrap = document.getElementById("edParticipantsWrap");
+  if (!wrap) return;
+  wrap.innerHTML = `<p class="ed-desc">Loading…</p>`;
+  try {
+    const res  = await apiFetch(`/registrations/event/${id}`);
+    const data = res.ok ? await res.json() : [];
+    if (!data.length) { wrap.innerHTML = `<p class="ed-desc">No registrations yet.</p>`; return; }
+    wrap.innerHTML = `
+      <table class="ed-table">
+        <thead><tr>
+          <th>#</th><th>Name</th><th>Email</th><th>Dept</th><th>Class</th><th>Registered</th>
+        </tr></thead>
+        <tbody>
+          ${data.map((p, i) => `
+            <tr>
+              <td>${i+1}</td>
+              <td>${p.name || "—"}</td>
+              <td>${p.email || "—"}</td>
+              <td>${p.department || "—"}</td>
+              <td>${p.class || "—"}</td>
+              <td>${p.registered_at ? edFormatDate(p.registered_at) : "—"}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+  } catch { wrap.innerHTML = `<p class="ed-desc">Failed to load participants.</p>`; }
+}
+
+// ─── download CSV ─────────────────────────────────────────────
+async function edDownloadCSV(id) {
+  try {
+    const res  = await apiFetch(`/registrations/event/${id}`);
+    const data = res.ok ? await res.json() : [];
+    if (!data.length) { showToast("No participants to export."); return; }
+    const headers = ["#","Name","Email","Phone","Class","Department","Registered At"];
+    const rows    = data.map((p, i) => [i+1, p.name||"", p.email||"", p.phone||"", p.class||"", p.department||"", p.registered_at ? edFormatDate(p.registered_at) : ""]);
+    const csv     = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const a       = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([csv], {type:"text/csv"})),
+      download: `participants_event_${id}.csv`
+    });
+    a.click();
+  } catch { showToast("❌ Download failed."); }
+}
+
+// ─── EDIT ─────────────────────────────────────────────────────
+function renderEventEdit(container, eData, id) {
+  container.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
+      <button class="btn-ghost" onclick="openEventDetail('${id}')" style="font-size:13px;">← Cancel</button>
+      <button class="btn-primary" id="edSaveBtn" style="font-size:13px;">💾 Save Changes</button>
+    </div>
+
+    <div class="ed-main">
+      <div class="ed-title" style="font-size:22px;margin-bottom:4px;">Edit Event</div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:18px;">Changes are saved directly to the database.</p>
+
+      <div class="ed-form-grid">
+        <div class="ed-form-group">
+          <label>Title *</label>
+          <input id="edf_title" value="${eData.title || ""}" />
+        </div>
+        <div class="ed-form-group">
+          <label>Type</label>
+          <select id="edf_type">
+            ${["Workshop","Hackathon","Seminar","Bootcamp","Ideathon","Cultural","Other"].map(t =>
+              `<option${eData.type === t ? " selected" : ""}>${t}</option>`).join("")}
+          </select>
+        </div>
+        <div class="ed-form-group">
+          <label>Venue</label>
+          <input id="edf_venue" value="${eData.venue || ""}" />
+        </div>
+        <div class="ed-form-group">
+          <label>Date</label>
+          <input id="edf_date" type="date" value="${(eData.date || "").slice(0,10)}" />
+        </div>
+        <div class="ed-form-group">
+          <label>Time</label>
+          <input id="edf_time" type="time" value="${eData.time || ""}" />
+        </div>
+        <div class="ed-form-group">
+          <label>Capacity</label>
+          <input id="edf_capacity" type="number" min="0" value="${eData.capacity ?? 0}" />
+        </div>
+        <div class="ed-form-group">
+          <label>Registration Fee (₹)</label>
+          <input id="edf_fee" type="number" min="0" value="${eData.registration_fee ?? 0}" />
+        </div>
+      </div>
+
+      <div class="ed-hr"></div>
+
+      <div class="ed-form-group" style="margin-bottom:14px;">
+        <label>Description</label>
+        <textarea id="edf_desc" rows="5">${eData.description || ""}</textarea>
+      </div>
+
+      <div class="ed-form-group">
+        <label>Replace Poster (optional)</label>
+        <input type="file" id="edf_poster" accept="image/*" style="color:var(--ink2);" />
+      </div>
+    </div>`;
+
+  document.getElementById("edSaveBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("edSaveBtn");
+    btn.disabled  = true;
+    btn.textContent = "Saving…";
+
+    const payload = {
+      title:            document.getElementById("edf_title").value.trim(),
+      date:             document.getElementById("edf_date").value,
+      time:             document.getElementById("edf_time").value,
+      venue:            document.getElementById("edf_venue").value.trim(),
+      capacity:         document.getElementById("edf_capacity").value,
+      registration_fee: document.getElementById("edf_fee").value,
+      description:      document.getElementById("edf_desc").value.trim(),
+      type:             document.getElementById("edf_type").value,
+    };
+
+    try {
+      const res = await apiFetch(`/events/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const posterFile = document.getElementById("edf_poster")?.files?.[0];
+        if (posterFile) {
+          const fd = new FormData(); fd.append("poster", posterFile);
+          await apiFetch(`/events/${id}/poster`, { method:"PUT", body:fd });
+        }
+        showToast("✅ Event updated!");
+        await loadEvents(); // refresh cached event list
+        openEventDetail(id); // go back to view mode
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast("❌ Save failed: " + (err.message || res.status));
+        btn.disabled = false;
+        btn.textContent = "💾 Save Changes";
+      }
+    } catch {
+      showToast("❌ Network error.");
+      btn.disabled = false;
+      btn.textContent = "💾 Save Changes";
+    }
+  });
 }

@@ -2201,3 +2201,283 @@ body.light .ocs-event-name { color: #0d0d14; }
   .ocs-events-row  { grid-template-columns: 1fr; }
   .ocs-stat-row    { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   EVENT DETAIL PAGE  (merged from org.css)
+   Replaces standalone org.html + org.css + org.js
+══════════════════════════════════════════════════════════════ */
+
+/* Banner */
+.ed-banner {
+  height: 260px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  background: var(--surface-2);
+  margin-bottom: 18px;
+}
+.ed-banner img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+
+/* Two-column layout */
+.ed-layout {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+/* Shared card base already exists (.card), reuse it */
+.ed-main {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  backdrop-filter: var(--blur);
+}
+.ed-side {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  position: sticky;
+  top: 80px;
+  backdrop-filter: var(--blur);
+}
+
+/* Title row */
+.ed-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ed-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+/* Status pill */
+.ed-status {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--emerald);
+  background: var(--emerald-light);
+  color: var(--emerald);
+  white-space: nowrap;
+}
+.ed-status.draft   { border-color: var(--amber);  background: var(--amber-light);  color: var(--amber); }
+.ed-status.closed  { border-color: var(--rose);   background: var(--rose-light);   color: var(--rose); }
+
+/* Badges */
+.ed-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ed-badge {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink2);
+}
+.ed-badge.primary {
+  background: var(--violet-light);
+  border-color: var(--violet);
+  color: var(--violet-mid);
+}
+
+/* Meta info */
+.ed-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+.ed-meta span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--ink2);
+  font-weight: 500;
+}
+.ed-meta i { color: var(--violet-mid); width: 14px; }
+
+/* Tabs — reuse .tab / .tab.active from existing style, but scoped */
+.ed-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+.ed-tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink2);
+  transition: .15s;
+}
+.ed-tab:hover { border-color: var(--violet); color: var(--violet-mid); }
+.ed-tab.active {
+  border-color: var(--violet);
+  background: var(--violet-light);
+  color: var(--violet-mid);
+}
+
+/* Tab panels */
+.ed-panel { display: none; }
+.ed-panel.active { display: block; }
+
+/* Description text */
+.ed-desc {
+  font-size: 14px;
+  color: var(--ink2);
+  line-height: 1.8;
+}
+
+/* Registration sidebar */
+.ed-reg-label {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.ed-reg-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+/* Progress bar */
+.ed-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.ed-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--g-violet);
+}
+
+/* KPI mini cards */
+.ed-kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ed-kpi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.ed-kpi-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--violet-light);
+  color: var(--violet-mid);
+  font-size: 14px;
+}
+.ed-kpi b   { font-size: 17px; color: var(--ink); display: block; }
+.ed-kpi small { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+/* Divider */
+.ed-hr { height: 1px; background: var(--border); margin: 14px 0; }
+
+/* Sidebar detail rows */
+.ed-detail-row {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.ed-detail-row b { color: var(--ink2); }
+
+/* Edit form inside the page */
+.ed-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.ed-form-group { display: flex; flex-direction: column; gap: 5px; }
+.ed-form-group label { font-size: 12px; color: var(--muted); font-weight: 600; }
+.ed-form-group input,
+.ed-form-group select,
+.ed-form-group textarea {
+  padding: 11px 13px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 14px;
+  outline: none;
+  font-family: var(--font);
+  transition: border-color .15s;
+}
+.ed-form-group input:focus,
+.ed-form-group select:focus,
+.ed-form-group textarea:focus { border-color: var(--violet); }
+.ed-form-group textarea { resize: vertical; }
+
+/* Participants table inside tab */
+.ed-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ed-table th {
+  padding: 8px 10px;
+  text-align: left;
+  color: var(--muted);
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+}
+.ed-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink2);
+}
+.ed-table td:nth-child(2) { font-weight: 600; color: var(--ink); }
+
+/* Light mode tweaks */
+body.light .ed-main,
+body.light .ed-side {
+  background: #fff;
+  border-color: rgba(139,92,246,.10);
+}
+body.light .ed-title  { color: #0d0f1e; }
+body.light .ed-badge  { background: #f4f4fb; color: #555; }
+body.light .ed-kpi    { background: #f8f8ff; }
+body.light .ed-desc   { color: #444; }
+
+/* Mobile */
+@media (max-width: 900px) {
+  .ed-layout { grid-template-columns: 1fr; }
+  .ed-side   { position: static; }
+  .ed-banner { height: 200px; }
+  .ed-title  { font-size: 22px; }
+  .ed-form-grid { grid-template-columns: 1fr; }
+}

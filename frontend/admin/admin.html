@@ -6,11 +6,10 @@
   <title>Admin Dashboard | EVEXA</title>
   <link rel="stylesheet" href="admin.css"/>
   <script>
+    // Apply theme immediately (no DOMContentLoaded) to prevent flash of wrong theme
     (function () {
       if (localStorage.getItem('evexa_theme') === 'light') {
-        document.addEventListener('DOMContentLoaded', function () {
-          document.body.classList.add('light');
-        });
+        document.documentElement.classList.add('light');
       }
     })();
   </script>
@@ -172,6 +171,7 @@
 
       <!-- ═══ EVENTS ═══ -->
       <div id="pg-events" style="display:none">
+        <button class="back-btn" onclick="navigateTo('dashboard')">&#8592; Back</button>
         <div class="panel">
           <div class="panel-header">
             <div><div class="panel-title">All Events</div><div class="panel-sub">View and manage events across all clubs</div></div>
@@ -206,6 +206,7 @@
 
       <!-- ═══ CLUB PERFORMANCE ═══ -->
       <div id="pg-clubs" style="display:none">
+        <button class="back-btn" onclick="navigateTo('dashboard')">&#8592; Back</button>
         <div class="panel">
           <div class="panel-header">
             <div><div class="panel-title">🏷️ Club Performance Metrics</div><div class="panel-sub">Attendance, feedback ratings and event counts</div></div>
@@ -227,7 +228,7 @@
                   <th>Last Event</th>
                 </tr>
               </thead>
-              <tbody id="clubsBody"><tr><td colspan="6" style="padding:24px;text-align:center;opacity:.5;font-weight:700;">Loading…</td></tr></tbody>
+              <tbody id="clubsBody"><tr><td colspan="5" style="padding:24px;text-align:center;opacity:.5;font-weight:700;">Loading…</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -235,6 +236,7 @@
 
       <!-- ═══ USERS ═══ -->
       <div id="pg-users" style="display:none">
+        <button class="back-btn" onclick="navigateTo('dashboard')">&#8592; Back</button>
         <div class="panel">
           <div class="panel-header">
             <div><div class="panel-title">User Role Management</div><div class="panel-sub">Assign, edit and manage roles for all users</div></div>
@@ -271,6 +273,7 @@
       <!-- ═══ ANALYTICS ═══ -->
       <div id="pg-analytics" style="display:none">
 
+        <button class="back-btn" onclick="navigateTo('dashboard')">&#8592; Back</button>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
           <label style="font-weight:800;font-size:13px;">Academic Year:</label>
           <select class="search select-input" id="analyticsYearFilter" style="width:150px">
@@ -320,10 +323,9 @@
               <div><div class="panel-title">📥 Export Reports</div><div class="panel-sub">Download data as CSV</div></div>
             </div>
             <div class="panel-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
-              <button class="btn ghost" onclick="showToast('📥 Events report downloaded!','success')">📅 Events Report</button>
-              <button class="btn ghost" onclick="showToast('📥 Users report downloaded!','success')">👥 Users Report</button>
-              <button class="btn ghost" onclick="showToast('📥 Certificates report downloaded!','success')">🎓 Certificates Report</button>
-              <button class="btn ghost" onclick="showToast('📥 Analytics report downloaded!','success')">📊 Full Analytics</button>
+              <button class="btn ghost" onclick="exportReport('events')">📅 Events Report</button>
+              <button class="btn ghost" onclick="exportReport('users')">👥 Users Report</button>
+              <button class="btn ghost" onclick="exportReport('analytics')">📊 Full Analytics</button>
             </div>
           </div>
         </div>
@@ -332,6 +334,7 @@
 
       <!-- ═══ ACTIVITY LOGS ═══ -->
       <div id="pg-activity" style="display:none">
+        <button class="back-btn" onclick="navigateTo('dashboard')">&#8592; Back</button>
         <div class="panel">
           <div class="panel-header">
             <div><div class="panel-title">Activity Logs</div><div class="panel-sub">All system actions and user activities</div></div>
@@ -357,6 +360,7 @@
       <!-- ═══ BACKUP & RESTORE ═══ -->
       <div id="pg-backup" style="display:none">
 
+        <button class="back-btn" onclick="navigateTo('dashboard')">&#8592; Back</button>
         <!-- Info banner -->
         <div class="rb-info-banner">
           <div class="rb-info-icon">🗑️</div>
@@ -412,30 +416,13 @@
           </div>
         </div>
 
-        <!-- SQL hint for dev -->
-        <div class="panel">
-          <div class="panel-header"><div><div class="panel-title">🛠️ Backend Setup</div><div class="panel-sub">SQL required on your database to enable soft deletes</div></div></div>
-          <div class="panel-body">
-            <pre class="rb-sql">-- Run once on your database:
-ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
-ALTER TABLE users  ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
-ALTER TABLE clubs  ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
 
--- All DELETE queries become:
-UPDATE events SET deleted_at = NOW() WHERE id = ?;
-
--- All SELECT queries must filter:
-SELECT * FROM events WHERE deleted_at IS NULL;
-
--- Auto-purge after 30 days (run as a cron job):
-DELETE FROM events WHERE deleted_at IS NOT NULL AND deleted_at &lt; NOW() - INTERVAL 30 DAY;</pre>
-          </div>
-        </div>
 
       </div>
 
       <!-- ═══ ADMIN PROFILE ═══ -->
       <div id="pg-profile" style="display:none">
+        <button class="back-btn" onclick="navigateTo('dashboard')">&#8592; Back</button>
         <div class="two-col">
           <div class="panel">
             <div class="panel-header">
@@ -446,13 +433,20 @@ DELETE FROM events WHERE deleted_at IS NOT NULL AND deleted_at &lt; NOW() - INTE
               <div style="display:flex;align-items:center;gap:16px;padding:14px;border-radius:16px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.18);">
                 <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#8b5cf6,#ec4899);display:grid;place-items:center;color:white;font-weight:900;font-size:22px;box-shadow:0 0 20px rgba(139,92,246,.35);" id="profileAvatar">SA</div>
                 <div>
-                  <div style="font-weight:800;font-size:16px;color:var(--text);" id="profileDisplayName">Super Admin</div>
-                  <div style="font-size:12px;color:var(--text-3);font-weight:500;margin-top:3px;" id="profileDisplayEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="442520292d2a04213c25293428216a272b29">[email&#160;protected]</a></div>
+                  <div style="font-weight:800;font-size:16px;color:var(--text);" id="profileDisplayName">Admin</div>
+                  <div style="font-size:12px;color:var(--text-3);font-weight:500;margin-top:3px;" id="profileDisplayEmail"></div>
                 </div>
               </div>
               <div><label class="field-label">Full Name</label><input class="field-input" id="profileName" placeholder="Full name"/></div>
               <div><label class="field-label">Phone Number</label><input class="field-input" id="profilePhone" placeholder="+91 XXXXX XXXXX"/></div>
-              <div><label class="field-label">Role</label><input class="field-input" id="profileRole" readonly style="opacity:.6;cursor:default;"/></div>
+              <div>
+                <label class="field-label">Role</label>
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;border:1px solid var(--border-2);background:var(--surface-2);">
+                  <span style="font-size:16px;">🛡️</span>
+                  <span id="profileRole" style="font-weight:800;font-size:14px;color:var(--text);">Administrator</span>
+                  <span style="margin-left:auto;font-size:11px;font-weight:700;color:var(--text-3);background:var(--surface-3);padding:3px 10px;border-radius:999px;">Cannot be changed</span>
+                </div>
+              </div>
             </div>
           </div>
           <div class="panel">
@@ -479,7 +473,7 @@ DELETE FROM events WHERE deleted_at IS NOT NULL AND deleted_at &lt; NOW() - INTE
           <div class="panel-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">
             <div style="padding:14px;border-radius:14px;border:1px solid var(--border-2);background:var(--surface);">
               <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;">Role</div>
-              <div style="font-weight:800;font-size:15px;margin-top:4px;color:var(--text);">Super Admin</div>
+              <div style="font-weight:800;font-size:15px;margin-top:4px;color:var(--text);">Admin</div>
             </div>
             <div style="padding:14px;border-radius:14px;border:1px solid var(--border-2);background:var(--surface);">
               <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;">Session Expires</div>

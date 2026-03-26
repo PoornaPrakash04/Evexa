@@ -10,6 +10,36 @@ const db         = require("../db");
 const router  = express.Router();
 
 // ─────────────────────────────────────────────────────────────
+//  AUTO-MIGRATION — add deleted_at to tables if not present
+//  Runs once on startup so soft-delete features work immediately
+// ─────────────────────────────────────────────────────────────
+// Safe migration: checks information_schema first — works on MySQL 5.7 and 8.x
+function addColumnIfMissing(table, column, definition) {
+  const checkSql = `
+    SELECT COUNT(*) AS cnt
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME   = ?
+      AND COLUMN_NAME  = ?`;
+  db.query(checkSql, [table, column], (err, rows) => {
+    if (err) return console.warn(`[Migration] Check failed for ${table}.${column}:`, err.message);
+    if (rows[0].cnt > 0) return; // column already exists
+    db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, (err2) => {
+      if (err2) console.warn(`[Migration] Failed to add ${table}.${column}:`, err2.message);
+      else      console.log(`[Migration] Added ${table}.${column}`);
+    });
+  });
+}
+
+(function runMigrations() {
+  addColumnIfMissing("events",     "deleted_at", "DATETIME DEFAULT NULL");
+  addColumnIfMissing("students",   "deleted_at", "DATETIME DEFAULT NULL");
+  addColumnIfMissing("organizers", "deleted_at", "DATETIME DEFAULT NULL");
+  addColumnIfMissing("faculty",    "deleted_at", "DATETIME DEFAULT NULL");
+  addColumnIfMissing("clubs",      "deleted_at", "DATETIME DEFAULT NULL");
+})();
+
+// ─────────────────────────────────────────────────────────────
 //  EMAIL TRANSPORTER
 // ─────────────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
@@ -92,10 +122,10 @@ router.get("/profile", adminOnly, (req, res) => {
 });
 
 router.put("/profile", adminOnly, (req, res) => {
-  const { name, email, phone, department } = req.body;
+  const { name, phone } = req.body;
   db.query(
-    "UPDATE admin SET admin_name=?, email=?, phone=? WHERE admin_id=?",
-    [name, email, phone || null, req.admin.id],
+    "UPDATE admin SET admin_name=?, phone=? WHERE admin_id=?",
+    [name, phone || null, req.admin.id],
     (err) => {
       if (err) return res.status(500).json({ message: "Server error." });
       pushLog("system", "⚙️", "blue", "Admin profile updated", req.admin.name || "Admin");
@@ -226,7 +256,7 @@ router.get("/dashboard", adminOnly, (req, res) => {
 router.get("/events", adminOnly, (req, res) => {
   const { search = "", status = "all", category = "all" } = req.query;
   let sql = `SELECT e.*, COALESCE(c.club_name, CONCAT('Club #', e.club_id)) AS organizer_name
-             FROM events e LEFT JOIN clubs c ON e.club_id = c.club_id WHERE 1=1`;
+             FROM events e LEFT JOIN clubs c ON e.club_id = c.club_id WHERE e.deleted_at IS NULL`;
   const params = [];
 
   if (search)             { sql += " AND e.title LIKE ?"; params.push(`%${search}%`); }
@@ -271,11 +301,23 @@ router.put("/events/:id", adminOnly, (req, res) => {
 
 router.delete("/events/:id", adminOnly, (req, res) => {
   db.query("SELECT title FROM events WHERE id=?", [req.params.id], (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message });
     const evName = rows?.[0]?.title || `ID ${req.params.id}`;
-    db.query("DELETE FROM events WHERE id=?", [req.params.id], (err2) => {
-      if (err2) return res.status(500).json({ message: err2.message });
-      pushLog("event", "📋", "red", `Event '${evName}' deleted`, req.admin.name || "Admin");
-      res.json({ message: "Event deleted." });
+    // Soft delete — moves event to recycle bin
+    db.query("UPDATE events SET deleted_at = NOW() WHERE id=?", [req.params.id], (err2) => {
+      if (err2) {
+        // Fallback: hard delete if deleted_at column doesn't exist yet
+        if (err2.code === "ER_BAD_FIELD_ERROR") {
+          return db.query("DELETE FROM events WHERE id=?", [req.params.id], (err3) => {
+            if (err3) return res.status(500).json({ message: err3.message });
+            pushLog("event", "📋", "red", `Event '${evName}' deleted`, req.admin.name || "Admin");
+            res.json({ message: "Event deleted." });
+          });
+        }
+        return res.status(500).json({ message: err2.message });
+      }
+      pushLog("event", "📋", "red", `Event '${evName}' moved to trash`, req.admin.name || "Admin");
+      res.json({ message: "Event moved to trash." });
     });
   });
 });
@@ -512,21 +554,29 @@ router.get("/clubs/growth", adminOnly, (req, res) => {
 router.get("/users", adminOnly, (req, res) => {
   const { search = "", role = "all" } = req.query;
 
-  const queries = {
-    student:   "SELECT id, name, email, 'student' AS role, department AS department, 'active' AS status, admission_no AS admission_no, phone AS phone, NULL AS last FROM students",
-    organizer: "SELECT id,       name,       email, 'organizer' AS role, COALESCE(club,'')             AS department, 'active'  AS status, COALESCE(admission_no,'') AS admission_no, phone AS phone, created_at AS last FROM organizers",
-    faculty:   "SELECT id,       name,       email, 'faculty'   AS role, department                    AS department, 'active'  AS status, faculty_no   AS admission_no, phone_no AS phone, NULL       AS last FROM faculty",
-    admin:     "SELECT admin_id AS id, admin_name AS name, email, 'admin' AS role, ''                  AS department, 'active'  AS status, ''           AS admission_no, phone    AS phone, created_at AS last FROM admin",
+  // UNION ALL across all user tables matching the actual DB schema.
+  // deleted_at is filtered only if the column exists (added via migration on startup).
+  const roleQueries = {
+    student:   `SELECT id, name, email, 'student'   AS role, department         AS department, 'active' AS status, admission_no              AS admission_no, phone    AS phone, NULL       AS last FROM students   WHERE deleted_at IS NULL`,
+    organizer: `SELECT id, name, email, 'organizer' AS role, COALESCE(club,'') AS department, 'active' AS status, COALESCE(admission_no,'') AS admission_no, phone    AS phone, created_at AS last FROM organizers WHERE deleted_at IS NULL`,
+    faculty:   `SELECT id, name, email, 'faculty'   AS role, department         AS department, 'active' AS status, faculty_no               AS admission_no, phone_no AS phone, NULL       AS last FROM faculty    WHERE deleted_at IS NULL`,
+    admin:     `SELECT admin_id AS id, admin_name AS name, email, 'admin' AS role, '' AS department, 'active' AS status, '' AS admission_no, phone AS phone, created_at AS last FROM admin`,
   };
 
   const roleList = role === "all" ? ["student", "organizer", "faculty", "admin"] : [role];
-  const parts    = roleList.filter(r => queries[r]).map(r => queries[r]);
-  let sql        = `(${parts.join(") UNION ALL (")})`;
-  if (search)    sql = `SELECT * FROM (${sql}) AS u WHERE name LIKE ? OR email LIKE ?`;
+  const parts    = roleList.filter(r => roleQueries[r]).map(r => roleQueries[r]);
+  let sql        = parts.join(" UNION ALL ");
+  const params   = [];
+  if (search) {
+    sql = `SELECT * FROM (${sql}) AS u WHERE name LIKE ? OR email LIKE ?`;
+    params.push(`%${search}%`, `%${search}%`);
+  }
 
-  const params = search ? [`%${search}%`, `%${search}%`] : [];
   db.query(sql, params, (err, rows) => {
-    if (err) return res.status(500).json({ message: err.message });
+    if (err) {
+      console.error("GET /users SQL error:", err.message);
+      return res.status(500).json({ message: err.message });
+    }
     res.json(rows);
   });
 });
@@ -609,10 +659,21 @@ router.delete("/users/:id", adminOnly, (req, res) => {
   const table  = tables[role];
   if (!table) return res.status(400).json({ message: "Invalid or unremovable role." });
 
-  db.query(`DELETE FROM ${table} WHERE id=?`, [req.params.id], (err) => {
-    if (err) return res.status(500).json({ message: err.message });
-    pushLog("user", "👤", "red", `${role} (ID ${req.params.id}) removed`, req.admin.name || "Admin");
-    res.json({ message: "User removed." });
+  // Soft delete — moves user to recycle bin
+  db.query(`UPDATE ${table} SET deleted_at = NOW() WHERE id=?`, [req.params.id], (err) => {
+    if (err) {
+      // Fallback: hard delete if deleted_at column doesn't exist yet
+      if (err.code === "ER_BAD_FIELD_ERROR") {
+        return db.query(`DELETE FROM ${table} WHERE id=?`, [req.params.id], (err2) => {
+          if (err2) return res.status(500).json({ message: err2.message });
+          pushLog("user", "👤", "red", `${role} (ID ${req.params.id}) deleted`, req.admin.name || "Admin");
+          res.json({ message: "User deleted." });
+        });
+      }
+      return res.status(500).json({ message: err.message });
+    }
+    pushLog("user", "👤", "red", `${role} (ID ${req.params.id}) moved to trash`, req.admin.name || "Admin");
+    res.json({ message: "User moved to trash." });
   });
 });
 

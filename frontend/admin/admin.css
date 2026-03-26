@@ -628,3 +628,26 @@ body.light .rb-sql         { background: rgba(255,255,255,.60); border-color: rg
   from { opacity: 0; transform: translateY(20px) scale(.97); }
   to   { opacity: 1; transform: translateY(0)    scale(1);   }
 }
+/* ── BACK TO DASHBOARD BUTTON ─────────────────────────────── */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-2);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .18s ease;
+  font-family: inherit;
+}
+.back-btn:hover {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: rgba(139,92,246,.4);
+  transform: translateX(-2px);
+}

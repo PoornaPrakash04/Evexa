@@ -18,6 +18,7 @@ const registrationsRoute    = require("./routes/registrations");
 const facultyRoutes         = require("./routes/faculty");
 const forgotPasswordRoutes  = require("./routes/forgot-password");
 const adminRoutes           = require("./routes/adminRoutes");
+const organizerRoutes = require("./routes/organizer");
 const app = express();
 
 app.use(cors({
@@ -43,7 +44,7 @@ cron.schedule("*/15 * * * *", () => {
 app.use(express.json());
 app.use(express.static("frontend"));
 app.use("/uploads", express.static("uploads"));
-
+app.use("/api/organizer", organizerRoutes);
 app.use("/api/auth",             authRoutes);
 app.use("/api/events",           eventRoutes);
 app.use("/api/attendance",       attendanceRoutes);

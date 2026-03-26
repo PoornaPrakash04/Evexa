@@ -66,6 +66,8 @@ let events = [];
 let users  = [];
 let logs   = [];
 let chartRefs = {};
+// Events cache for the calendar (populated by loadDashboard / loadEvents)
+let adminCalEvents   = [];
 
 // ── NAVIGATION ────────────────────────────────────────────────
 function navigateTo(page) {
@@ -336,25 +338,33 @@ function renderEventsTable() {
   }
 
   tbody.innerHTML = events.map(e => {
-    const safeName     = (e.title || "").replace(/`/g, "'").replace(/"/g, "&quot;");
-    const safeOrg      = (e.organizer_label || e.organizer || "").replace(/'/g, "\\'");
-    const safeOrgEmail = (e.organizer_email || "").replace(/'/g, "\\'");
+    const safeTitle = (e.title || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    const safeOrg   = (e.organizer_label || e.organizer || "").replace(/"/g,"&quot;");
+    const safeEmail = (e.organizer_email || "").replace(/"/g,"&quot;");
     return `
     <tr>
-      <td style="font-weight:800;">${e.title || "—"}</td>
-      <td>${e.club || e.organizer_label || "—"}</td>
+      <td style="font-weight:800;">${safeTitle || "—"}</td>
+      <td>${safeOrg || e.club || "—"}</td>
       <td><span class="tag">${e.category || "—"}</span></td>
       <td>${fmtDate(e.date)}</td>
       <td id="part-count-${e.id}">${Number(e.participants || 0).toLocaleString()}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        <button class="mini-btn" style="color:var(--cyan-2);border-color:rgba(6,182,212,.25);background:rgba(6,182,212,.06);"
-          onclick="viewParticipants(${e.id}, \`${safeName}\`)">👥 Participants</button>
-        <button class="mini-btn" style="color:var(--violet-2);border-color:rgba(139,92,246,.25);background:rgba(139,92,246,.06);"
-          onclick="openSendMessage(${e.id}, \`${safeName}\`, '${safeOrg}', '${safeOrgEmail}')">✉️ Message</button>
+        <button class="mini-btn ev-participants-btn" style="color:var(--cyan-2);border-color:rgba(6,182,212,.25);background:rgba(6,182,212,.06);"
+          data-id="${e.id}" data-name="${safeTitle}">👥 Participants</button>
+        <button class="mini-btn ev-message-btn" style="color:var(--violet-2);border-color:rgba(139,92,246,.25);background:rgba(139,92,246,.06);"
+          data-id="${e.id}" data-name="${safeTitle}" data-org="${safeOrg}" data-email="${safeEmail}">✉️ Message</button>
       </td>
     </tr>`;
   }).join("")
     || `<tr><td colspan="6" style="padding:24px;text-align:center;opacity:.5;font-weight:700;">No events found.</td></tr>`;
+
+  // Attach events via addEventListener (safe — no inline onclick XSS risk)
+  tbody.querySelectorAll(".ev-participants-btn").forEach(btn => {
+    btn.addEventListener("click", () => viewParticipants(Number(btn.dataset.id), btn.dataset.name));
+  });
+  tbody.querySelectorAll(".ev-message-btn").forEach(btn => {
+    btn.addEventListener("click", () => openSendMessage(Number(btn.dataset.id), btn.dataset.name, btn.dataset.org, btn.dataset.email));
+  });
 }
 
 async function approveEvent(id) {
@@ -1176,7 +1186,13 @@ function renderRecycleBin() {
 
 async function restoreItem(type, id) {
   try {
-    await apiFetch('/trash/' + type + '/' + id + '/restore', { method: 'PUT' });
+    // The backend restore route for users requires ?role=student|organizer|faculty
+    let url = '/trash/' + type + '/' + id + '/restore';
+    if (type === 'users') {
+      const item = rbData.users.find(i => i.id === id);
+      if (item?.role) url += '?role=' + encodeURIComponent(item.role);
+    }
+    await apiFetch(url, { method: 'PUT' });
     showToast('↩️ Restored successfully!', 'success');
     rbData[type] = rbData[type].filter(i => i.id !== id);
     updateRbStats();
@@ -1189,7 +1205,13 @@ async function restoreItem(type, id) {
 async function permanentDelete(type, id, name) {
   if (!confirm('Permanently delete "' + name + '"?\n\nThis cannot be undone.')) return;
   try {
-    await apiFetch('/trash/' + type + '/' + id, { method: 'DELETE' });
+    // The backend permanent delete route for users requires ?role=student|organizer|faculty
+    let url = '/trash/' + type + '/' + id;
+    if (type === 'users') {
+      const item = rbData.users.find(i => i.id === id);
+      if (item?.role) url += '?role=' + encodeURIComponent(item.role);
+    }
+    await apiFetch(url, { method: 'DELETE' });
     showToast('🗑 Permanently deleted.', 'error');
     rbData[type] = rbData[type].filter(i => i.id !== id);
     updateRbStats();
@@ -1296,10 +1318,76 @@ async function changePassword() {
   } catch (err) { showToast(err.message, "error"); }
 }
 
+// ── CSV EXPORT ────────────────────────────────────────────────
+function downloadCSV(rows, filename) {
+  if (!rows || !rows.length) return showToast("No data to export.", "error");
+  const headers = Object.keys(rows[0]);
+  const csvRows = [
+    headers.join(","),
+    ...rows.map(r =>
+      headers.map(h => {
+        const v = r[h] == null ? "" : String(r[h]);
+        return `"${v.replace(/"/g, '""')}"`;
+      }).join(",")
+    ),
+  ];
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("✅ CSV downloaded!", "success");
+}
+
+async function exportReport(type) {
+  showToast("📥 Preparing export…", "info");
+  try {
+    if (type === "events") {
+      const data = await eventsFetch("/all") || [];
+      const rows = data.map(e => ({
+        Title:        e.title || "",
+        Club:         e.club || e.organizer_label || "",
+        Category:     e.category || "",
+        Date:         e.date ? e.date.slice(0, 10) : "",
+        Status:       e.status || "",
+        Participants: e.participants || 0,
+        AcademicYear: e.academic_year || "",
+      }));
+      downloadCSV(rows, "evexa_events_report.csv");
+    } else if (type === "users") {
+      const data = await apiFetch("/users?role=all") || [];
+      const rows = data.map(u => ({
+        Name:       u.name || "",
+        Email:      u.email || "",
+        Role:       u.role || "",
+        Department: u.department || "",
+        Status:     u.status || "",
+      }));
+      downloadCSV(rows, "evexa_users_report.csv");
+    } else if (type === "analytics") {
+      const year = document.getElementById("analyticsYearFilter")?.value || "all";
+      const d    = await apiFetch(`/analytics?academic_year=${year}`);
+      if (!d) return;
+      const rows = (d.eventsPerMonth || []).map(r => ({
+        Month:               r.month,
+        Events:              r.count,
+        Participants:        (d.participationPerMonth || []).find(p => p.month === r.month)?.participants || 0,
+      }));
+      downloadCSV(rows, "evexa_analytics_report.csv");
+    }
+  } catch (err) {
+    showToast("Export failed: " + err.message, "error");
+  }
+}
+
 // ── THEME ─────────────────────────────────────────────────────
 function setupTheme() {
+  // Sync body class with documentElement class (set by the inline script)
   const saved = localStorage.getItem("evexa_theme");
   document.body.classList.toggle("light", saved === "light");
+  document.documentElement.classList.toggle("light", saved === "light");
   const btn = document.getElementById("themeTopbarBtn");
   if (btn) {
     btn.addEventListener("click", () => {
@@ -1318,8 +1406,6 @@ function applyTheme(mode) {
 // ── ADMIN EVENT CALENDAR ──────────────────────────────────────
 let adminCalCursor   = new Date(); adminCalCursor.setDate(1);
 let adminCalSelected = null;
-// Events cache for the calendar (populated by loadDashboard)
-let adminCalEvents   = [];
 
 function adminCalYMD(d) {
   const y = d.getFullYear();
@@ -1457,6 +1543,70 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "adsignin.html";
     return;
   }
+
+
+  // ── AUTO-LOGOUT after 10 min of inactivity ───────────────────
+  (function setupAutoLogout() {
+    const TIMEOUT_MS = 10 * 60 * 1000; // 10 min total
+    const WARNING_MS =  9 * 60 * 1000; //  9 min — warn 60s before logout
+    let logoutTimer, warningTimer, warningOverlay;
+
+    function clearWarning() {
+      if (warningOverlay) {
+        if (warningOverlay._tick) clearInterval(warningOverlay._tick);
+        warningOverlay.remove();
+        warningOverlay = null;
+      }
+    }
+
+    function doLogoutNow() {
+      clearWarning();
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("adminPage");
+      window.location.href = "adsignin.html";
+    }
+
+    function showWarning() {
+      if (warningOverlay) return;
+      let secondsLeft = 60;
+      warningOverlay = document.createElement("div");
+      warningOverlay.style.cssText =
+        "position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);" +
+        "z-index:99999;display:flex;align-items:center;justify-content:center;";
+      warningOverlay.innerHTML =
+        "<div style=\"background:var(--surface);border:1px solid var(--border-2);border-radius:24px;" +
+        "padding:40px 36px;max-width:380px;width:90%;text-align:center;" +
+        "box-shadow:0 24px 60px rgba(0,0,0,.4);\">" +
+        "<div style=\"font-size:48px;margin-bottom:16px;\">⏱️</div>" +
+        "<div style=\"font-size:20px;font-weight:900;color:var(--text);margin-bottom:10px;\">Session Expiring</div>" +
+        "<div style=\"font-size:13px;color:var(--text-3);font-weight:500;margin-bottom:8px;\">" +
+        "You\'ll be logged out due to inactivity in</div>" +
+        "<div id=\"autoLogoutCountdown\" style=\"font-size:32px;font-weight:900;color:#ef4444;margin-bottom:8px;\">60s</div>" +
+        "<div style=\"font-size:12px;color:var(--text-3);font-weight:500;\">Move your mouse or press any key to stay.</div>" +
+        "</div>";
+      document.body.appendChild(warningOverlay);
+      warningOverlay._tick = setInterval(function() {
+        secondsLeft--;
+        const el = document.getElementById("autoLogoutCountdown");
+        if (el) el.textContent = secondsLeft + "s";
+        if (secondsLeft <= 0) clearInterval(warningOverlay._tick);
+      }, 1000);
+    }
+
+    function resetTimers() {
+      clearWarning();
+      clearTimeout(warningTimer);
+      clearTimeout(logoutTimer);
+      warningTimer = setTimeout(showWarning, WARNING_MS);
+      logoutTimer  = setTimeout(doLogoutNow, TIMEOUT_MS);
+    }
+
+    ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"].forEach(function(evt) {
+      document.addEventListener(evt, resetTimers, { passive: true });
+    });
+
+    resetTimers();
+  })();
 
   // Apply saved theme immediately
   setupTheme();
