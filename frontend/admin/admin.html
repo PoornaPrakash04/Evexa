@@ -39,7 +39,7 @@
       <div class="section-label">Events</div>
       <a class="nav-item" href="#" data-page="events">
         <span class="icon">📅</span><span>Manage All Events</span>
-        <span class="nav-badge" id="badge-events">—</span>
+        <span class="nav-badge" id="badge-events" style="display:none"></span>
       </a>
 
       <div class="section-label">Clubs</div>
@@ -50,7 +50,7 @@
       <div class="section-label">Users</div>
       <a class="nav-item" href="#" data-page="users">
         <span class="icon">👥</span><span>Manage User Roles</span>
-        <span class="nav-badge orange" id="badge-users">—</span>
+        <span class="nav-badge orange" id="badge-users" style="display:none"></span>
       </a>
 
       <div class="section-label">Reports</div>
@@ -61,7 +61,7 @@
       <div class="section-label">System</div>
       <a class="nav-item" href="#" data-page="activity">
         <span class="icon">🕵️</span><span>Activity Logs</span>
-        <span class="nav-badge red" id="badge-activity">—</span>
+        <span class="nav-badge red" id="badge-activity" style="display:none"></span>
       </a>
       <a class="nav-item" href="#" data-page="backup">
         <span class="icon">🗄️</span><span>Backup &amp; Restore</span>
@@ -231,10 +231,6 @@
             </table>
           </div>
         </div>
-        <div class="panel">
-          <div class="panel-header"><div><div class="panel-title">📈 Participation Growth Trends</div><div class="panel-sub">Monthly participation per club (last 8 months)</div></div></div>
-          <div class="panel-body chart-box"><canvas id="growthChart"></canvas></div>
-        </div>
       </div>
 
       <!-- ═══ USERS ═══ -->
@@ -286,7 +282,7 @@
           <button class="btn primary sm" id="analyticsReloadBtn">Apply</button>
         </div>
 
-        <div class="three-col">
+        <div class="two-col">
           <div class="panel">
             <div class="panel-header"><div><div class="panel-title">📅 Events / Month</div><div class="panel-sub">Academic year</div></div></div>
             <div class="panel-body chart-box"><canvas id="eventsMonthChart"></canvas></div>
@@ -294,27 +290,6 @@
           <div class="panel">
             <div class="panel-header"><div><div class="panel-title">👥 Participation / Month</div><div class="panel-sub">Attendees per month</div></div></div>
             <div class="panel-body chart-box"><canvas id="participationChart"></canvas></div>
-          </div>
-          <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">🎓 Certificates</div><div class="panel-sub">Issued per month</div></div></div>
-            <div class="panel-body chart-box"><canvas id="certsChart"></canvas></div>
-          </div>
-        </div>
-
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">📊 Technical vs Non-Technical</div><div class="panel-sub">Event type breakdown</div></div></div>
-            <div class="panel-body" style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
-              <div style="width:180px;height:180px;flex-shrink:0;"><canvas id="academicChart"></canvas></div>
-              <div id="academicLegend"></div>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">🏷️ Events by Category</div><div class="panel-sub">Distribution this period</div></div></div>
-            <div class="panel-body" style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
-              <div style="width:180px;height:180px;flex-shrink:0;"><canvas id="categoryChart"></canvas></div>
-              <div id="categoryLegend"></div>
-            </div>
           </div>
         </div>
 
@@ -325,22 +300,31 @@
           </div>
           <div class="panel">
             <div class="panel-header"><div><div class="panel-title">👥 Role Distribution</div><div class="panel-sub">All registered users</div></div></div>
-            <div class="panel-body" style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+            <div class="panel-body" style="display:flex;gap:24px;align-items:center;justify-content:center;flex-wrap:wrap;min-height:220px;">
               <div style="width:180px;height:180px;flex-shrink:0;"><canvas id="roleChart"></canvas></div>
               <div id="roleLegend"></div>
             </div>
           </div>
         </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <div><div class="panel-title">📥 Export Reports</div><div class="panel-sub">Download data as CSV</div></div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">📊 Technical vs Non-Technical</div><div class="panel-sub">Event type breakdown</div></div></div>
+            <div class="panel-body" style="display:flex;gap:24px;align-items:center;justify-content:center;flex-wrap:wrap;min-height:220px;">
+              <div style="width:180px;height:180px;flex-shrink:0;"><canvas id="academicChart"></canvas></div>
+              <div id="academicLegend"></div>
+            </div>
           </div>
-          <div class="panel-body" style="display:flex;gap:12px;flex-wrap:wrap;">
-            <button class="btn ghost" onclick="showToast('📥 Events report downloaded!','success')">📅 Events Report</button>
-            <button class="btn ghost" onclick="showToast('📥 Users report downloaded!','success')">👥 Users Report</button>
-            <button class="btn ghost" onclick="showToast('📥 Certificates report downloaded!','success')">🎓 Certificates Report</button>
-            <button class="btn ghost" onclick="showToast('📥 Analytics report downloaded!','success')">📊 Full Analytics</button>
+          <div class="panel">
+            <div class="panel-header">
+              <div><div class="panel-title">📥 Export Reports</div><div class="panel-sub">Download data as CSV</div></div>
+            </div>
+            <div class="panel-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+              <button class="btn ghost" onclick="showToast('📥 Events report downloaded!','success')">📅 Events Report</button>
+              <button class="btn ghost" onclick="showToast('📥 Users report downloaded!','success')">👥 Users Report</button>
+              <button class="btn ghost" onclick="showToast('📥 Certificates report downloaded!','success')">🎓 Certificates Report</button>
+              <button class="btn ghost" onclick="showToast('📥 Analytics report downloaded!','success')">📊 Full Analytics</button>
+            </div>
           </div>
         </div>
 
@@ -370,48 +354,84 @@
         </div>
       </div>
 
-      <!-- ═══ BACKUP ═══ -->
+      <!-- ═══ BACKUP & RESTORE ═══ -->
       <div id="pg-backup" style="display:none">
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header">
-              <div><div class="panel-title">💾 Create Backup</div><div class="panel-sub">Export a full snapshot of system data</div></div>
-            </div>
-            <div class="panel-body" style="display:flex;flex-direction:column;gap:14px;">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div class="backup-card"><div class="backup-icon">📅</div><div class="backup-title">Events Data</div><div class="backup-sub">All events, proposals, certificates</div><div class="backup-meta">Last backup: Feb 20, 2026</div><button class="btn primary sm" onclick="simulateBackup('Events')">💾 Backup Now</button></div>
-                <div class="backup-card"><div class="backup-icon">👥</div><div class="backup-title">Users Data</div><div class="backup-sub">All user accounts and roles</div><div class="backup-meta">Last backup: Feb 19, 2026</div><button class="btn primary sm" onclick="simulateBackup('Users')">💾 Backup Now</button></div>
-                <div class="backup-card"><div class="backup-icon">🏷️</div><div class="backup-title">Clubs Data</div><div class="backup-sub">All clubs, reports, memberships</div><div class="backup-meta">Last backup: Feb 18, 2026</div><button class="btn primary sm" onclick="simulateBackup('Clubs')">💾 Backup Now</button></div>
-                <div class="backup-card"><div class="backup-icon">📊</div><div class="backup-title">Analytics Data</div><div class="backup-sub">Reports, feedback, logs</div><div class="backup-meta">Last backup: Feb 17, 2026</div><button class="btn primary sm" onclick="simulateBackup('Analytics')">💾 Backup Now</button></div>
-              </div>
-              <button class="btn primary" style="width:100%;" onclick="simulateBackup('Full System')">💾 Full System Backup</button>
-            </div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:18px;">
-            <div class="panel">
-              <div class="panel-header"><div><div class="panel-title">🔄 Restore Data</div><div class="panel-sub">Restore from a previous backup</div></div></div>
-              <div class="panel-body" style="display:flex;flex-direction:column;gap:10px;">
-                <div style="padding:14px;border-radius:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.22);font-size:13px;font-weight:700;color:#f87171;">⚠️ Restoring will overwrite current data. This cannot be undone.</div>
-                <label class="field-label">Select Backup to Restore</label>
-                <select class="field-input" id="restoreSelect">
-                  <option>Full Backup — Feb 20, 2026 10:42 AM</option>
-                  <option>Full Backup — Feb 19, 2026 11:15 AM</option>
-                  <option>Events Only — Feb 18, 2026 09:30 AM</option>
-                  <option>Users Only  — Feb 17, 2026 02:00 PM</option>
-                </select>
-                <button class="btn warning" style="width:100%;" id="restoreBtn">🔄 Restore Selected Backup</button>
-              </div>
-            </div>
-            <div class="panel">
-              <div class="panel-header"><div><div class="panel-title">📋 Backup History</div><div class="panel-sub">Recent backup records</div></div></div>
-              <div class="list" id="backupHistoryList"></div>
-            </div>
+
+        <!-- Info banner -->
+        <div class="rb-info-banner">
+          <div class="rb-info-icon">🗑️</div>
+          <div>
+            <div class="rb-info-title">Recycle Bin — Soft Delete Recovery</div>
+            <div class="rb-info-sub">Deleted events, users and clubs are kept here for 30 days before permanent removal. Restore anything with one click — no data is ever lost immediately.</div>
           </div>
         </div>
+
+        <!-- Stats row -->
+        <div class="rb-stats-row">
+          <div class="rb-stat-card">
+            <div class="rb-stat-icon" style="background:rgba(109,94,252,.12);color:#a78bfa;">📅</div>
+            <div><div class="rb-stat-val" id="rbStatEvents">—</div><div class="rb-stat-label">Deleted Events</div></div>
+          </div>
+          <div class="rb-stat-card">
+            <div class="rb-stat-icon" style="background:rgba(255,106,160,.12);color:#f472b6;">👥</div>
+            <div><div class="rb-stat-val" id="rbStatUsers">—</div><div class="rb-stat-label">Deleted Users</div></div>
+          </div>
+          <div class="rb-stat-card">
+            <div class="rb-stat-icon" style="background:rgba(6,182,212,.12);color:#22d3ee;">🏷️</div>
+            <div><div class="rb-stat-val" id="rbStatClubs">—</div><div class="rb-stat-label">Deleted Clubs</div></div>
+          </div>
+          <div class="rb-stat-card">
+            <div class="rb-stat-icon" style="background:rgba(245,158,11,.12);color:#fbbf24;">⏳</div>
+            <div><div class="rb-stat-val" id="rbStatExpiring">—</div><div class="rb-stat-label">Expiring Soon</div></div>
+          </div>
+        </div>
+
+        <!-- Tab bar -->
         <div class="panel">
-          <div class="panel-header"><div><div class="panel-title">🖥️ System Health</div><div class="panel-sub">Storage and performance overview</div></div></div>
-          <div class="panel-body" id="systemHealth"></div>
+          <div class="panel-header" style="flex-wrap:wrap;gap:10px;">
+            <div class="rb-tabs">
+              <button class="rb-tab active" data-tab="events" onclick="switchRbTab('events')">📅 Events</button>
+              <button class="rb-tab" data-tab="users"  onclick="switchRbTab('users')">👥 Users</button>
+              <button class="rb-tab" data-tab="clubs"  onclick="switchRbTab('clubs')">🏷️ Clubs</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-left:auto;">
+              <input class="search" id="rbSearch" placeholder="Search deleted items…" style="width:200px;" oninput="renderRecycleBin()"/>
+              <button class="btn ghost sm" onclick="loadRecycleBin()">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <!-- Tab panels -->
+          <div id="rb-tab-events" class="rb-tab-panel">
+            <div id="rbEventsBody" class="rb-list"></div>
+          </div>
+          <div id="rb-tab-users" class="rb-tab-panel" style="display:none;">
+            <div id="rbUsersBody" class="rb-list"></div>
+          </div>
+          <div id="rb-tab-clubs" class="rb-tab-panel" style="display:none;">
+            <div id="rbClubsBody" class="rb-list"></div>
+          </div>
         </div>
+
+        <!-- SQL hint for dev -->
+        <div class="panel">
+          <div class="panel-header"><div><div class="panel-title">🛠️ Backend Setup</div><div class="panel-sub">SQL required on your database to enable soft deletes</div></div></div>
+          <div class="panel-body">
+            <pre class="rb-sql">-- Run once on your database:
+ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
+ALTER TABLE users  ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
+ALTER TABLE clubs  ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
+
+-- All DELETE queries become:
+UPDATE events SET deleted_at = NOW() WHERE id = ?;
+
+-- All SELECT queries must filter:
+SELECT * FROM events WHERE deleted_at IS NULL;
+
+-- Auto-purge after 30 days (run as a cron job):
+DELETE FROM events WHERE deleted_at IS NOT NULL AND deleted_at &lt; NOW() - INTERVAL 30 DAY;</pre>
+          </div>
+        </div>
+
       </div>
 
       <!-- ═══ ADMIN PROFILE ═══ -->
@@ -427,7 +447,7 @@
                 <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#8b5cf6,#ec4899);display:grid;place-items:center;color:white;font-weight:900;font-size:22px;box-shadow:0 0 20px rgba(139,92,246,.35);" id="profileAvatar">SA</div>
                 <div>
                   <div style="font-weight:800;font-size:16px;color:var(--text);" id="profileDisplayName">Super Admin</div>
-                  <div style="font-size:12px;color:var(--text-3);font-weight:500;margin-top:3px;" id="profileDisplayEmail">admin@example.com</div>
+                  <div style="font-size:12px;color:var(--text-3);font-weight:500;margin-top:3px;" id="profileDisplayEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="442520292d2a04213c25293428216a272b29">[email&#160;protected]</a></div>
                 </div>
               </div>
               <div><label class="field-label">Full Name</label><input class="field-input" id="profileName" placeholder="Full name"/></div>
@@ -489,7 +509,6 @@
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="admin.js"></script>
 </body>

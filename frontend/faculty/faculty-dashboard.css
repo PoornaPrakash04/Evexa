@@ -1007,3 +1007,418 @@ body.light .toast.info    { color: #6d28d9; }
   line-height:1.5;
   color:var(--text);
 }
+/* ══════ ALL CLUBS PAGE ══════ */
+.all-clubs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.ac-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+  position: relative;
+  overflow: hidden;
+}
+.ac-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--g-violet);
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.ac-card:hover { transform: translateY(-3px); border-color: var(--violet); box-shadow: var(--glow-v); }
+.ac-card:hover::before { opacity: .04; }
+
+.ac-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.ac-emoji {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  background: rgba(139,92,246,.15);
+  display: grid; place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.ac-name { font-size: 15px; font-weight: 800; color: var(--text); line-height: 1.3; }
+.ac-cat  { font-size: 11px; color: var(--text-3); margin-top: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+
+.ac-stats {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.ac-stat {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 8px;
+  text-align: center;
+}
+.ac-stat-val   { font-size: 18px; font-weight: 800; color: var(--text); }
+.ac-stat-label { font-size: 10px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
+
+.ac-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ac-incharge-badge {
+  font-size: 10px; font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(139,92,246,.18);
+  color: var(--violet);
+  border: 1px solid rgba(139,92,246,.3);
+  letter-spacing: .4px;
+}
+
+/* ══════ CLUB DETAIL DRAWER ══════ */
+.club-detail-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 500;
+  backdrop-filter: blur(4px);
+}
+.club-detail-drawer {
+  position: fixed;
+  top: 0; right: 0;
+  width: min(720px, 100vw);
+  height: 100vh;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  z-index: 501;
+  overflow-y: auto;
+  padding: 28px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: -8px 0 40px rgba(0,0,0,.4);
+}
+.club-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.club-detail-emoji {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: rgba(139,92,246,.18);
+  display: grid; place-items: center;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+.club-detail-name { font-size: 22px; font-weight: 800; color: var(--text); }
+.club-detail-cat  { font-size: 12px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-top: 3px; }
+
+.club-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.club-ds-cell {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px 10px;
+  text-align: center;
+}
+.club-ds-val   { font-size: 22px; font-weight: 800; color: var(--text); }
+.club-ds-label { font-size: 10px; color: var(--text-3); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+
+.club-detail-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.club-tab {
+  padding: 10px 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .15s, border-color .15s;
+  font-family: var(--font);
+}
+.club-tab.active { color: var(--violet); border-bottom-color: var(--violet); }
+.club-tab:hover:not(.active) { color: var(--text); }
+
+.club-tab-panel { padding-top: 4px; }
+
+.club-detail-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.club-info-cell {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px;
+}
+.club-info-label { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 4px; }
+.club-info-val   { font-size: 13px; font-weight: 600; color: var(--text); }
+/* ══════════════════════════════════════════════════════════════
+   VENUES PAGE
+══════════════════════════════════════════════════════════════ */
+/* =========================
+   VENUES PAGE - MATCH DASHBOARD
+========================= */
+
+.venue-match-layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 20px;
+  padding-top: 6px;
+}
+
+.venue-match-sidebar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 22px;
+  min-height: 120px;
+}
+
+.venue-match-label {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--text-3);
+  margin-bottom: 14px;
+}
+
+.venue-match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.venue-match-list .venue-list-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.venue-match-list .venue-list-item:hover {
+  border-color: #cdb8ff;
+  background: #faf7ff;
+}
+
+.venue-match-list .venue-list-item.active {
+  background: #f3edff;
+  border-color: #b794f6;
+  color: #7c3aed;
+}
+
+.venue-match-calendar-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 22px 22px 18px;
+}
+
+.venue-match-topbar {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.venue-match-title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.venue-match-nav {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.venue-match-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.venue-match-weekdays div {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-3);
+  letter-spacing: 1px;
+}
+
+.venue-match-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+
+.venue-day,
+.venue-day-empty {
+  min-height: 80px;
+  border-radius: 16px;
+}
+
+.venue-day-empty {
+  background: transparent;
+}
+
+.venue-day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #b6eadb;
+  background: #d7f2ea;
+  color: #22c58b;
+  font-size: 28px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.venue-day:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+}
+
+.venue-day.available {
+  background: #d7f2ea;
+  border-color: #9ee0ca;
+  color: #25c78f;
+}
+
+.venue-day.partial {
+  background: #fff4d8;
+  border-color: #f3d27a;
+  color: #d79b00;
+}
+
+.venue-day.booked {
+  background: #ffe0e0;
+  border-color: #f0a8a8;
+  color: #df5b5b;
+}
+
+.venue-day.today {
+  outline: 2px solid #a855f7;
+  outline-offset: -2px;
+}
+
+.venue-day .day-number {
+  font-size: 18px;        /* ↓ smaller size */
+  font-weight: 600;       /* ↓ less bold */
+  color: #2f855a;         /* softer green */
+}
+
+.venue-day .day-dot {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.venue-day.available .day-dot { background: #22c55e; }
+.venue-day.partial .day-dot { background: #f59e0b; }
+.venue-day.booked .day-dot { background: #ef4444; }
+.venue-day.today .day-dot { box-shadow: 0 0 0 4px rgba(168,85,247,0.12); }
+
+.venue-match-legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.vm-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.vm-available { background: #22c55e; }
+.vm-partial   { background: #f59e0b; }
+.vm-booked    { background: #ef4444; }
+.vm-today     { background: #a855f7; }
+
+@media (max-width: 1100px) {
+  .venue-match-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .venue-match-grid {
+    gap: 8px;
+  }
+
+  .venue-day,
+  .venue-day-empty {
+    min-height: 84px;
+  }
+
+  .venue-day .day-number {
+    font-size: 20px;
+  }
+}
+.venue-day.available {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #059669;
+}
+
+.venue-day.partial {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #d97706;
+}
+
+.venue-day.booked {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}

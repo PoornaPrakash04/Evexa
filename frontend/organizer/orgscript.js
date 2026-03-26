@@ -1245,7 +1245,7 @@ async function loadCertificateEvents() {
   if (!list) return;
   try {
     const res  = await apiFetch("/certificates/events");
-    const data = res.ok ? await res.json() : (events || []);
+    const data = res.ok ? await res.json() : [];
     if (!data.length) { list.innerHTML = `<div class="empty-state"><span>📅</span><p>No events found</p></div>`; return; }
     list.innerHTML = data.map(e => {
       const cnt = Number(e.registered_count || e.registered || 0);
@@ -1296,17 +1296,28 @@ async function loadCertParticipants(eventId) {
 }
 
 function setupCertificateUpload() {
-  const input   = document.getElementById("certTemplateFile");
-  const zone    = document.getElementById("certUploadZone");
-  const excelIn = document.getElementById("certExcelFile");
+  const input = document.getElementById("certTemplateFile");
+  const zone  = document.getElementById("certUploadZone");
   if (!input) return;
+
   input.addEventListener("change", function () { if (this.files[0]) setCertTemplate(this.files[0]); });
+
   if (zone) {
     zone.addEventListener("dragover",  e => { e.preventDefault(); zone.classList.add("drag-over"); });
     zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
-    zone.addEventListener("drop", e => { e.preventDefault(); zone.classList.remove("drag-over"); const f = e.dataTransfer.files[0]; if (f && f.type === "application/pdf") setCertTemplate(f); else showToast("⚠️ Please drop a PDF file"); });
-    zone.addEventListener("click", () => input.click());
+    zone.addEventListener("drop", e => {
+      e.preventDefault(); zone.classList.remove("drag-over");
+      const f = e.dataTransfer.files[0];
+      if (f && f.type === "application/pdf") setCertTemplate(f);
+      else showToast("⚠️ Please drop a PDF file");
+    });
+    zone.addEventListener("click", (e) => {
+      if (e.target === input) return;
+      input.click();
+    });
   }
+
+  const excelIn = document.getElementById("certExcelFile");
   if (excelIn) {
     excelIn.addEventListener("change", function () {
       certState.excelFile = this.files[0] || null;
@@ -1315,11 +1326,21 @@ function setupCertificateUpload() {
       checkCertStep2();
     });
   }
-  const colorPick = document.getElementById("certColor");
-  if (colorPick) { colorPick.addEventListener("input", function () { const el = document.getElementById("certColorHex"); if (el) el.textContent = this.value; }); }
-  document.getElementById("certPreviewBtn")?.addEventListener("click", previewCertificate);
-}
 
+  const colorPick = document.getElementById("certColor");
+  if (colorPick) {
+    colorPick.addEventListener("input", function () {
+      const el = document.getElementById("certColorHex");
+      if (el) el.textContent = this.value;
+    });
+  }
+
+  // certPreviewBtn uses onclick in HTML — no addEventListener needed here
+
+  // Always Excel-only mode
+  certState.source = "excel";
+  checkCertStep2();
+}
 function setCertTemplate(file) {
   certState.templateFile = file;
   const zone   = document.getElementById("certUploadZone");
@@ -1419,13 +1440,12 @@ async function generateCertificates() {
 
 function bindCertificateEventClick() {
   const list = document.getElementById("certEventsList");
-  if (!list || certClickBound) return;
-  certClickBound = true;
-  list.addEventListener("click", (e) => {
+  if (!list) return;
+  list.onclick = (e) => {
     const item = e.target.closest(".cert-event-item");
     if (!item) return;
     selectCertEvent(item, Number(item.dataset.eventId), item.dataset.title || "Event", Number(item.dataset.count || 0));
-  });
+  };
 }
 
 // ─────────────────────────────────────────────────────────────

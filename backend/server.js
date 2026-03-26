@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors    = require("cors");
 const db      = require("./db");
+const cron = require("node-cron");
 
 const authRoutes            = require("./routes/auth");
 const eventRoutes           = require("./routes/events");
@@ -26,6 +27,19 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
+cron.schedule("*/15 * * * *", () => {
+  db.query(
+    `UPDATE events
+     SET status = 'Completed'
+     WHERE status = 'Approved'
+       AND CONCAT(date, ' ', COALESCE(time, '23:59:00')) < NOW()`,
+    (err, result) => {
+      if (err) return console.error("Auto-complete cron error:", err);
+      if (result.affectedRows > 0)
+        console.log(`✅ Cron: ${result.affectedRows} event(s) marked Completed`);
+    }
+  );
+});
 app.use(express.json());
 app.use(express.static("frontend"));
 app.use("/uploads", express.static("uploads"));

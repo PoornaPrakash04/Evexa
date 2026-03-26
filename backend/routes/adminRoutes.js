@@ -29,7 +29,7 @@ function adminOnly(req, res, next) {
     return res.status(401).json({ message: "No token provided." });
   try {
     const decoded = jwt.verify(header.split(" ")[1], process.env.JWT_SECRET);
-    if (decoded.role !== "ADMIN")
+    if ((decoded.role || "").toUpperCase() !== "ADMIN")
       return res.status(403).json({ message: "Access denied. Admins only." });
     req.admin = decoded;
     next();
@@ -84,7 +84,8 @@ router.get("/profile", adminOnly, (req, res) => {
     "SELECT admin_id AS id, admin_name AS name, email, phone, created_at FROM admin WHERE admin_id = ?",
     [req.admin.id],
     (err, rows) => {
-      if (err || !rows.length) return res.status(500).json({ message: "Server error." });
+      if (err) return res.status(500).json({ message: err.message });
+      if (!rows.length) return res.status(404).json({ message: "Admin not found." });
       res.json(rows[0]);
     }
   );
@@ -173,7 +174,6 @@ router.get("/dashboard", adminOnly, (req, res) => {
        FROM events e LEFT JOIN clubs c ON e.club_id = c.club_id
        ORDER BY e.id DESC LIMIT 5`),
     q("SELECT * FROM activity_logs ORDER BY id DESC LIMIT 5"),
-    q("SELECT COUNT(*) AS total FROM students WHERE 1=0"),
   ])
     .then(([
       [totalEvents], [approved], [pending],
@@ -186,7 +186,6 @@ router.get("/dashboard", adminOnly, (req, res) => {
       topClubs,
       recentEvents,
       recentLogs,
-      [pendingRoles],
     ]) => {
       res.json({
         stats: {
@@ -196,7 +195,7 @@ router.get("/dashboard", adminOnly, (req, res) => {
           totalUsers:         students.total + organizers.total + faculty.total,
           certsIssued:        certs.total,
           activeClubs:        mostActiveClubs.length,
-          pendingRoles:       pendingRoles.total,
+          pendingRoles:       pending.total,  // reuse actual pending events count
           eventsThisWeek:     eventsThisWeek.total,
           totalParticipation: totalParticipation.total,
           userBreakdown: {
@@ -232,7 +231,7 @@ router.get("/events", adminOnly, (req, res) => {
 
   if (search)             { sql += " AND e.title LIKE ?"; params.push(`%${search}%`); }
   if (status !== "all")   { sql += " AND e.status = ?";  params.push(status); }
-  if (category !== "all") { sql += " AND e.type = ?";    params.push(category); }
+  if (category !== "all") { sql += " AND e.category = ?";    params.push(category); }
 
   sql += " ORDER BY e.id DESC";
   db.query(sql, params, (err, rows) => {
@@ -659,63 +658,296 @@ router.delete("/logs", adminOnly, (req, res) => {
 //  ANALYTICS
 // ─────────────────────────────────────────────────────────────
 router.get("/analytics", adminOnly, (req, res) => {
+  const { academic_year } = req.query;
   const q = (sql, p = []) =>
     new Promise((resolve, reject) =>
       db.query(sql, p, (err, rows) => (err ? reject(err) : resolve(rows)))
     );
 
+  // academic_year format: "2025-26" → date BETWEEN '2025-08-01' AND '2026-07-31'
+  // events table has no academic_year column, so derive date range from the string
+  let yearWhere  = "";
+  const yearParams = [];
+  if (academic_year && academic_year !== "all") {
+    const startYear = parseInt(academic_year.split("-")[0], 10);
+    const endYear   = startYear + 1;
+    yearWhere = " AND e.date BETWEEN ? AND ?";
+    yearParams.push(`${startYear}-08-01`, `${endYear}-07-31`);
+  }
+
   Promise.all([
-    // GROUP BY and SELECT use identical expressions to satisfy only_full_group_by
-    q(`SELECT DATE_FORMAT(date,'%Y-%m') AS ym, DATE_FORMAT(date,'%b') AS month, COUNT(*) AS count
-       FROM events
-       WHERE date >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
-       GROUP BY DATE_FORMAT(date,'%Y-%m'), DATE_FORMAT(date,'%b')
-       ORDER BY ym`),
+    // Events per month
+    q(`SELECT DATE_FORMAT(e.date,'%Y-%m') AS ym, DATE_FORMAT(e.date,'%b') AS month, COUNT(*) AS count
+       FROM events e WHERE 1=1 ${yearWhere}
+       GROUP BY DATE_FORMAT(e.date,'%Y-%m'), DATE_FORMAT(e.date,'%b')
+       ORDER BY ym`, yearParams),
 
-    q(`SELECT COALESCE(type,'Other') AS category, COUNT(*) AS count
-       FROM events GROUP BY COALESCE(type,'Other')`),
-
+    // Technical vs Non-Technical
     q(`SELECT
-         SUM(CASE WHEN category = 'Technical' THEN 1 ELSE 0 END) AS academic,
-         SUM(CASE WHEN category != 'Technical' OR category IS NULL THEN 1 ELSE 0 END) AS non_academic
-       FROM events`),
+         SUM(CASE WHEN e.category = 'Technical' THEN 1 ELSE 0 END)                        AS academic,
+         SUM(CASE WHEN e.category != 'Technical' OR e.category IS NULL THEN 1 ELSE 0 END) AS non_academic
+       FROM events e WHERE 1=1 ${yearWhere}`, yearParams),
 
+    // Participation per month
     q(`SELECT DATE_FORMAT(e.date,'%Y-%m') AS ym, DATE_FORMAT(e.date,'%b') AS month, COUNT(r.id) AS participants
        FROM events e
        LEFT JOIN registrations r ON r.event_id = e.id
-       WHERE e.date >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
+       WHERE 1=1 ${yearWhere}
        GROUP BY DATE_FORMAT(e.date,'%Y-%m'), DATE_FORMAT(e.date,'%b')
-       ORDER BY ym`),
+       ORDER BY ym`, yearParams),
 
+    // Semester split
     q(`SELECT
-         SUM(CASE WHEN MONTH(date) BETWEEN 8 AND 12 THEN 1 ELSE 0 END) AS sem1,
-         SUM(CASE WHEN MONTH(date) BETWEEN 1  AND 7  THEN 1 ELSE 0 END) AS sem2
-       FROM events`),
+         SUM(CASE WHEN MONTH(e.date) BETWEEN 8 AND 12 THEN 1 ELSE 0 END) AS sem1,
+         SUM(CASE WHEN MONTH(e.date) BETWEEN 1  AND 7  THEN 1 ELSE 0 END) AS sem2
+       FROM events e WHERE 1=1 ${yearWhere}`, yearParams),
 
-    q(`SELECT DATE_FORMAT(created_at,'%Y-%m') AS ym, DATE_FORMAT(created_at,'%b') AS month, COUNT(*) AS count
-       FROM students
-       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
-       GROUP BY DATE_FORMAT(created_at,'%Y-%m'), DATE_FORMAT(created_at,'%b')
-       ORDER BY ym`),
-
-    q(`SELECT DATE_FORMAT(created_at,'%Y-%m') AS ym, DATE_FORMAT(created_at,'%b') AS month, COUNT(*) AS count
-       FROM certificates
-       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 8 MONTH)
-       GROUP BY DATE_FORMAT(created_at,'%Y-%m'), DATE_FORMAT(created_at,'%b')
-       ORDER BY ym`),
-
+    // Role distribution
     q(`SELECT 'Students'   AS role, COUNT(*) AS count FROM students
        UNION ALL SELECT 'Faculty',    COUNT(*) FROM faculty
        UNION ALL SELECT 'Organizers', COUNT(*) FROM organizers
        UNION ALL SELECT 'Admins',     COUNT(*) FROM admin`),
   ])
-    .then(([eventsPerMonth, categories, [acadSplit], participationPerMonth, [semesters], userGrowth, certs, roles]) => {
-      res.json({ eventsPerMonth, categories, acadSplit, participationPerMonth, semesters, userGrowth, certs, roles });
+    .then(([eventsPerMonth, acadSplitRows, participationPerMonth, semestersRows, roles]) => {
+      const acadSplit = acadSplitRows?.[0] || { academic: 0, non_academic: 0 };
+      const semesters = semestersRows?.[0] || { sem1: 0, sem2: 0 };
+      res.json({ eventsPerMonth, acadSplit, participationPerMonth, semesters, roles });
     })
     .catch((err) => {
       console.error("Analytics error:", err.message);
       res.status(500).json({ message: err.message });
     });
+});
+
+// ─────────────────────────────────────────────────────────────
+//  SYSTEM HEALTH
+// ─────────────────────────────────────────────────────────────
+router.get("/system-health", adminOnly, (req, res) => {
+  const q = (sql, p = []) =>
+    new Promise((resolve, reject) =>
+      db.query(sql, p, (err, rows) => (err ? reject(err) : resolve(rows)))
+    );
+
+  const startTime = Date.now();
+
+  Promise.all([
+    // Real row counts per table
+    q("SELECT COUNT(*) AS total FROM events"),
+    q("SELECT COUNT(*) AS total FROM students"),
+    q("SELECT COUNT(*) AS total FROM registrations"),
+    q("SELECT COUNT(*) AS total FROM certificates"),
+    q("SELECT COUNT(*) AS total FROM activity_logs"),
+    // Actual DB size in MB for the evexa schema
+    q(`SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb
+       FROM information_schema.tables
+       WHERE table_schema = DATABASE()`),
+  ])
+    .then(([[events], [students], [registrations], [certs], [logs], [dbSize]]) => {
+      const dbMs      = Date.now() - startTime;   // how long all queries took
+      const sizeMb    = parseFloat(dbSize.size_mb) || 0;
+      const limitMb   = 100;                       // adjust to your actual DB size limit
+      const usedPct   = Math.min(Math.round((sizeMb / limitMb) * 100), 100);
+      const freeMb    = Math.max(limitMb - sizeMb, 0).toFixed(2);
+      const dbHealthPct = dbMs < 200 ? 100 : dbMs < 500 ? 90 : dbMs < 1000 ? 75 : 60;
+
+      res.json({
+        storage: {
+          used_mb:   sizeMb,
+          free_mb:   parseFloat(freeMb),
+          limit_mb:  limitMb,
+          used_pct:  usedPct,
+          free_pct:  100 - usedPct,
+        },
+        database: {
+          health_pct:    dbHealthPct,
+          query_time_ms: dbMs,
+          status:        dbHealthPct >= 90 ? "Healthy" : dbHealthPct >= 75 ? "Degraded" : "Slow",
+        },
+        counts: {
+          events:        events.total,
+          students:      students.total,
+          registrations: registrations.total,
+          certificates:  certs.total,
+          logs:          logs.total,
+        },
+      });
+    })
+    .catch((err) => {
+      console.error("System health error:", err.message);
+      res.status(500).json({ message: err.message });
+    });
+});
+
+// ─────────────────────────────────────────────────────────────
+//  RECYCLE BIN  (soft-delete trash routes)
+//  Requires: deleted_at DATETIME DEFAULT NULL on events, students,
+//            organizers, faculty, clubs tables.
+//  Run once:
+//    ALTER TABLE events    ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
+//    ALTER TABLE students  ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
+//    ALTER TABLE organizers ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
+//    ALTER TABLE faculty   ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
+//    ALTER TABLE clubs     ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
+// ─────────────────────────────────────────────────────────────
+
+// ── GET deleted items ────────────────────────────────────────
+
+router.get("/trash/events", adminOnly, (req, res) => {
+  db.query(
+    `SELECT e.id, e.title, e.date, e.category, e.status, e.deleted_at,
+            COALESCE(c.club_name, CONCAT('Club #', e.club_id)) AS club
+     FROM events e
+     LEFT JOIN clubs c ON c.club_id = e.club_id
+     WHERE e.deleted_at IS NOT NULL
+     ORDER BY e.deleted_at DESC`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+router.get("/trash/users", adminOnly, (req, res) => {
+  // Merge soft-deleted users from students, organizers and faculty
+  const sql = `
+    SELECT id, name, email, 'student'   AS role, department, deleted_at FROM students   WHERE deleted_at IS NOT NULL
+    UNION ALL
+    SELECT id, name, email, 'organizer' AS role, club AS department,     deleted_at FROM organizers WHERE deleted_at IS NOT NULL
+    UNION ALL
+    SELECT id, name, email, 'faculty'   AS role, department,             deleted_at FROM faculty    WHERE deleted_at IS NOT NULL
+    ORDER BY deleted_at DESC
+  `;
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message });
+    res.json(rows);
+  });
+});
+
+router.get("/trash/clubs", adminOnly, (req, res) => {
+  db.query(
+    `SELECT c.club_id AS id, c.club_name AS club, c.deleted_at,
+            o.name AS organizer_name,
+            (SELECT COUNT(*) FROM events e WHERE e.club_id = c.club_id) AS event_count
+     FROM clubs c
+     LEFT JOIN organizers o ON o.club = c.club_name
+     WHERE c.deleted_at IS NOT NULL
+     ORDER BY c.deleted_at DESC`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+// ── RESTORE (set deleted_at = NULL) ─────────────────────────
+
+router.put("/trash/events/:id/restore", adminOnly, (req, res) => {
+  db.query("SELECT title FROM events WHERE id = ?", [req.params.id], (err, rows) => {
+    const name = rows?.[0]?.title || `ID ${req.params.id}`;
+    db.query(
+      "UPDATE events SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL",
+      [req.params.id],
+      (err2, result) => {
+        if (err2) return res.status(500).json({ message: err2.message });
+        if (!result.affectedRows) return res.status(404).json({ message: "Event not found in trash." });
+        pushLog("event", "↩️", "green", `Event '${name}' restored from trash`, req.admin.name || "Admin");
+        res.json({ message: "Event restored." });
+      }
+    );
+  });
+});
+
+router.put("/trash/users/:id/restore", adminOnly, (req, res) => {
+  const { role } = req.query;
+  const tables = { student: "students", organizer: "organizers", faculty: "faculty" };
+  const table  = tables[role];
+  if (!table) return res.status(400).json({ message: "Invalid role. Use ?role=student|organizer|faculty" });
+
+  db.query(
+    `UPDATE ${table} SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL`,
+    [req.params.id],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: err.message });
+      if (!result.affectedRows) return res.status(404).json({ message: "User not found in trash." });
+      pushLog("user", "↩️", "green", `${role} ID ${req.params.id} restored from trash`, req.admin.name || "Admin");
+      res.json({ message: "User restored." });
+    }
+  );
+});
+
+router.put("/trash/clubs/:id/restore", adminOnly, (req, res) => {
+  db.query("SELECT club_name FROM clubs WHERE club_id = ?", [req.params.id], (err, rows) => {
+    const name = rows?.[0]?.club_name || `ID ${req.params.id}`;
+    db.query(
+      "UPDATE clubs SET deleted_at = NULL WHERE club_id = ? AND deleted_at IS NOT NULL",
+      [req.params.id],
+      (err2, result) => {
+        if (err2) return res.status(500).json({ message: err2.message });
+        if (!result.affectedRows) return res.status(404).json({ message: "Club not found in trash." });
+        pushLog("system", "↩️", "green", `Club '${name}' restored from trash`, req.admin.name || "Admin");
+        res.json({ message: "Club restored." });
+      }
+    );
+  });
+});
+
+// ── PERMANENT DELETE ─────────────────────────────────────────
+
+router.delete("/trash/events/:id", adminOnly, (req, res) => {
+  db.query("SELECT title FROM events WHERE id = ? AND deleted_at IS NOT NULL", [req.params.id], (err, rows) => {
+    if (!rows?.length) return res.status(404).json({ message: "Event not found in trash." });
+    const name = rows[0].title;
+    db.query("DELETE FROM events WHERE id = ? AND deleted_at IS NOT NULL", [req.params.id], (err2) => {
+      if (err2) return res.status(500).json({ message: err2.message });
+      pushLog("event", "🗑️", "red", `Event '${name}' permanently deleted`, req.admin.name || "Admin");
+      res.json({ message: "Event permanently deleted." });
+    });
+  });
+});
+
+router.delete("/trash/users/:id", adminOnly, (req, res) => {
+  const { role } = req.query;
+  const tables = { student: "students", organizer: "organizers", faculty: "faculty" };
+  const table  = tables[role];
+  if (!table) return res.status(400).json({ message: "Invalid role. Use ?role=student|organizer|faculty" });
+
+  db.query(
+    `SELECT name FROM ${table} WHERE id = ? AND deleted_at IS NOT NULL`,
+    [req.params.id],
+    (err, rows) => {
+      if (!rows?.length) return res.status(404).json({ message: "User not found in trash." });
+      const name = rows[0].name;
+      db.query(
+        `DELETE FROM ${table} WHERE id = ? AND deleted_at IS NOT NULL`,
+        [req.params.id],
+        (err2) => {
+          if (err2) return res.status(500).json({ message: err2.message });
+          pushLog("user", "🗑️", "red", `${role} '${name}' permanently deleted`, req.admin.name || "Admin");
+          res.json({ message: "User permanently deleted." });
+        }
+      );
+    }
+  );
+});
+
+router.delete("/trash/clubs/:id", adminOnly, (req, res) => {
+  db.query(
+    "SELECT club_name FROM clubs WHERE club_id = ? AND deleted_at IS NOT NULL",
+    [req.params.id],
+    (err, rows) => {
+      if (!rows?.length) return res.status(404).json({ message: "Club not found in trash." });
+      const name = rows[0].club_name;
+      db.query(
+        "DELETE FROM clubs WHERE club_id = ? AND deleted_at IS NOT NULL",
+        [req.params.id],
+        (err2) => {
+          if (err2) return res.status(500).json({ message: err2.message });
+          pushLog("system", "🗑️", "red", `Club '${name}' permanently deleted`, req.admin.name || "Admin");
+          res.json({ message: "Club permanently deleted." });
+        }
+      );
+    }
+  );
 });
 
 module.exports = router;

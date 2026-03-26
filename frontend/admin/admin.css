@@ -531,6 +531,87 @@ body.light .admin-cal-event-meta  { color: rgba(13,15,30,.40); }
 body.light .admin-cal-empty { color: rgba(13,15,30,.38); border-color: rgba(139,92,246,.15); }
 
 /* ══════════════════════════════════════════════════════════════
+   RECYCLE BIN
+══════════════════════════════════════════════════════════════ */
+.rb-info-banner {
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 18px 22px; border-radius: var(--r-lg);
+  background: rgba(109,94,252,.08); border: 1px solid rgba(109,94,252,.22);
+  margin-bottom: 20px;
+}
+.rb-info-icon { font-size: 32px; flex-shrink: 0; margin-top: 2px; }
+.rb-info-title { font-weight: 800; font-size: 15px; color: var(--text); margin-bottom: 4px; }
+.rb-info-sub   { font-size: 13px; color: var(--text-3); font-weight: 500; line-height: 1.5; }
+
+.rb-stats-row {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px;
+}
+.rb-stat-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px; border-radius: var(--r-md);
+  background: var(--surface); border: 1px solid var(--border-2);
+}
+.rb-stat-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; flex-shrink: 0; }
+.rb-stat-val   { font-weight: 900; font-size: 22px; color: var(--text); line-height: 1; }
+.rb-stat-label { font-size: 11px; font-weight: 700; color: var(--text-3); margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; }
+
+.rb-tabs { display: flex; gap: 6px; }
+.rb-tab {
+  padding: 7px 16px; border-radius: 10px; border: 1px solid var(--border-2);
+  background: var(--surface); color: var(--text-2); font-weight: 700; font-size: 13px;
+  cursor: pointer; transition: .15s ease; font-family: var(--font);
+}
+.rb-tab:hover  { background: var(--surface-2); color: var(--text); }
+.rb-tab.active { background: rgba(109,94,252,.15); border-color: rgba(109,94,252,.35); color: var(--violet-2); }
+
+.rb-list { display: flex; flex-direction: column; gap: 10px; padding: 16px; min-height: 120px; }
+
+.rb-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border-radius: var(--r-md);
+  border: 1px solid var(--border-2); background: var(--surface);
+  transition: .16s ease;
+}
+.rb-item:hover { background: var(--surface-2); border-color: rgba(109,94,252,.25); transform: translateX(3px); }
+.rb-item.rb-warning { border-color: rgba(245,158,11,.30); background: rgba(245,158,11,.04); }
+.rb-item.rb-urgent  { border-color: rgba(239,68,68,.35);  background: rgba(239,68,68,.05); }
+.rb-item-icon { font-size: 28px; flex-shrink: 0; }
+.rb-item-body { flex: 1; min-width: 0; }
+.rb-item-title { font-weight: 800; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-item-meta  { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.rb-item-date  { font-size: 12px; color: var(--text-3); margin-top: 4px; font-weight: 600; }
+.rb-expires         { color: var(--text-3); }
+.rb-expires.rb-warning { color: #fbbf24; }
+.rb-expires.rb-urgent  { color: #f87171; }
+.rb-item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.rb-empty { padding: 48px 24px; text-align: center; color: var(--text-2); }
+
+.rb-skeleton {
+  height: 72px; border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+  background-size: 200% 100%; animation: shimmer 1.4s infinite; margin-bottom: 10px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.rb-sql {
+  font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.7;
+  color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 16px 18px; overflow-x: auto; white-space: pre;
+}
+
+body.light .rb-info-banner { background: rgba(109,94,252,.06); border-color: rgba(109,94,252,.18); }
+body.light .rb-stat-card   { background: rgba(255,255,255,.75); border-color: rgba(109,94,252,.14); }
+body.light .rb-tab         { background: rgba(255,255,255,.70); border-color: rgba(109,94,252,.12); color: rgba(13,15,30,.65); }
+body.light .rb-tab.active  { background: rgba(109,94,252,.10); border-color: rgba(109,94,252,.28); color: #5b21b6; }
+body.light .rb-item        { background: rgba(255,255,255,.70); border-color: rgba(109,94,252,.10); }
+body.light .rb-item:hover  { background: rgba(255,255,255,.95); }
+body.light .rb-sql         { background: rgba(255,255,255,.60); border-color: rgba(109,94,252,.12); color: rgba(13,15,30,.70); }
+
+@media (max-width: 900px) { .rb-stats-row { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .rb-stats-row { grid-template-columns: 1fr 1fr; } .rb-item { flex-wrap: wrap; } .rb-item-actions { width: 100%; } }
+
+/* ══════════════════════════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } .three-col { grid-template-columns: 1fr 1fr; } }

@@ -462,28 +462,15 @@
           </div>
 
           <div class="card">
-            <div class="card-header"><h3>👥 Participants</h3></div>
-            <div class="cert-source-tabs">
-              <button class="cert-src-tab active" data-src="db" onclick="setCertSource('db')">From Registrations</button>
-              <button class="cert-src-tab" data-src="excel" onclick="setCertSource('excel')">Upload Excel</button>
-            </div>
-
-            <!-- DB source -->
-            <div id="certSrcDB" class="cert-source-panel">
-              <div id="certParticipantsList" style="max-height:280px;overflow-y:auto;"></div>
-            </div>
-
-            <!-- Excel source -->
-            <div id="certSrcExcel" class="cert-source-panel" style="display:none;">
-              <div style="padding:18px;">
-                <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">
-                  Excel must have a <strong>Name</strong> column. Optional: <strong>Email</strong>.
-                </p>
-                <input type="file" id="certExcelFile" accept=".xlsx,.xls,.csv" class="form-file">
-                <div id="certExcelPreview" style="margin-top:12px;font-size:12px;color:var(--muted);"></div>
-              </div>
-            </div>
-          </div>
+  <div class="card-header"><h3>👥 Participants</h3></div>
+  <div style="padding:18px;">
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">
+      Upload a CSV or Excel file with a <strong>Name</strong> column. Optional: <strong>Email</strong>.
+    </p>
+    <input type="file" id="certExcelFile" accept=".xlsx,.xls,.csv" class="form-file">
+    <div id="certExcelPreview" style="margin-top:12px;font-size:12px;color:var(--emerald);"></div>
+  </div>
+</div>
         </div>
 
         <div class="cert-panel-footer">
@@ -528,7 +515,8 @@
   type="button"
   id="certPreviewBtn"
   class="btn-primary"
-  style="width:100%;">
+  style="width:100%;"
+  onclick="previewCertificate()">
   👁️ Preview Certificate
 </button>
             </div>
@@ -546,8 +534,8 @@
         </div>
 
         <div class="cert-panel-footer">
-          <button class="btn-ghost" onclick="certGoStep(2)">← Back</button>
-          <button class="btn-primary" onclick="certGoStep(4)">Next →</button>
+          <button type="button" class="btn-ghost" onclick="certGoStep(2)">← Back</button>
+          <button type="button" class="btn-primary" onclick="certGoStep(4)">Next →</button>
         </div>
       </div>
 
@@ -568,7 +556,7 @@
             <p id="certProgressLabel" style="text-align:center;font-size:13px;color:var(--muted);margin-top:10px;">Generating…</p>
           </div>
           <div class="card-footer" style="display:flex;justify-content:space-between;align-items:center;">
-            <button class="btn-ghost" onclick="certGoStep(3)">← Back</button>
+            <button type="button" class="btn-ghost" onclick="certGoStep(3)">← Back</button>
             <button type="button" class="btn-primary" id="certGenerateBtn" onclick="generateCertificates()">
               🎓 Generate &amp; Download ZIP
             </button>

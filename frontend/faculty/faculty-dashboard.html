@@ -29,7 +29,10 @@
         <span class="icon">📋</span><span class="nav-label">Event Proposals</span>
         <span class="nav-badge orange" id="badge-proposals">–</span>
       </button>
-    
+      <div class="section-label">Venue</div>
+      <button class="nav-item" data-page="venues" data-tooltip="Venues">
+  <span class="icon">📍</span><span class="nav-label">Venues</span>
+</button>
       
 
       <div class="section-label">Events</div>
@@ -37,7 +40,10 @@
         <span class="icon">📅</span><span class="nav-label">Event List</span>
       </button>
 
-      <div class="section-label">Clubs & Reports</div>
+      <div class="section-label">Clubs &amp; Reports</div>
+      <button class="nav-item" data-page="all-clubs" data-tooltip="All Clubs">
+        <span class="icon">🌐</span><span class="nav-label">All Clubs</span>
+      </button>
       <button class="nav-item" data-page="clubs" data-tooltip="Club Oversight">
         <span class="icon">🏛️</span><span class="nav-label">Club Oversight</span>
       </button>
@@ -111,7 +117,6 @@
       <!-- ══════════ DASHBOARD ══════════ -->
       <div id="pg-dashboard" class="page-section">
 
-        <!-- Welcome hero strip -->
         <div class="hero-strip" id="heroStrip">
           <div class="hero-left">
             <div class="hero-greeting" id="heroGreeting">Good Morning! Faculty</div>
@@ -135,59 +140,57 @@
           </div>
         </div>
 
-      <div class="panel">
-  <div class="panel-header">
-    <div>
-      <div class="panel-title">🗓️ Calendar Overview</div>
-      <div class="panel-sub">Events by date</div>
-    </div>
-    <div class="cal-controls">
-      <button class="cal-nav-btn" id="dashCalPrev">‹</button>
-      <span class="cal-month-label" id="dashCalMonthLabel"></span>
-      <button class="cal-nav-btn" id="dashCalNext">›</button>
-    </div>
-  </div>
-  <div class="panel-body">
-    <div class="cal-legend">
-      <span class="leg-item"><span class="leg-dot pending-dot"></span>Pending</span>
-      <span class="leg-item"><span class="leg-dot approved-dot"></span>Approved</span>
-      <span class="leg-item"><span class="leg-dot today-dot"></span>Today</span>
-    </div>
-    <div class="mini-calendar" id="dashMiniCalendar"></div>
-    <div class="cal-event-detail" id="dashCalEventDetail" style="display:none">
-      <div class="cal-detail-title" id="dashCalDetailTitle"></div>
-      <div class="cal-detail-meta" id="dashCalDetailMeta"></div>
-      <div class="cal-detail-actions" id="dashCalDetailActions"></div>
-    </div>
-    <div class="panel" id="dashSelectedDatePanel" style="display:none; margin-top:16px;">
-  <div class="panel-header">
-    <div>
-      <div class="panel-title">📋 Events on Selected Date</div>
-      <div class="panel-sub" id="dashSelectedDateSub">Event details</div>
-    </div>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Club</th>
-          <th>Organizer</th>
-          <th>Capacity</th>
-          <th>Venue</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody id="dashSelectedDateBody">
-        <tr>
-          <td colspan="6" class="td-empty">No events selected.</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-  </div>
-</div>
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">🗓️ Calendar Overview</div>
+              <div class="panel-sub">Events by date</div>
+            </div>
+            <div class="cal-controls">
+              <button class="cal-nav-btn" id="dashCalPrev">‹</button>
+              <span class="cal-month-label" id="dashCalMonthLabel"></span>
+              <button class="cal-nav-btn" id="dashCalNext">›</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="cal-legend">
+              <span class="leg-item"><span class="leg-dot pending-dot"></span>Pending</span>
+              <span class="leg-item"><span class="leg-dot approved-dot"></span>Approved</span>
+              <span class="leg-item"><span class="leg-dot today-dot"></span>Today</span>
+            </div>
+            <div class="mini-calendar" id="dashMiniCalendar"></div>
+            <div class="cal-event-detail" id="dashCalEventDetail" style="display:none">
+              <div class="cal-detail-title" id="dashCalDetailTitle"></div>
+              <div class="cal-detail-meta" id="dashCalDetailMeta"></div>
+              <div class="cal-detail-actions" id="dashCalDetailActions"></div>
+            </div>
+            <div class="panel" id="dashSelectedDatePanel" style="display:none; margin-top:16px;">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">📋 Events on Selected Date</div>
+                  <div class="panel-sub" id="dashSelectedDateSub">Event details</div>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Club</th>
+                      <th>Organizer</th>
+                      <th>Capacity</th>
+                      <th>Venue</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashSelectedDateBody">
+                    <tr><td colspan="6" class="td-empty">No events selected.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- My Clubs quick view -->
         <div class="panel">
@@ -202,41 +205,66 @@
         </div>
 
       </div><!-- /pg-dashboard -->
+      <!-- PAGE: VENUES -->
+       
+<div id="pg-venues" class="page-section" style="display:none">
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">📍 Venues &amp; Availability</div>
+        <div class="panel-sub">Check venue status by date</div>
+      </div>
+    </div>
 
+    <div class="venue-match-layout">
+      <!-- Left venue list -->
+      <div class="venue-match-sidebar">
+        <div class="venue-match-label">VENUES</div>
+        <div id="venueList" class="venue-match-list"></div>
+      </div>
+
+      <!-- Right calendar -->
+      <div class="venue-match-calendar-wrap">
+        <div class="venue-match-topbar">
+          <button type="button" class="venue-match-nav" id="prevMonth">‹</button>
+          <div id="calendarTitle" class="venue-match-title"></div>
+          <button type="button" class="venue-match-nav" id="nextMonth">›</button>
+        </div>
+
+        <div class="venue-match-weekdays">
+          <div>SUN</div>
+          <div>MON</div>
+          <div>TUE</div>
+          <div>WED</div>
+          <div>THU</div>
+          <div>FRI</div>
+          <div>SAT</div>
+        </div>
+
+        <div id="calendarGrid" class="venue-match-grid"></div>
+
+        <div class="venue-match-legend">
+          <span><i class="vm-dot vm-available"></i> Available</span>
+          <span><i class="vm-dot vm-partial"></i> Partial</span>
+          <span><i class="vm-dot vm-booked"></i> Booked</span>
+          <span><i class="vm-dot vm-today"></i> Today</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
       <!-- ══════════ EVENT PROPOSALS ══════════ -->
       <div id="pg-proposals" class="page-section" style="display:none">
 
-        <!-- Filter bar -->
         <div class="filter-bar">
           <input class="search-input" id="proposalSearch" placeholder="🔍  Search proposals…"/>
-          <select class="filter-select" id="proposalFilter">
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="review">Under Review</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <select class="filter-select" id="proposalCategoryFilter">
-            <option value="all">All Categories</option>
-            <option value="Technical">Technical</option>
-            <option value="Cultural">Cultural</option>
-            <option value="Workshop">Workshop</option>
-            <option value="Sports">Sports</option>
-            <option value="Academic">Academic</option>
-          </select>
-          <div class="bulk-actions">
-            <button class="btn success sm" id="bulkApproveBtn">✅ Approve Selected</button>
-            <button class="btn danger sm"  id="bulkRejectBtn">❌ Reject Selected</button>
-          </div>
         </div>
 
-        <!-- Table -->
         <div class="panel">
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th width="36"><input type="checkbox" class="cb" id="chkAllProposals"/></th>
                   <th>Event Name</th>
                   <th>Organizer / Club</th>
                   <th>Date</th>
@@ -280,30 +308,105 @@
           <div class="table-wrap">
             <table>
               <thead>
-  <tr>
-    <th>Event Name</th>
-    <th>Organizer</th>
-    <th>Date</th>
-    <th>Venue</th>
-    <th>Category</th>
-    <th>Capacity</th>
-    <th>Fee</th>
-    <th>Status</th>
-    <th>Participants</th> <!-- ✅ NEW -->
-  </tr>
-</thead>
-              <tbody id="eventListBody"><tr><td colspan="8" class="td-loading">Loading events…</td></tr></tbody>
+                <tr>
+                  <th>Event Name</th>
+                  <th>Organizer</th>
+                  <th>Date</th>
+                  <th>Venue</th>
+                  <th>Category</th>
+                  <th>Capacity</th>
+                  <th>Fee</th>
+                  <th>Status</th>
+                  <th>Participants</th>
+                </tr>
+              </thead>
+              <tbody id="eventListBody"><tr><td colspan="9" class="td-loading">Loading events…</td></tr></tbody>
             </table>
           </div>
         </div>
-      </div>
+      </div><!-- /pg-event-list -->
 
-      
+      <!-- ══════════ ALL CLUBS ══════════ -->
+      <div id="pg-all-clubs" class="page-section" style="display:none">
+        <div class="filter-bar">
+          <input class="search-input" id="allClubsSearch" placeholder="🔍  Search clubs…"/>
+          <select class="filter-select" id="allClubsCategory">
+            <option value="all">All Categories</option>
+            <option value="academic">Academic</option>
+            <option value="technical">Technical</option>
+            <option value="cultural">Cultural</option>
+            <option value="sports">Sports</option>
+            <option value="social">Social</option>
+          </select>
+        </div>
+
+        <div class="all-clubs-grid" id="allClubsGrid">
+          <div class="list-empty" style="padding:20px;">Loading clubs…</div>
+        </div>
+
+        <!-- Club Detail Overlay + Drawer -->
+        <div class="club-detail-overlay" id="clubDetailOverlay" style="display:none" onclick="closeClubDetail()"></div>
+        <div class="club-detail-drawer" id="clubDetailDrawer" style="display:none">
+          <div class="club-detail-head">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div class="club-detail-emoji" id="clubDetailEmoji">🏛️</div>
+              <div>
+                <div class="club-detail-name" id="clubDetailName">Club Name</div>
+                <div class="club-detail-cat" id="clubDetailCat">Category</div>
+              </div>
+            </div>
+            <button class="icon-btn" onclick="closeClubDetail()">✕</button>
+          </div>
+
+          <div class="club-detail-stats" id="clubDetailStats"></div>
+
+          <div class="club-detail-tabs">
+            <button class="club-tab active" onclick="switchClubTab('events', this)">📅 Events</button>
+            <button class="club-tab" onclick="switchClubTab('info', this)">ℹ️ Info</button>
+          </div>
+
+          <div id="clubTabEvents" class="club-tab-panel">
+            <div class="filter-bar" style="margin-bottom:12px;">
+              <select class="filter-select" id="clubEventStatusFilter" onchange="filterClubEvents()">
+                <option value="all">All Status</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <input class="search-input" id="clubEventSearch" placeholder="🔍 Search events…" oninput="filterClubEvents()" style="flex:1;max-width:220px;"/>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Event</th>
+                    <th>Date</th>
+                    <th>Venue</th>
+                    <th>Category</th>
+                    <th>Capacity</th>
+                    <th>Fee</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="clubDetailEventsBody">
+                  <tr><td colspan="7" class="td-empty">No events found.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="clubTabInfo" class="club-tab-panel" style="display:none">
+            <div id="clubDetailInfo"></div>
+          </div>
+        </div>
+      </div><!-- /pg-all-clubs -->
 
       <!-- ══════════ CLUB OVERSIGHT ══════════ -->
       <div id="pg-clubs" class="page-section" style="display:none">
-        <div class="clubs-overview-grid" id="clubsGrid"><div class="list-empty" style="padding:20px;">Loading clubs…</div></div>
-      </div>
+        <div class="clubs-overview-grid" id="clubsGrid">
+          <div class="list-empty" style="padding:20px;">Loading clubs…</div>
+        </div>
+      </div><!-- /pg-clubs -->
 
       <!-- ══════════ ANALYTICS ══════════ -->
       <div id="pg-analytics" class="page-section" style="display:none">
@@ -320,7 +423,7 @@
         </div>
         <div class="two-col">
           <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">🎓 Academic vs Non-Academic</div><div class="panel-sub">Distribution</div></div></div>
+            <div class="panel-header"><div><div class="panel-title">🎓 Technical vs Non-Technical</div><div class="panel-sub">Distribution</div></div></div>
             <div class="panel-body donut-row">
               <canvas id="typeChart" width="180" height="180"></canvas>
               <div id="typeChartLegend" class="donut-legend"></div>
@@ -331,7 +434,7 @@
             <div class="panel-body chart-box"><canvas id="clubChart" height="200"></canvas></div>
           </div>
         </div>
-      </div>
+      </div><!-- /pg-analytics -->
 
       <!-- ══════════ FEEDBACK ══════════ -->
       <div id="pg-feedback" class="page-section" style="display:none">
@@ -342,12 +445,11 @@
           </div>
           <div class="comments-grid" id="commentsGrid"><div class="list-empty" style="padding:20px;">Loading…</div></div>
         </div>
-      </div>
+      </div><!-- /pg-feedback -->
 
       <!-- ══════════ ANNOUNCEMENTS ══════════ -->
       <div id="pg-announcements" class="page-section" style="display:none">
         <div class="two-col">
-          <!-- Post new -->
           <div class="panel">
             <div class="panel-header"><div><div class="panel-title">✏️ Post Announcement</div><div class="panel-sub">Notify students &amp; clubs</div></div></div>
             <div class="panel-body" style="display:flex;flex-direction:column;gap:12px;">
@@ -364,36 +466,26 @@
               </div>
             </div>
           </div>
-          <!-- Posted announcements -->
           <div class="panel">
             <div class="panel-header"><div><div class="panel-title">📋 Posted Announcements</div><div class="panel-sub">Your recent posts</div></div></div>
             <div class="panel-body" id="announceList"><div class="list-empty">Loading…</div></div>
           </div>
         </div>
-        <!-- Admin announcements -->
         <div class="panel">
           <div class="panel-header"><div><div class="panel-title">📌 Admin Announcements</div><div class="panel-sub">From institution admin</div></div></div>
           <div class="panel-body" id="adminAnnounceList"><div class="list-empty">Loading…</div></div>
         </div>
-      </div>
+      </div><!-- /pg-announcements -->
 
       <!-- ══════════ NOTIFICATION HISTORY ══════════ -->
       <div id="pg-notif-history" class="page-section" style="display:none">
         <div class="filter-bar">
-  <button class="btn ghost sm" id="backToDashboardBtn">← Back</button>
-  <select class="filter-select" id="notifTypeFilter">
-    <option value="all">All Types</option>
-    <option value="event">Events</option>
-    <option value="club">Clubs</option>
-    <option value="admin">Admin</option>
-    <option value="cert">Certificates</option>
-  </select>
-  <button class="btn ghost sm" id="markAllReadBtn">Mark all read</button>
-</div>
+          <button class="btn ghost sm" id="backToDashboardBtn">← Back</button>
+        </div>
         <div class="panel">
           <div class="notif-hist-list" id="notifHistoryList"><div class="list-empty" style="padding:24px;">Loading…</div></div>
         </div>
-      </div>
+      </div><!-- /pg-notif-history -->
 
     </section><!-- /content -->
   </main>

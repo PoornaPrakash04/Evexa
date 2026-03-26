@@ -101,12 +101,24 @@ function navigateTo(page) {
   if (page === "users")     loadUsers();
   if (page === "analytics") loadAnalytics();
   if (page === "activity")  loadLogs();
-  if (page === "backup")    renderBackup();
+  if (page === "backup")    loadRecycleBin();
   if (page === "profile")   loadProfile();
 }
 
 // ── HELPERS ───────────────────────────────────────────────────
 function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : ""; }
+
+function setBadge(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const n = parseInt(val, 10);
+  if (!isNaN(n) && n > 0) {
+    el.textContent = n;
+    el.style.display = "";
+  } else {
+    el.style.display = "none";
+  }
+}
 
 function showToast(msg, type = "info") {
   const t = document.getElementById("toast");
@@ -219,8 +231,8 @@ async function loadDashboard() {
     setEl("stat-totalUsers",    (s.totalUsers ?? 0).toLocaleString());
     setEl("stat-participation", (s.totalParticipation ?? 0).toLocaleString());
 
-    setEl("badge-events",   s.totalEvents);
-    setEl("badge-activity", (d.recentLogs || []).length);
+    setBadge("badge-events",   s.totalEvents);
+    setBadge("badge-activity", (d.recentLogs || []).length);
 
     // Populate calendar: fetch all events directly from /api/events/all
     // This gives us the full list regardless of what dashboard returns
@@ -299,8 +311,7 @@ async function loadEvents() {
 
     events = data;
     renderEventsTable();
-    const badge = document.getElementById("badge-events");
-    if (badge) badge.textContent = events.length;
+    setBadge("badge-events", events.length);
   } catch (err) {
     showToast("Failed to load events: " + err.message, "error");
   }
@@ -636,54 +647,8 @@ async function loadClubs() {
         </tr>`).join("")
         || `<tr><td colspan="6" style="padding:24px;text-align:center;color:#9ca3af;font-weight:700;">No club data found.</td></tr>`;
     }
-    await loadGrowthChart();
   } catch (err) {
     showToast("Failed to load club data: " + err.message, "error");
-  }
-}
-
-async function loadGrowthChart() {
-  try {
-    const data = await apiFetch("/clubs/growth") || [];
-    if (!data.length) return;
-
-    const clubs  = [...new Set(data.map(r => r.club))];
-    // Months are already sorted chronologically by month_sort from backend
-    const months = [...new Set(data.map(r => r.month))];
-    const colors = ["#6d5efc","#ff6aa0","#3b82f6","#22c55e","#f59e0b","#14b8a6"];
-
-    const datasets = clubs.slice(0, 6).map((club, i) => ({
-      label:           club,
-      data:            months.map(m => {
-        const row = data.find(x => x.club === club && x.month === m);
-        return row ? row.participants : 0;
-      }),
-      borderColor:     colors[i],
-      backgroundColor: colors[i] + "20",
-      borderWidth:     2,
-      fill:            false,
-      tension:         0.4,
-      pointRadius:     4,
-    }));
-
-    destroyChart("growthChart");
-    const ctx = document.getElementById("growthChart");
-    if (!ctx) return;
-    chartRefs["growthChart"] = new Chart(ctx, {
-      type: "line",
-      data: { labels: months, datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: true, position: "top" } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { weight: 700 } } },
-          y: { grid: { color: "rgba(229,231,235,.6)" }, ticks: { font: { weight: 700 } } },
-        },
-      },
-    });
-  } catch (err) {
-    console.error("Growth chart error:", err);
   }
 }
 
@@ -694,9 +659,7 @@ async function loadUsers() {
   try {
     users = await apiFetch(`/users?search=${encodeURIComponent(search)}&role=${role}`) || [];
     renderUsersTable();
-    // FIX: badge now correctly shows pending-role users (status === "pending"), not inactive
-    const badge = document.getElementById("badge-users");
-    if (badge) badge.textContent = users.filter(u => u.status === "pending").length;
+    setBadge("badge-users", users.filter(u => u.status === "pending").length);
   } catch (err) {
     showToast("Failed to load users: " + err.message, "error");
   }
@@ -1044,31 +1007,12 @@ async function loadAnalytics() {
       }]
     );
 
-    makeChart("certsChart", "bar",
-      (d.certs || []).map(r => r.month),
-      [{
-        data:            (d.certs || []).map(r => r.count),
-        backgroundColor: "rgba(34,197,94,.7)",
-        borderRadius:    8,
-        borderSkipped:   false,
-      }]
-    );
-
     const acad = d.acadSplit || { academic: 0, non_academic: 0 };
     makeDoughnut("academicChart",
       ["Technical", "Non-Technical"],
       [acad.academic || 0, acad.non_academic || 0],
       ["#6d5efc", "#ff6aa0"],
       document.getElementById("academicLegend")
-    );
-
-    const catColors = ["#6d5efc","#ff6aa0","#3b82f6","#ec4899","#8b5cf6","#14b8a6","#f59e0b"];
-    const cats = d.categories || [];
-    makeDoughnut("categoryChart",
-      cats.map(c => c.category),
-      cats.map(c => c.count),
-      catColors.slice(0, cats.length),
-      document.getElementById("categoryLegend")
     );
 
     const sem = d.semesters || { sem1: 0, sem2: 0 };
@@ -1107,8 +1051,7 @@ async function loadLogs() {
     const params = new URLSearchParams({ search, type, from, to });
     logs = await apiFetch(`/logs?${params}`) || [];
     renderLogs();
-    const badge = document.getElementById("badge-activity");
-    if (badge) badge.textContent = logs.length;
+    setBadge("badge-activity", logs.length);
   } catch (err) {
     showToast("Failed to load logs: " + err.message, "error");
   }
@@ -1129,54 +1072,132 @@ function renderLogs() {
     || `<div style="padding:24px;text-align:center;color:#9ca3af;font-weight:700;">No logs found.</div>`;
 }
 
-// ── BACKUP (static UI) ────────────────────────────────────────
-const BACKUP_HISTORY = [
-  { label: "Full Backup",   date: "Feb 20, 2026", time: "10:42 AM", size: "4.2 MB" },
-  { label: "Full Backup",   date: "Feb 19, 2026", time: "11:15 AM", size: "4.1 MB" },
-  { label: "Events Backup", date: "Feb 18, 2026", time: "09:30 AM", size: "1.4 MB" },
-  { label: "Users Backup",  date: "Feb 17, 2026", time: "02:00 PM", size: "0.9 MB" },
-];
+// ── RECYCLE BIN (Soft-Delete Backup & Restore) ───────────────
+let rbData = { events: [], users: [], clubs: [] };
+let rbActiveTab = 'events';
 
-function renderBackup() {
-  const histEl = document.getElementById("backupHistoryList");
-  if (histEl) {
-    histEl.innerHTML = BACKUP_HISTORY.map(b => `
-      <div class="list-item">
-        <div class="dot dot-green"></div>
-        <div class="li-text">
-          <div class="li-title">${b.label}</div>
-          <div class="li-sub">${b.date} · ${b.time} · ${b.size}</div>
-        </div>
-        <span class="badge active">✅ success</span>
-      </div>`).join("");
-  }
-
-  const metrics = [
-    { label: "Storage Used",    val: "4.2 MB", pct: 42, color: "#6d5efc" },
-    { label: "Storage Free",    val: "5.8 MB", pct: 58, color: "#22c55e" },
-    { label: "Database Health", val: "99%",    pct: 99, color: "#22c55e" },
-    { label: "API Uptime",      val: "99.9%",  pct: 99, color: "#3b82f6" },
-  ];
-  const healthEl = document.getElementById("systemHealth");
-  if (healthEl) {
-    healthEl.innerHTML = metrics.map(m => `
-      <div style="margin-bottom:14px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-weight:800;font-size:13px;">${m.label}</span>
-          <span style="font-weight:900;font-size:13px;color:${m.color}">${m.val}</span>
-        </div>
-        <div class="progress-wrap">
-          <div class="progress-bar" style="width:${m.pct}%;background:${m.color};"></div>
-        </div>
-      </div>`).join("");
+async function loadRecycleBin() {
+  ['rbEventsBody','rbUsersBody','rbClubsBody'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<div class='rb-skeleton'></div><div class='rb-skeleton'></div><div class='rb-skeleton'></div>`;
+  });
+  try {
+    const [evRes, usRes, clRes] = await Promise.allSettled([
+      apiFetch('/trash/events'),
+      apiFetch('/trash/users'),
+      apiFetch('/trash/clubs'),
+    ]);
+    rbData.events = (evRes.status === 'fulfilled' && Array.isArray(evRes.value)) ? evRes.value : [];
+    rbData.users  = (usRes.status === 'fulfilled' && Array.isArray(usRes.value)) ? usRes.value : [];
+    rbData.clubs  = (clRes.status === 'fulfilled' && Array.isArray(clRes.value)) ? clRes.value : [];
+    updateRbStats();
+    renderRecycleBin();
+  } catch (err) {
+    showToast('Failed to load recycle bin: ' + err.message, 'error');
   }
 }
 
-function simulateBackup(type) {
-  showToast(`⏳ Creating ${type} backup…`, "info");
-  setTimeout(() => showToast(`✅ ${type} backup completed!`, "success"), 1800);
+function updateRbStats() {
+  const now  = Date.now();
+  const soon = 7 * 24 * 60 * 60 * 1000;
+  let expiring = 0;
+  [...rbData.events, ...rbData.users, ...rbData.clubs].forEach(item => {
+    const expiresAt = new Date(item.deleted_at).getTime() + 30 * 24 * 60 * 60 * 1000;
+    if (expiresAt - now < soon) expiring++;
+  });
+  const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setEl('rbStatEvents',   rbData.events.length);
+  setEl('rbStatUsers',    rbData.users.length);
+  setEl('rbStatClubs',    rbData.clubs.length);
+  setEl('rbStatExpiring', expiring);
 }
 
+function switchRbTab(tab) {
+  rbActiveTab = tab;
+  document.querySelectorAll('.rb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.rb-tab-panel').forEach(p => p.style.display = 'none');
+  const panel = document.getElementById('rb-tab-' + tab);
+  if (panel) panel.style.display = '';
+  renderRecycleBin();
+}
+
+function renderRecycleBin() {
+  const search  = (document.getElementById('rbSearch')?.value || '').toLowerCase();
+  const items   = rbData[rbActiveTab] || [];
+  const filtered = search ? items.filter(i => JSON.stringify(i).toLowerCase().includes(search)) : items;
+  const bodyId  = { events: 'rbEventsBody', users: 'rbUsersBody', clubs: 'rbClubsBody' }[rbActiveTab];
+  const el = document.getElementById(bodyId);
+  if (!el) return;
+
+  if (!filtered.length) {
+    el.innerHTML = `<div class='rb-empty'>
+      <div style='font-size:48px;margin-bottom:12px;'>🧹</div>
+      <div style='font-weight:800;font-size:15px;margin-bottom:4px;'>Nothing here</div>
+      <div style='font-size:13px;color:var(--text-3);'>${search ? 'No matches for your search.' : 'No deleted ' + rbActiveTab + ' found.'}</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(item => {
+    const deletedAt  = new Date(item.deleted_at);
+    const expiresAt  = new Date(deletedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const daysLeft   = Math.max(0, Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24)));
+    const urgency    = daysLeft <= 3 ? 'rb-urgent' : daysLeft <= 7 ? 'rb-warning' : '';
+    const deletedFmt = deletedAt.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+    let icon, title, meta;
+    if (rbActiveTab === 'events') {
+      icon  = '📅';
+      title = item.title || item.name || 'Untitled Event';
+      meta  = (item.club || item.organizer_label || '—') + ' · ' + (item.category || '—') + ' · ' + (item.date ? new Date(item.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—');
+    } else if (rbActiveTab === 'users') {
+      icon  = '👤';
+      title = item.name || 'Unknown User';
+      meta  = (item.email || '—') + ' · ' + (item.role ? item.role.charAt(0).toUpperCase()+item.role.slice(1) : '—') + ' · ' + (item.department || '—');
+    } else {
+      icon  = '🏷️';
+      title = item.club || item.name || 'Unknown Club';
+      meta  = (item.organizer_name || '—') + ' · ' + (item.event_count ?? 0) + ' events';
+    }
+    const safeTitle = title.replace(/`/g, "'");
+    return `<div class='rb-item ${urgency}'>
+        <div class='rb-item-icon'>${icon}</div>
+        <div class='rb-item-body'>
+          <div class='rb-item-title'>${title}</div>
+          <div class='rb-item-meta'>${meta}</div>
+          <div class='rb-item-date'>🗑️ Deleted ${deletedFmt}<span class='rb-expires ${urgency}'> · ${daysLeft}d left</span></div>
+        </div>
+        <div class='rb-item-actions'>
+          <button class='btn primary sm' onclick='restoreItem(\"${rbActiveTab}\",${item.id})'>↩️ Restore</button>
+          <button class='btn danger sm'  onclick='permanentDelete(\"${rbActiveTab}\",${item.id},\"${safeTitle}\")'>🗑 Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function restoreItem(type, id) {
+  try {
+    await apiFetch('/trash/' + type + '/' + id + '/restore', { method: 'PUT' });
+    showToast('↩️ Restored successfully!', 'success');
+    rbData[type] = rbData[type].filter(i => i.id !== id);
+    updateRbStats();
+    renderRecycleBin();
+  } catch (err) {
+    showToast('Restore failed: ' + err.message, 'error');
+  }
+}
+
+async function permanentDelete(type, id, name) {
+  if (!confirm('Permanently delete "' + name + '"?\n\nThis cannot be undone.')) return;
+  try {
+    await apiFetch('/trash/' + type + '/' + id, { method: 'DELETE' });
+    showToast('🗑 Permanently deleted.', 'error');
+    rbData[type] = rbData[type].filter(i => i.id !== id);
+    updateRbStats();
+    renderRecycleBin();
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'error');
+  }
+}
 // ── ADMIN PROFILE ────────────────────────────────────────────
 async function loadProfile() {
   // Fast fallback: populate sidebar from JWT immediately (no API wait)
@@ -1500,15 +1521,6 @@ document.addEventListener("DOMContentLoaded", () => {
       label.textContent = this.value ? (labels[score] || "") : "";
       label.style.color = colors[score] || "#9ca3af";
     }
-  });
-
-  // ── RESTORE ──
-  document.getElementById("restoreBtn")?.addEventListener("click", () => {
-    const sel = document.getElementById("restoreSelect")?.value;
-    if (!sel) return showToast("Please select a backup to restore.", "error");
-    if (!confirm(`Restore from: "${sel}"?\n\nThis will overwrite all current data.`)) return;
-    showToast("⏳ Restoring data…", "warning");
-    setTimeout(() => showToast("✅ Data restored successfully!", "success"), 2200);
   });
 
   // ── LOGOUT ──
