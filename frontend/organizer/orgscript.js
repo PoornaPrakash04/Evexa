@@ -18,7 +18,7 @@ if (window.__EVEXA_INITIALIZED__) {
     if (!token) { redirectToLogin(); return; }
 
     try {
-      const res = await apiFetch("/auth/me");
+      const res = await apiFetch("/organizer/me");
       if (!res.ok) { redirectToLogin(); return; }
       const organizer = await res.json();
       updateOrganizerProfile(organizer);
@@ -65,6 +65,7 @@ function apiFetch(path, opts = {}) {
 }
 
 function redirectToLogin() {
+  if (window.location.href.includes("ogsignin")) return; // already on login — stop loop
   localStorage.removeItem("organizer_authToken");
   window.location.href = LOGIN_URL;
 }
@@ -396,10 +397,10 @@ function switchPage(name) {
   if (name === "clubs")          loadOrgClubs();
   if (name === "tickets")        setTimeout(initTicketScanner, 150);
   if (name === "certificates") {
+    setupCertificateUpload(); // attach listeners first (guarded — only runs once)
+    // Only refresh the events list — do NOT wipe certState or uploaded files
+    // resetCertWizard() is only called when the user explicitly clicks "Start New Batch"
     loadCertificateEvents();
-    setupCertificateUpload();
-    bindCertificateEventClick();
-    checkCertStep2();
   }
 }
 
@@ -1492,16 +1493,16 @@ function setupEventCalendarNav() {
 // CERTIFICATES
 // ─────────────────────────────────────────────────────────────
 
-let certState = { step:1, eventId:null, eventTitle:null, participantCount:0, templateFile:null, excelFile:null, source:"db" };
-let certClickBound = false;
+let certState = { step:1, eventId:null, eventTitle:null, participantCount:0, templateFile:null, excelFile:null, parsedNames:[] };
+let certSetupDone = false;
 
+// ─── Step navigation ─────────────────────────────────────────
 function certGoStep(n) {
-  // REMOVE the switchPage guard block entirely — it causes recursive resets
   for (let i = 1; i <= 4; i++) {
     document.getElementById(`cpanel-${i}`)?.classList.toggle("active", i === n);
     const step = document.getElementById(`cstep-${i}`);
     if (step) {
-      step.classList.toggle("active", i === n);
+      step.classList.toggle("active",   i === n);
       step.classList.toggle("complete", i < n);
     }
   }
@@ -1511,72 +1512,76 @@ function certGoStep(n) {
 
 function updateCertSummary() {
   setText("csum-event",    certState.eventTitle || "—");
-  setText("csum-count",    certState.participantCount + " participants");
+  setText("csum-count",    (certState.participantCount || 0) + " participants");
   setText("csum-template", certState.templateFile?.name || "—");
   setText("csum-fontsize", (document.getElementById("certFontSize")?.value || 36) + "px");
 }
 
+// ─── Load events list (Step 1) ───────────────────────────────
 async function loadCertificateEvents() {
   const list = document.getElementById("certEventsList");
   if (!list) return;
+  list.innerHTML = `<div class="empty-state"><span>⏳</span><p>Loading events…</p></div>`;
   try {
     const res  = await apiFetch("/certificates/events");
     const data = res.ok ? await res.json() : [];
-    if (!data.length) { list.innerHTML = `<div class="empty-state"><span>📅</span><p>No events found</p></div>`; return; }
+    if (!data.length) {
+      list.innerHTML = `<div class="empty-state"><span>📅</span><p>No events found</p></div>`;
+      return;
+    }
     list.innerHTML = data.map(e => {
       const cnt = Number(e.registered_count || e.registered || 0);
       const ymd = toYMD(e.date);
       return `
-        <div class="cert-event-item ${certState.eventId === e.id ? "selected" : ""}"
-             data-event-id="${e.id}"
-             data-title="${String(e.title || "").replace(/"/g, "&quot;")}"
-             data-count="${cnt}">
-          <div class="cei-left"><div class="cei-thumb">📅</div><div class="cei-info"><div class="cei-title">${e.title || "Untitled"}</div><div class="cei-meta">${formatDateYMD(ymd)} · ${e.venue || "TBD"}</div></div></div>
-          <div class="cei-right"><div class="cei-count">${cnt}</div><div class="cei-label">participants</div></div>
+        <div class="cert-event-item" data-event-id="${e.id}"
+             data-title="${String(e.title || "").replace(/"/g, "&quot;")}" data-count="${cnt}">
+          <div class="cei-left">
+            <div class="cei-thumb">📅</div>
+            <div class="cei-info">
+              <div class="cei-title">${e.title || "Untitled"}</div>
+              <div class="cei-meta">${formatDateYMD(ymd)} · ${e.venue || "TBD"}</div>
+            </div>
+          </div>
+          <div class="cei-right">
+            <div class="cei-count">${cnt}</div>
+            <div class="cei-label">registered</div>
+          </div>
         </div>`;
     }).join("");
+    // Bind clicks via delegated listener on the list container (safe to set .onclick each time)
+    list.onclick = (e) => {
+      const item = e.target.closest(".cert-event-item");
+      if (!item) return;
+      document.querySelectorAll(".cert-event-item.selected").forEach(x => x.classList.remove("selected"));
+      item.classList.add("selected");
+      certState.eventId = Number(item.dataset.eventId);
+      certState.eventTitle = item.dataset.title || "Event";
+      certState.participantCount = Number(item.dataset.count || 0);
+      const badge = document.getElementById("certStep1Selection");
+      if (badge) { badge.style.display = "block"; badge.textContent = `✓ ${certState.eventTitle}`; }
+      const next1 = document.getElementById("certStep1Next");
+      if (next1) next1.disabled = false;
+      checkCertStep2();
+    };
   } catch (err) {
     console.error("loadCertificateEvents error:", err);
     list.innerHTML = `<div class="empty-state"><span>❌</span><p>Could not load events</p></div>`;
   }
 }
 
-function selectCertEvent(itemEl, eventId, title, participantCount) {
-  document.querySelectorAll("#certEventsList .cert-event-item.selected").forEach(x => x.classList.remove("selected"));
-  itemEl.classList.add("selected");
-  certState.eventId = eventId; certState.eventTitle = title; certState.participantCount = participantCount;
-  const badge = document.getElementById("certStep1Selection");
-  if (badge) { badge.style.display = "block"; badge.textContent = `Selected: ${title} (${participantCount})`; }
-  const nextBtn = document.getElementById("certStep1Next");
-  if (nextBtn) nextBtn.disabled = false;
-  loadCertParticipants(eventId);
-  checkCertStep2();
-}
-
-async function loadCertParticipants(eventId) {
-  const list = document.getElementById("certParticipantsList");
-  if (!list) return;
-  list.innerHTML = `<div style="padding:18px;color:var(--muted);font-size:13px;">Loading…</div>`;
-  try {
-    const res  = await apiFetch(`/certificates/participants/${eventId}`);
-    const data = res.ok ? await res.json() : [];
-    if (!data.length) { list.innerHTML = `<div style="padding:18px;color:var(--muted);font-size:13px;">No registrations yet</div>`; return; }
-    list.innerHTML = data.map(p => `
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line);">
-        <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--violet),var(--rose));display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:700;flex-shrink:0;">
-          ${p.name?.[0]?.toUpperCase() || "?"}
-        </div>
-        <div><div style="font-size:12.5px;font-weight:500;">${p.name}</div><div style="font-size:11px;color:var(--muted);">${p.email || "—"}</div></div>
-      </div>`).join("");
-  } catch { list.innerHTML = `<div style="padding:18px;color:var(--muted);">Could not load participants</div>`; }
-}
-
+// ─── Template upload (Step 2) ─────────────────────────────────
 function setupCertificateUpload() {
+  if (certSetupDone) return; // only attach listeners once — prevents duplicate stacking
+  certSetupDone = true;
+
   const input = document.getElementById("certTemplateFile");
   const zone  = document.getElementById("certUploadZone");
-  if (!input) return;
 
-  input.addEventListener("change", function () { if (this.files[0]) setCertTemplate(this.files[0]); });
+  if (input) {
+    input.addEventListener("change", function () {
+      if (this.files[0]) setCertTemplate(this.files[0]);
+    });
+  }
 
   if (zone) {
     zone.addEventListener("dragover",  e => { e.preventDefault(); zone.classList.add("drag-over"); });
@@ -1589,17 +1594,53 @@ function setupCertificateUpload() {
     });
     zone.addEventListener("click", (e) => {
       if (e.target === input) return;
-      input.click();
+      input?.click();
     });
   }
 
   const excelIn = document.getElementById("certExcelFile");
   if (excelIn) {
     excelIn.addEventListener("change", function () {
-      certState.excelFile = this.files[0] || null;
+      const file = this.files[0];
+      if (!file) { certState.excelFile = null; certState.parsedNames = []; checkCertStep2(); return; }
+      certState.excelFile = file;
       const preview = document.getElementById("certExcelPreview");
-      if (preview && certState.excelFile) preview.textContent = `✓ ${certState.excelFile.name} selected`;
-      checkCertStep2();
+      if (preview) preview.textContent = "⏳ Reading file…";
+
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        try {
+          const wb    = XLSX.read(ev.target.result, { type: "array" });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+          if (rows.length < 2) {
+            if (preview) preview.textContent = "⚠️ File appears empty";
+            certState.parsedNames = [];
+            checkCertStep2();
+            return;
+          }
+
+          // Find the "Name" column by header (case-insensitive), fallback to column B (index 1)
+          const headers  = rows[0].map(h => String(h).trim().toLowerCase());
+          let   nameCol  = headers.findIndex(h => h === "name");
+          if (nameCol === -1) nameCol = 1; // fallback: column B
+
+          const names = rows.slice(1)
+            .map(r => String(r[nameCol] || "").trim())
+            .filter(n => n.length > 0);
+
+          certState.parsedNames = names;
+          if (preview) preview.textContent = `✓ ${names.length} names found (column "${rows[0][nameCol] || "B"}")`;
+          checkCertStep2();
+        } catch(err) {
+          console.error("Excel parse error:", err);
+          if (preview) preview.textContent = "❌ Could not read file — check format";
+          certState.parsedNames = [];
+          checkCertStep2();
+        }
+      };
+      reader.readAsArrayBuffer(file);
     });
   }
 
@@ -1610,8 +1651,8 @@ function setupCertificateUpload() {
       if (el) el.textContent = this.value;
     });
   }
-  checkCertStep2();
 }
+
 function setCertTemplate(file) {
   certState.templateFile = file;
   const zone   = document.getElementById("certUploadZone");
@@ -1627,98 +1668,323 @@ function removeCertTemplate() {
   certState.templateFile = null;
   const zone   = document.getElementById("certUploadZone");
   const status = document.getElementById("certFileStatus");
+  const input  = document.getElementById("certTemplateFile");
   if (zone)   zone.style.display   = "";
   if (status) status.style.display = "none";
-  document.getElementById("certTemplateFile").value = "";
+  if (input)  input.value          = "";
   checkCertStep2();
 }
 
 function checkCertStep2() {
   const hasTemplate = !!certState.templateFile;
-  const hasData     = certState.source === "db" ? !!certState.eventId : !!certState.excelFile;
+  const hasData     = !!(certState.parsedNames && certState.parsedNames.length > 0);
   const btn = document.getElementById("certStep2Next");
   if (btn) btn.disabled = !(hasTemplate && hasData);
 }
 
-function setCertSource(src) {
-  certState.source = src;
-  document.querySelectorAll(".cert-src-tab").forEach(t => t.classList.toggle("active", t.dataset.src === src));
-  document.getElementById("certSrcDB").style.display    = src === "db"    ? "" : "none";
-  document.getElementById("certSrcExcel").style.display = src === "excel" ? "" : "none";
-  checkCertStep2();
+// ─── Debug logger — shows messages ON SCREEN inside the preview box ──────────
+function certDebug(container, icon, title, detail) {
+  const msg = `[CERT DEBUG] ${icon} ${title}${detail ? " | " + detail : ""}`;
+  console.warn(msg);
+  if (container) {
+    container.innerHTML = `
+      <div style="min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;">
+        <div style="font-size:36px;">${icon}</div>
+        <div style="font-size:15px;font-weight:700;color:var(--ink,#f0f2ff);">${title}</div>
+        ${detail ? `<div style="font-size:12px;color:var(--muted,#aaa);max-width:420px;word-break:break-word;background:rgba(0,0,0,.25);padding:10px 14px;border-radius:10px;font-family:monospace;">${detail}</div>` : ""}
+        <div style="font-size:11px;color:var(--muted,#aaa);margin-top:6px;">See browser console (F12) for full details</div>
+      </div>`;
+  }
 }
 
-async function previewCertificate() {
-  console.log("previewCertificate called | template:", certState.templateFile?.name);
-  if (event) { event.stopPropagation(); event.preventDefault(); }
-  if (!certState.templateFile) { showToast("⚠️ Upload a template first"); return; }
+// ─── Preview (Step 3) ────────────────────────────────────────
+async function previewCertificate(e) {
+  if (e && typeof e.stopPropagation === "function") {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+
   const container = document.getElementById("certPreviewContainer");
-  if (container) container.innerHTML = `<div class="empty-state" style="min-height:300px;"><span>⏳</span><p>Generating preview…</p></div>`;
+
+  console.group("🔍 previewCertificate() called");
+  console.log("certState:", JSON.stringify({
+    step: certState.step,
+    eventId: certState.eventId,
+    eventTitle: certState.eventTitle,
+    templateFile: certState.templateFile ? certState.templateFile.name : null,
+    parsedNames: certState.parsedNames?.length ?? 0,
+  }));
+
+  if (!certState.templateFile) {
+    console.warn("❌ No templateFile in certState — user needs to upload PDF in Step 2");
+    console.groupEnd();
+    certDebug(container, "⚠️", "No template uploaded", "Go back to Step 2 and upload your certificate PDF template first.");
+    showToast("⚠️ Please upload a certificate template (PDF) in Step 2 first");
+    return;
+  }
+
+  if (!container) {
+    console.warn("❌ certPreviewContainer element not found in DOM");
+    console.groupEnd();
+    showToast("⚠️ Preview area not found — try refreshing the page");
+    return;
+  }
+
+  console.log("✅ Template file:", certState.templateFile.name, certState.templateFile.size, "bytes");
+  console.log("Calling API:", `${API}/certificates/preview`);
+  console.groupEnd();
+
+  container.innerHTML = `<div class="empty-state" style="min-height:260px;"><span>⏳</span><p>Generating preview…</p></div>`;
+
   const fd = new FormData();
   fd.append("template",     certState.templateFile);
-  fd.append("preview_name", document.getElementById("certPreviewName")?.value  || "John Doe");
-  fd.append("font_size",    document.getElementById("certFontSize")?.value     || 36);
-  fd.append("x_pct",        document.getElementById("certXPct")?.value         || 50);
-  fd.append("y_pct",        document.getElementById("certYPct")?.value         || 52);
-  fd.append("color_hex",    document.getElementById("certColor")?.value        || "#1a1a2e");
+  fd.append("preview_name", document.getElementById("certPreviewName")?.value || "John Doe");
+  fd.append("font_size",    document.getElementById("certFontSize")?.value    || "36");
+  fd.append("x_pct",        document.getElementById("certXPct")?.value        || "50");
+  fd.append("y_pct",        document.getElementById("certYPct")?.value        || "52");
+  fd.append("color_hex",    document.getElementById("certColor")?.value       || "#1a1a2e");
+
   try {
     const token = localStorage.getItem("organizer_authToken");
-    const res   = await fetch(`${API}/certificates/preview`, { method:"POST", headers:{"Authorization":`Bearer ${token}`}, body:fd });
-    if (!res.ok) throw new Error();
+    console.log("🔑 Token present:", !!token);
+
+    const res = await fetch(`${API}/certificates/preview`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` },
+      body: fd
+    });
+
+    console.log("📡 API response status:", res.status, res.statusText);
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "(could not read error body)");
+      console.error("❌ Preview API error body:", errText);
+      certDebug(container, "❌", `Server error ${res.status}`, errText.slice(0, 300));
+      showToast("❌ Preview failed — server returned " + res.status);
+      return;
+    }
+
     const blob   = await res.blob();
+    console.log("✅ Blob received:", blob.size, "bytes, type:", blob.type);
     const objUrl = URL.createObjectURL(blob);
-    if (container) container.innerHTML = `<iframe src="${objUrl}" class="cert-preview-frame"></iframe>`;
+    container.innerHTML = `<iframe src="${objUrl}" class="cert-preview-frame"></iframe>`;
     showToast("✅ Preview ready!");
-  } catch { showToast("❌ Preview failed — check backend"); if (container) container.innerHTML = `<div class="empty-state" style="min-height:300px;"><span>❌</span><p>Preview failed</p></div>`; }
+
+  } catch (err) {
+    console.error("❌ previewCertificate network/runtime error:", err);
+    certDebug(container, "❌", "Preview failed: " + (err.message || "unknown error"),
+      "This usually means the backend server is not running or the /certificates/preview endpoint is unreachable.");
+    showToast("❌ Preview failed — " + (err.message || "network error"));
+  }
 }
 
+// ─── Generate (Step 4) ───────────────────────────────────────
 async function generateCertificates() {
-  if (!certState.templateFile) { showToast("⚠️ No template uploaded"); return; }
-  const btn = document.getElementById("certGenerateBtn");
+  if (!certState.templateFile)                          { showToast("⚠️ No template uploaded"); return; }
+  if (!certState.parsedNames || !certState.parsedNames.length) { showToast("⚠️ No names found in uploaded file"); return; }
+
+  const btn      = document.getElementById("certGenerateBtn");
   const progress = document.getElementById("certGenerateProgress");
   const fill     = document.getElementById("certProgressFill");
   const label    = document.getElementById("certProgressLabel");
-  if (btn) btn.disabled = true;
+
+  if (btn)      btn.disabled           = true;
   if (progress) progress.style.display = "block";
-  if (fill)  fill.style.width  = "0%";
-  if (label) label.textContent = "Sending request…";
+  if (fill)     fill.style.width       = "0%";
+  if (label)    label.textContent      = "Sending request…";
+
   let pct = 0;
-  const interval = setInterval(() => { pct = Math.min(pct + 2, 85); if (fill) fill.style.width = `${pct}%`; }, 200);
+  const interval = setInterval(() => {
+    pct = Math.min(pct + 2, 85);
+    if (fill) fill.style.width = `${pct}%`;
+  }, 200);
+
   const fd = new FormData();
   fd.append("template",  certState.templateFile);
-  fd.append("font_size", document.getElementById("certFontSize")?.value  || 36);
-  fd.append("x_pct",     document.getElementById("certXPct")?.value      || 50);
-  fd.append("y_pct",     document.getElementById("certYPct")?.value       || 52);
-  fd.append("color_hex", document.getElementById("certColor")?.value     || "#1a1a2e");
-  if (certState.source === "db"    && certState.eventId)   fd.append("event_id", certState.eventId);
-  if (certState.source === "excel" && certState.excelFile) fd.append("excel", certState.excelFile);
+  fd.append("names",     JSON.stringify(certState.parsedNames));   // parsed client-side
+  fd.append("font_size", document.getElementById("certFontSize")?.value || 36);
+  fd.append("x_pct",     document.getElementById("certXPct")?.value     || 50);
+  fd.append("y_pct",     document.getElementById("certYPct")?.value     || 52);
+  fd.append("color_hex", document.getElementById("certColor")?.value    || "#1a1a2e");
+  if (certState.eventId) fd.append("event_id", certState.eventId);
+
   try {
     const token = localStorage.getItem("organizer_authToken");
-    const res   = await fetch(`${API}/certificates/generate`, { method:"POST", headers:{"Authorization":`Bearer ${token}`}, body:fd });
+    const res   = await fetch(`${API}/certificates/generate`, {
+      method:"POST", headers:{"Authorization":`Bearer ${token}`}, body:fd
+    });
     clearInterval(interval);
     if (fill)  fill.style.width  = "100%";
     if (label) label.textContent = "Done! Preparing download…";
-    if (!res.ok) { const err = await res.json().catch(() => ({})); showToast("❌ " + (err.message || "Generation failed")); if (btn) btn.disabled = false; if (progress) setTimeout(() => { progress.style.display = "none"; }, 2000); return; }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast("❌ " + (err.message || "Generation failed"));
+      if (btn) btn.disabled = false;
+      setTimeout(() => { if (progress) progress.style.display = "none"; }, 2000);
+      return;
+    }
+
     const blob   = await res.blob();
     const url    = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    anchor.href = url; anchor.download = `certificates_${certState.eventTitle || "export"}.zip`; anchor.click();
+    anchor.href     = url;
+    anchor.download = `certificates_${certState.eventTitle || "export"}.zip`;
+    anchor.click();
     URL.revokeObjectURL(url);
-    showToast(`🎓 ${certState.participantCount} certificates downloaded!`);
-    if (label) label.textContent = "✅ Certificates downloaded!";
-    if (btn)   btn.disabled      = false;
+
+    const count = certState.parsedNames.length;
+    showToast(`🎓 ${count} certificates downloaded!`);
+    saveCertHistory({
+      event:    certState.eventTitle,
+      count,
+      template: certState.templateFile?.name || "—",
+      date:     new Date().toISOString()
+    });
+
+    // Show success screen
+    setTimeout(() => {
+      const genView = document.getElementById("certGenerateView");
+      const sucView = document.getElementById("certSuccessView");
+      const footer  = document.getElementById("certStep4Footer");
+      const msg     = document.getElementById("certSuccessMsg");
+      if (msg)     msg.textContent       = `${count} certificate${count !== 1 ? "s" : ""} generated for "${certState.eventTitle}" and saved to downloads.`;
+      if (genView) genView.style.display = "none";
+      if (sucView) sucView.style.display = "";
+      if (footer)  footer.style.display  = "none";
+    }, 600);
+
     await loadEvents();
-  } catch (err) { clearInterval(interval); showToast("❌ Network error"); if (btn) btn.disabled = false; if (progress) progress.style.display = "none"; }
+  } catch (err) {
+    clearInterval(interval);
+    showToast("❌ Network error");
+    if (btn) btn.disabled = false;
+    if (progress) progress.style.display = "none";
+  }
 }
 
-function bindCertificateEventClick() {
-  const list = document.getElementById("certEventsList");
-  if (!list) return;
-  list.onclick = (e) => {
-    const item = e.target.closest(".cert-event-item");
-    if (!item) return;
-    selectCertEvent(item, Number(item.dataset.eventId), item.dataset.title || "Event", Number(item.dataset.count || 0));
-  };
+// ─── Tab switching ────────────────────────────────────────────
+function switchCertMainTab(tab) {
+  const isGen = tab === "generate";
+  document.getElementById("certTabGenerate").style.display = isGen ? "" : "none";
+  document.getElementById("certTabHistory").style.display  = isGen ? "none" : "";
+  document.getElementById("cmtab-generate").classList.toggle("active",  isGen);
+  document.getElementById("cmtab-history").classList.toggle("active",  !isGen);
+  if (!isGen) loadCertHistory();
+}
+
+// ─── Reset wizard for a new batch ────────────────────────────
+function resetCertWizard() {
+  certState = { step:1, eventId:null, eventTitle:null, participantCount:0, templateFile:null, excelFile:null, parsedNames:[] };
+  certSetupDone = false; // allow re-attaching upload listeners after a full reset
+
+  // Step indicators
+  for (let i = 1; i <= 4; i++) {
+    const s = document.getElementById(`cstep-${i}`);
+    if (s) { s.classList.remove("active","complete"); if (i===1) s.classList.add("active"); }
+    const p = document.getElementById(`cpanel-${i}`);
+    if (p) { p.classList.toggle("active", i===1); }
+  }
+
+  // Step 1 badge & button
+  const badge = document.getElementById("certStep1Selection");
+  const next1 = document.getElementById("certStep1Next");
+  if (badge) { badge.style.display = "none"; badge.textContent = ""; }
+  if (next1) next1.disabled = true;
+
+  // Step 2 template upload
+  const zone   = document.getElementById("certUploadZone");
+  const status = document.getElementById("certFileStatus");
+  const tInput = document.getElementById("certTemplateFile");
+  const fName  = document.getElementById("certFileName");
+  if (zone)   zone.style.display   = "";
+  if (status) status.style.display = "none";
+  if (tInput) tInput.value         = "";
+  if (fName)  fName.textContent    = "";
+
+  // Step 2 excel input
+  const excelIn   = document.getElementById("certExcelFile");
+  const excelPrev = document.getElementById("certExcelPreview");
+  if (excelIn)   excelIn.value         = "";
+  if (excelPrev) excelPrev.textContent = "";
+
+  // Step 2 next button
+  const next2 = document.getElementById("certStep2Next");
+  if (next2) next2.disabled = true;
+
+  // Step 3 preview
+  const container = document.getElementById("certPreviewContainer");
+  if (container) container.innerHTML = `<div class="empty-state"><span>👁</span><p>Click Preview to render</p></div>`;
+
+  // Step 4 generate/success views
+  const genView  = document.getElementById("certGenerateView");
+  const sucView  = document.getElementById("certSuccessView");
+  const footer   = document.getElementById("certStep4Footer");
+  const progress = document.getElementById("certGenerateProgress");
+  const fill     = document.getElementById("certProgressFill");
+  const label    = document.getElementById("certProgressLabel");
+  const genBtn   = document.getElementById("certGenerateBtn");
+  if (genView)  genView.style.display  = "";
+  if (sucView)  sucView.style.display  = "none";
+  if (footer)   footer.style.display   = "";
+  if (progress) progress.style.display = "none";
+  if (fill)     fill.style.width       = "0%";
+  if (label)    label.textContent      = "Preparing…";
+  if (genBtn)   genBtn.disabled        = false;
+
+  // Reload events list
+  loadCertificateEvents();
+}
+
+// ─── History ──────────────────────────────────────────────────
+function saveCertHistory(entry) {
+  try {
+    const list = JSON.parse(localStorage.getItem("cert_history") || "[]");
+    list.unshift({ ...entry, id: Date.now() });
+    if (list.length > 50) list.length = 50;
+    localStorage.setItem("cert_history", JSON.stringify(list));
+  } catch {}
+}
+
+function loadCertHistory() {
+  const body    = document.getElementById("certHistoryBody");
+  const empty   = document.getElementById("certHistoryEmpty");
+  const wrapper = document.getElementById("certHistoryTableWrap");
+  if (!body) return;
+  try {
+    const list = JSON.parse(localStorage.getItem("cert_history") || "[]");
+    if (!list.length) {
+      if (empty)   empty.style.display   = "";
+      if (wrapper) wrapper.style.display = "none";
+      return;
+    }
+    if (empty)   empty.style.display   = "none";
+    if (wrapper) wrapper.style.display = "";
+    body.innerHTML = list.map((item, i) => {
+      const d = item.date ? new Date(item.date).toLocaleString() : "—";
+      return `<tr>
+        <td class="td">${i + 1}</td>
+        <td class="td" style="font-weight:600;">${item.event || "—"}</td>
+        <td class="td"><span class="badge badge--violet">${item.count ?? "—"}</span></td>
+        <td class="td" style="font-size:12px;color:var(--muted);">${item.template || "—"}</td>
+        <td class="td" style="font-size:12px;color:var(--muted);">${d}</td>
+        <td class="td">
+          <button class="btn-ghost" style="font-size:11px;color:var(--rose);" onclick="deleteCertHistoryEntry(${item.id})">🗑</button>
+        </td>
+      </tr>`;
+    }).join("");
+  } catch {
+    body.innerHTML = `<tr><td colspan="6" class="table-empty">Could not load history</td></tr>`;
+  }
+}
+
+function deleteCertHistoryEntry(id) {
+  try {
+    const list = JSON.parse(localStorage.getItem("cert_history") || "[]").filter(x => x.id !== id);
+    localStorage.setItem("cert_history", JSON.stringify(list));
+    loadCertHistory();
+    showToast("🗑 Entry removed");
+  } catch {}
 }
 
 // ─────────────────────────────────────────────────────────────

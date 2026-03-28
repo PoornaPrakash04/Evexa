@@ -223,9 +223,8 @@ router.post(
     const color = hexToRgb(req.body.color_hex);
     const eventId = req.body.event_id ? Number(req.body.event_id) : null;
 
-    // ── Collect participants ───────────────────────────────
     let participants = [];
-    const source = excelPath ? "excel" : "db";
+const source = excelPath ? "excel" : req.body.names ? "names" : "db";
 
     try {
       if (source === "excel") {
@@ -240,7 +239,13 @@ router.post(
             email: r.Email || r.email || null,
           }))
           .filter((p) => p.name && p.name !== "undefined");
-      } else if (eventId) {
+      } else if (source === "names") {
+  let parsedNames = [];
+  try { parsedNames = JSON.parse(req.body.names); } catch { parsedNames = []; }
+  participants = parsedNames
+    .filter((n) => typeof n === "string" && n.trim().length > 0)
+    .map((n) => ({ student_id: null, name: n.trim(), email: null }));
+} else if (eventId) {
         participants = await new Promise((resolve, reject) => {
           db.query(
             `

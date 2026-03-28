@@ -2650,3 +2650,189 @@ body.light .calendar-day.available:hover {
   background: #ede9fe;
   color: #5b21b6;
 }
+/* ═══════════════════════════════════════════════════════════════
+   CERTIFICATE PAGE — MAIN TAB BAR
+   ═══════════════════════════════════════════════════════════════ */
+.cert-main-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.cert-main-tab {
+  padding: 9px 22px;
+  border: none;
+  background: transparent;
+  color: var(--ink2);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  transition: color .18s, border-color .18s;
+  border-radius: 0;
+}
+.cert-main-tab:hover { color: var(--violet-mid); }
+.cert-main-tab.active {
+  color: var(--violet-mid);
+  border-bottom-color: var(--violet);
+}
+
+/* ─── Wizard step indicator tidy-up ─────────────────────────── */
+.cert-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 22px;
+  overflow-x: auto;
+}
+.cert-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: .38;
+  transition: opacity .2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.cert-step.active,
+.cert-step.complete { opacity: 1; }
+.cs-num {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  background: var(--surface-2);
+  color: var(--ink2);
+  flex-shrink: 0;
+  transition: background .2s, border-color .2s, box-shadow .2s;
+}
+.cs-label {
+  font-size: 12.5px; font-weight: 600; color: var(--ink2);
+  transition: color .2s;
+}
+.cert-step.active .cs-num  { background: var(--violet); border-color: var(--violet); color: white; box-shadow: 0 0 14px rgba(139,92,246,.5); }
+.cert-step.active .cs-label { color: var(--ink); }
+.cert-step.complete .cs-num { background: var(--emerald); border-color: var(--emerald); color: white; box-shadow: 0 0 12px rgba(16,185,129,.5); }
+.cert-step.complete .cs-num span { display: none; }
+.cert-step.complete .cs-num::after { content: "✓"; font-size: 14px; }
+.cs-divider { flex: 1; height: 2px; min-width: 18px; background: var(--border); margin: 0 8px; border-radius: 2px; }
+
+/* ─── Config grid in step 3 ──────────────────────────────────── */
+.cert-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ─── Source tabs inside step 2 ─────────────────────────────── */
+.cert-src-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+}
+.cert-src-tab {
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--ink2);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all .15s;
+}
+.cert-src-tab.active {
+  background: var(--violet-light);
+  border-color: var(--violet);
+  color: var(--violet-mid);
+}
+
+/* ─── File status bar ────────────────────────────────────────── */
+.cert-file-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--violet-light);
+  border: 1px solid rgba(139,92,246,.25);
+  border-radius: 10px;
+  margin-top: 10px;
+}
+.cert-file-icon { font-size: 20px; flex-shrink: 0; }
+
+/* ─── Success card after generation ─────────────────────────── */
+.cert-success-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 56px 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  max-width: 520px;
+  margin: 0 auto;
+  animation: certSuccessFade .4s ease;
+}
+@keyframes certSuccessFade {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cert-success-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+  animation: certSuccessBounce .5s .1s ease both;
+}
+@keyframes certSuccessBounce {
+  0%   { transform: scale(.6); }
+  70%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.cert-success-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.cert-success-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 28px;
+  max-width: 380px;
+  line-height: 1.5;
+}
+.cert-success-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ─── History table badge ────────────────────────────────────── */
+.badge--violet {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--violet-light);
+  color: var(--violet-mid);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .cert-config-grid { grid-template-columns: 1fr; }
+  .cert-success-actions { flex-direction: column; }
+  .cert-main-tab { padding: 8px 14px; font-size: 12.5px; }
+}

@@ -1,3 +1,4 @@
+//server.js
 require("dotenv").config();
 const express = require("express");
 const cors    = require("cors");
@@ -21,13 +22,21 @@ const adminRoutes           = require("./routes/adminRoutes");
 const organizerRoutes = require("./routes/organizer");
 const app = express();
 
-app.use(cors({
+const corsOptions = {
   origin: ["http://localhost:5500", "http://127.0.0.1:5500",
            "http://localhost:5501", "http://127.0.0.1:5501"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));// ← handles preflight for file uploads (FormData/multipart)
+
+app.use(express.json());
+app.use(express.static("frontend"));
+app.use("/uploads", express.static("uploads"));
+
 cron.schedule("*/15 * * * *", () => {
   db.query(
     `UPDATE events
@@ -41,9 +50,6 @@ cron.schedule("*/15 * * * *", () => {
     }
   );
 });
-app.use(express.json());
-app.use(express.static("frontend"));
-app.use("/uploads", express.static("uploads"));
 app.use("/api/organizer", organizerRoutes);
 app.use("/api/auth",             authRoutes);
 app.use("/api/events",           eventRoutes);

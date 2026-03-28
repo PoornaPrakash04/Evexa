@@ -523,6 +523,8 @@
        ═══════════════════════════════════════════════════════════ -->
   <div class="page" id="page-certificates">
     <div class="content">
+
+      <!-- Header -->
       <div class="section-title">
         <div class="title-left">
           <button class="btn-back" onclick="switchPage('dashboard')">←</button>
@@ -530,150 +532,200 @@
         </div>
       </div>
 
-      <div class="cert-wizard">
-        <div class="cert-steps">
-          <div class="cert-step active" id="cstep-1">
-            <div class="cs-num">1</div><div class="cs-label">Select Event</div>
-          </div>
-          <div class="cs-divider"></div>
-          <div class="cert-step" id="cstep-2">
-            <div class="cs-num">2</div><div class="cs-label">Upload Template</div>
-          </div>
-          <div class="cs-divider"></div>
-          <div class="cert-step" id="cstep-3">
-            <div class="cs-num">3</div><div class="cs-label">Configure &amp; Preview</div>
-          </div>
-          <div class="cs-divider"></div>
-          <div class="cert-step" id="cstep-4">
-            <div class="cs-num">4</div><div class="cs-label">Generate</div>
-          </div>
-        </div>
-
-        <!-- Step 1 -->
-        <div class="cert-panel active" id="cpanel-1">
-          <div class="card">
-            <div class="card-header"><h3>📅 Select Event</h3></div>
-            <div id="certEventsList" class="cert-event-select-list">
-              <div class="empty-state"><span>⏳</span><p>Loading events…</p></div>
-            </div>
-          </div>
-          <div class="cert-panel-footer">
-            <div id="certStep1Selection" class="cert-selection-badge" style="display:none;"></div>
-            <button type="button" class="btn-primary" id="certStep1Next" disabled onclick="certGoStep(2)">Next →</button>
-          </div>
-        </div>
-
-        <!-- Step 2 -->
-        <div class="cert-panel" id="cpanel-2">
-          <div class="cert-two-col">
-            <div class="card">
-              <div class="card-header"><h3>📄 Upload Template (PDF)</h3></div>
-              <div class="card-body">
-                <div id="certUploadZone" class="cert-upload-zone">
-                  <div class="cert-upload-icon">📄</div>
-                  <p>Drag &amp; drop PDF or <label for="certTemplateFile" style="color:var(--violet);cursor:pointer;text-decoration:underline;">browse</label></p>
-                  <input type="file" id="certTemplateFile" accept=".pdf" style="display:none;">
-                </div>
-                <div id="certFileStatus" style="display:none;" class="cert-file-status">
-                  <span class="cert-file-icon">📄</span>
-                  <span id="certFileName">file.pdf</span>
-                  <button class="btn-ghost" onclick="removeCertTemplate()" style="font-size:12px;color:var(--rose);">✕ Remove</button>
-                </div>
-
-                <div style="margin-top:18px;">
-                  <div class="cert-src-tabs">
-                    <button class="cert-src-tab active" data-src="excel" onclick="setCertSource('excel')">📊 Excel Upload</button>
-                  </div>
-                  <div id="certSrcExcel" style="margin-top:12px;">
-                    <label class="form-label">Upload Excel with names (.xlsx / .csv)</label>
-                    <input type="file" id="certExcelFile" accept=".xlsx,.xls,.csv" class="form-file">
-                    <div id="certExcelPreview" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
-                  </div>
-                  <div id="certSrcDB" style="display:none;margin-top:12px;">
-                    <div id="certParticipantsList" style="max-height:260px;overflow-y:auto;border-radius:10px;border:1px solid var(--line);"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="cert-panel-footer">
-            <button type="button" class="btn-ghost" onclick="certGoStep(1)">← Back</button>
-            <button type="button" class="btn-primary" id="certStep2Next" disabled onclick="certGoStep(3)">Next →</button>
-          </div>
-        </div>
-
-        <!-- Step 3 -->
-        <div class="cert-panel" id="cpanel-3">
-          <div class="cert-two-col">
-            <div class="card">
-              <div class="card-header"><h3>⚙️ Configure</h3></div>
-              <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
-                <div class="ed-form-group">
-                  <label>Font Size (px)</label>
-                  <input type="number" id="certFontSize" value="36" min="10" max="120" class="form-input">
-                </div>
-                <div class="ed-form-group">
-                  <label>Name X Position (%)</label>
-                  <input type="number" id="certXPct" value="50" min="0" max="100" class="form-input">
-                </div>
-                <div class="ed-form-group">
-                  <label>Name Y Position (%)</label>
-                  <input type="number" id="certYPct" value="52" min="0" max="100" class="form-input">
-                </div>
-                <div class="ed-form-group">
-                  <label>Font Color</label>
-                  <div style="display:flex;align-items:center;gap:10px;">
-                    <input type="color" id="certColor" value="#1a1a2e" style="width:44px;height:36px;border-radius:8px;border:1px solid var(--line);cursor:pointer;">
-                    <span id="certColorHex" style="font-size:13px;color:var(--muted);">#1a1a2e</span>
-                  </div>
-                </div>
-                <div class="ed-form-group">
-                  <label>Preview Name</label>
-                  <input type="text" id="certPreviewName" value="John Doe" class="form-input">
-                </div>
-                <button type="button" class="btn-primary" onclick="event.stopPropagation(); previewCertificate(event)">👁 Preview Certificate</button>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-header"><h3>🖼 Preview</h3></div>
-              <div id="certPreviewContainer" style="min-height:300px;display:flex;align-items:center;justify-content:center;">
-                <div class="empty-state"><span>👁</span><p>Preview will appear here</p></div>
-              </div>
-            </div>
-          </div>
-          <div class="cert-panel-footer">
-            <button type="button" class="btn-ghost" onclick="certGoStep(2)">← Back</button>
-            <button type="button" class="btn-primary" onclick="certGoStep(4)">Next →</button>
-          </div>
-        </div>
-
-        <!-- Step 4 -->
-        <div class="cert-panel" id="cpanel-4">
-          <div class="card" style="max-width:560px;margin:0 auto;">
-            <div class="card-header"><h3>🎓 Generate Certificates</h3></div>
-            <div class="card-body" style="padding:24px;">
-              <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
-                <div class="ed-detail-row"><b>Event:</b> <span id="csum-event">—</span></div>
-                <div class="ed-detail-row"><b>Participants:</b> <span id="csum-count">—</span></div>
-                <div class="ed-detail-row"><b>Template:</b> <span id="csum-template">—</span></div>
-                <div class="ed-detail-row"><b>Font Size:</b> <span id="csum-fontsize">—</span></div>
-              </div>
-              <div id="certGenerateProgress" style="display:none;margin-bottom:16px;">
-                <div style="height:8px;border-radius:8px;background:var(--line);overflow:hidden;">
-                  <div id="certProgressFill" style="height:100%;width:0%;background:var(--g-violet);border-radius:8px;transition:width .3s;"></div>
-                </div>
-                <div id="certProgressLabel" style="font-size:12px;color:var(--muted);margin-top:6px;text-align:center;">Preparing…</div>
-              </div>
-              <button type="button" class="btn-primary btn-submit" id="certGenerateBtn" onclick="generateCertificates()">
-                🎓 Generate &amp; Download ZIP
-              </button>
-            </div>
-          </div>
-          <div class="cert-panel-footer">
-            <button type="button" class="btn-ghost" onclick="certGoStep(3)">← Back</button>
-          </div>
-        </div>
+      <!-- Tab bar -->
+      <div class="cert-main-tabs">
+        <button class="cert-main-tab active" id="cmtab-generate" onclick="switchCertMainTab('generate')">
+          📜 Generate
+        </button>
+        <button class="cert-main-tab" id="cmtab-history" onclick="switchCertMainTab('history')">
+          🕓 History
+        </button>
       </div>
+
+      <!-- ── TAB: GENERATE ─────────────────────────────────────── -->
+      <div id="certTabGenerate">
+        <div class="cert-wizard">
+
+          <!-- Step progress bar -->
+          <div class="cert-steps">
+            <div class="cert-step active" id="cstep-1">
+              <div class="cs-num"><span>1</span></div><div class="cs-label">Select Event</div>
+            </div>
+            <div class="cs-divider"></div>
+            <div class="cert-step" id="cstep-2">
+              <div class="cs-num"><span>2</span></div><div class="cs-label">Upload &amp; Configure</div>
+            </div>
+            <div class="cs-divider"></div>
+            <div class="cert-step" id="cstep-3">
+              <div class="cs-num"><span>3</span></div><div class="cs-label">Generate</div>
+            </div>
+          </div>
+
+          <!-- ── Step 1: Select Event ── -->
+          <div class="cert-panel active" id="cpanel-1">
+            <div class="card">
+              <div class="card-header"><h3>📅 Select Event</h3></div>
+              <div id="certEventsList" class="cert-event-select-list">
+                <div class="empty-state"><span>⏳</span><p>Loading events…</p></div>
+              </div>
+            </div>
+            <div class="cert-panel-footer">
+              <div id="certStep1Selection" class="cert-selection-badge" style="display:none;"></div>
+              <button type="button" class="btn-primary" id="certStep1Next" disabled onclick="certGoStep(2)">Next →</button>
+            </div>
+          </div>
+
+          <!-- ── Step 2: Upload Template ── -->
+          <div class="cert-panel" id="cpanel-2">
+            <div class="cert-two-col">
+              <!-- Left: upload zone + data source -->
+              <div class="card">
+                <div class="card-header"><h3>📄 Certificate Template (PDF)</h3></div>
+                <div class="card-body">
+                  <div id="certUploadZone" class="cert-upload-zone">
+                    <div class="cert-upload-icon">📄</div>
+                    <p>Drag &amp; drop PDF or <label for="certTemplateFile" style="color:var(--violet);cursor:pointer;text-decoration:underline;">browse</label></p>
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px;">Max 10 MB · PDF only</p>
+                    <input type="file" id="certTemplateFile" accept=".pdf" style="display:none;">
+                  </div>
+                  <div id="certFileStatus" style="display:none;" class="cert-file-status">
+                    <span class="cert-file-icon">📄</span>
+                    <span id="certFileName" style="flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">file.pdf</span>
+                    <button class="btn-ghost" onclick="removeCertTemplate()" style="font-size:12px;color:var(--rose);white-space:nowrap;">✕ Remove</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: name source (Excel/CSV only) -->
+              <div class="card">
+                <div class="card-header"><h3>👥 Participant Names</h3></div>
+                <div class="card-body">
+                  <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Upload an Excel or CSV file. The first column should contain participant names.</p>
+                  <label class="form-label">Upload file (.xlsx / .xls / .csv)</label>
+                  <input type="file" id="certExcelFile" accept=".xlsx,.xls,.csv" class="form-file">
+                  <div id="certExcelPreview" style="font-size:12px;color:var(--emerald);margin-top:8px;font-weight:600;"></div>
+                  <div style="margin-top:14px;padding:12px;background:var(--surface-2);border-radius:10px;font-size:12px;color:var(--muted);">
+                    💡 <b>Auto-detects</b> any column named "Name" — or falls back to column B. Header row skipped automatically.
+                  </div>
+                  <div style="margin-top:18px;">
+                    <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:10px;">⚙️ Name Placement</div>
+                    <div class="cert-config-grid">
+                      <div class="ed-form-group">
+                        <label>Font Size (px)</label>
+                        <input type="number" id="certFontSize" value="36" min="10" max="120" class="form-input">
+                      </div>
+                      <div class="ed-form-group">
+                        <label>X Position (%)</label>
+                        <input type="number" id="certXPct" value="50" min="0" max="100" class="form-input">
+                      </div>
+                      <div class="ed-form-group">
+                        <label>Y Position (%)</label>
+                        <input type="number" id="certYPct" value="52" min="0" max="100" class="form-input">
+                      </div>
+                      <div class="ed-form-group">
+                        <label>Font Color</label>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                          <input type="color" id="certColor" value="#1a1a2e" style="width:44px;height:36px;border-radius:8px;border:1px solid var(--line);cursor:pointer;">
+                          <span id="certColorHex" style="font-size:13px;color:var(--muted);">#1a1a2e</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cert-panel-footer">
+              <button type="button" class="btn-ghost" onclick="certGoStep(1)">← Back</button>
+              <button type="button" class="btn-primary" id="certStep2Next" disabled onclick="certGoStep(4)">Generate →</button>
+            </div>
+          </div>
+
+          <!-- Step 3 removed - config moved to Step 2 -->
+          <!-- Hidden stubs so JS refs don't crash -->
+          <div style="display:none">
+            <div id="certPreviewContainer"></div>
+            <input id="certPreviewName" value="Participant">
+          </div>
+
+          <!-- ── Step 4: Generate ── -->
+
+          <div class="cert-panel" id="cpanel-4">
+            <!-- Summary + generate -->
+            <div id="certGenerateView">
+              <div class="card" style="max-width:560px;margin:0 auto;">
+                <div class="card-header"><h3>🎓 Generate Certificates</h3></div>
+                <div class="card-body" style="padding:24px;">
+                  <div class="cert-summary-body">
+                    <div class="cert-summary-row"><span>Event</span><strong id="csum-event">—</strong></div>
+                    <div class="cert-summary-row"><span>Participants</span><strong id="csum-count">—</strong></div>
+                    <div class="cert-summary-row"><span>Template</span><strong id="csum-template">—</strong></div>
+                    <div class="cert-summary-row"><span>Font Size</span><strong id="csum-fontsize">—</strong></div>
+                  </div>
+                  <div id="certGenerateProgress" style="display:none;margin:18px 0 4px;">
+                    <div style="height:8px;border-radius:8px;background:var(--line);overflow:hidden;">
+                      <div id="certProgressFill" style="height:100%;width:0%;background:var(--g-violet);border-radius:8px;transition:width .3s;"></div>
+                    </div>
+                    <div id="certProgressLabel" style="font-size:12px;color:var(--muted);margin-top:6px;text-align:center;">Preparing…</div>
+                  </div>
+                  <button type="button" class="btn-primary btn-submit" id="certGenerateBtn" onclick="generateCertificates()" style="margin-top:20px;">
+                    🎓 Generate &amp; Download ZIP
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ✅ Success state (hidden until done) -->
+            <div id="certSuccessView" style="display:none;">
+              <div class="cert-success-card">
+                <div class="cert-success-icon">🎉</div>
+                <h2 class="cert-success-title">Certificates Generated!</h2>
+                <p class="cert-success-sub" id="certSuccessMsg">Your certificates have been downloaded.</p>
+                <div class="cert-success-actions">
+                  <button class="btn-primary" onclick="resetCertWizard()">📜 Generate for Another Event</button>
+                  <button class="btn-ghost" onclick="switchCertMainTab('history')">🕓 View History</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="cert-panel-footer" id="certStep4Footer">
+              <button type="button" class="btn-ghost" onclick="certGoStep(2)">← Back</button>
+            </div>
+          </div>
+
+        </div><!-- /cert-wizard -->
+      </div><!-- /certTabGenerate -->
+
+      <!-- ── TAB: HISTORY ─────────────────────────────────────── -->
+      <div id="certTabHistory" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <h3>🕓 Certificate Generation History</h3>
+            <button class="btn-ghost" onclick="loadCertHistory()" style="font-size:12px;">↻ Refresh</button>
+          </div>
+          <div id="certHistoryEmpty" style="display:none;padding:40px 0;text-align:center;color:var(--muted);font-size:14px;">
+            <div style="font-size:36px;margin-bottom:10px;">📭</div>
+            No certificates generated yet. Start by creating your first batch!
+          </div>
+          <div class="table-wrap" id="certHistoryTableWrap">
+            <table class="data-table">
+              <thead>
+                <tr class="table-head-row">
+                  <th class="th">#</th>
+                  <th class="th">Event</th>
+                  <th class="th">Count</th>
+                  <th class="th">Template</th>
+                  <th class="th">Generated On</th>
+                  <th class="th">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="certHistoryBody">
+                <tr><td colspan="6" class="table-empty">Loading history…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /certTabHistory -->
+
     </div>
   </div>
 
@@ -958,6 +1010,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <script src="orgscript.js"></script>
 </body>
 </html>
