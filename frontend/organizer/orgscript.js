@@ -14,7 +14,7 @@ if (window.__EVEXA_INITIALIZED__) {
   document.addEventListener("DOMContentLoaded", async () => {
     console.log("=== EVEXA DASHBOARD LOADING ===");
 
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("organizer_authToken");
     if (!token) { redirectToLogin(); return; }
 
     try {
@@ -59,13 +59,13 @@ if (window.__EVEXA_INITIALIZED__) {
 // ─────────────────────────────────────────────────────────────
 
 function apiFetch(path, opts = {}) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("organizer_authToken");
   opts.headers = { "Authorization": `Bearer ${token}`, ...(opts.headers || {}) };
   return fetch(`${API}${path}`, opts);
 }
 
 function redirectToLogin() {
-  localStorage.removeItem("authToken");
+  localStorage.removeItem("organizer_authToken");
   window.location.href = LOGIN_URL;
 }
 
@@ -124,7 +124,7 @@ function logout() {
         </button>
         <button
           onclick="
-            localStorage.removeItem('authToken');
+            localStorage.removeItem('organizer_authToken');
             localStorage.removeItem('organizerData');
             localStorage.removeItem('currentPage');
             window.__currentOrganizer = null;
@@ -264,7 +264,8 @@ async function loadDashboardStats() {
     const nums = document.querySelectorAll(".pstat-num");
     if (nums.length >= 2) {
       nums[0].textContent = d.total_events ?? events.length;
-      nums[1].textContent = d.draft_events ?? events.filter(e => ["Draft","Pending"].includes(e.status)).length;
+      // Show pending count (Draft + Pending = awaiting faculty approval)
+      nums[1].textContent = d.pending_events ?? events.filter(e => e.status === "Pending" || e.status === "Draft").length;
     }
   } catch (err) {
     console.warn("Dashboard stats (non-critical):", err.message);
@@ -409,6 +410,8 @@ function switchPage(name) {
 async function loadEvents() {
   console.log("🔄 Loading events…");
   try {
+    // Organizers only see their own events — all statuses (Pending, Approved, Rejected, Published)
+    // The /events/all route is for admin views and event-detail lookups only
     const [myRes, allRes] = await Promise.all([
       apiFetch("/events/my"),
       apiFetch("/events/all")
@@ -417,6 +420,7 @@ async function loadEvents() {
     allEvents = allRes.ok ? await allRes.json() : [];
     events    = await hydrateRegistrationCounts(events);
     allEvents = await hydrateRegistrationCounts(allEvents);
+    // The events grid on the Events page shows the organizer's OWN events (all statuses)
     filteredEvents = [...allEvents];
     localStorage.setItem("evexa_events", JSON.stringify(allEvents));
     window.allEvents = allEvents;
@@ -506,12 +510,12 @@ function renderDashApprovals() {
   const list = document.getElementById("approvalList");
   if (!list) return;
 
-  // FIX 2: define orgData locally — was missing from scope
-  const orgData  = window.__currentOrganizer || {};
-  const pending  = events.filter(e => e.status === "Draft" || e.status === "Pending");
+  const orgData = window.__currentOrganizer || {};
+  // Show events pending faculty approval (Draft is the legacy name for Pending)
+  const pending = events.filter(e => e.status === "Pending" || e.status === "Draft");
 
   if (!pending.length) {
-    list.innerHTML = `<div class="empty-state"><span>✅</span><p>No pending approvals</p></div>`;
+    list.innerHTML = `<div class="empty-state"><span>✅</span><p>No events awaiting faculty approval</p></div>`;
     return;
   }
 
@@ -521,6 +525,7 @@ function renderDashApprovals() {
       <div class="approval-info">
         <div class="aname">${e.title}</div>
         <div class="aevent">${e.club || orgData.club || "Club"} · ${formatDateYMD(toYMD(e.date))}</div>
+        <div style="font-size:11px;color:#b45309;margin-top:2px;">⏳ Awaiting faculty approval</div>
       </div>
     </div>`).join("");
 }
@@ -666,11 +671,27 @@ function createEventCard(e) {
   const registered = Number(e.registered || e.registered_count || 0);
   const seatsLeft  = Math.max(0, capacity - registered);
   const percent    = capacity > 0 ? (registered / capacity) * 100 : 0;
+
+  // Status badge config — Draft is legacy name for Pending (same workflow stage)
+  const statusConfig = {
+  Pending:          { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
+  Draft:            { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
+  "Faculty Approved": { label: "✅ Faculty Approved",       bg: "#dbeafe",              color: "#1d4ed8" }, // ← add this
+  Approved:         { label: "✅ Approved",                 bg: "var(--emerald-light)", color: "#065f46" },
+  Rejected:         { label: "❌ Rejected",                 bg: "var(--rose-light)",    color: "#be123c" },
+  Published:        { label: "🌐 Published",                bg: "var(--violet-light)",  color: "var(--violet)" },
+  Completed:        { label: "🏁 Completed",                bg: "rgba(255,255,255,.08)",color: "var(--muted)" },
+};
+  const sc = statusConfig[e.status] || { label: e.status || "Unknown", bg: "rgba(255,255,255,.08)", color: "var(--muted)" };
+
   return `
     <div class="event-card">
       <div class="event-card-poster">${posterUrl ? `<img src="${posterUrl}" alt="" onerror="this.style.display='none'">` : ""}</div>
       <div class="event-card-body">
-        <div class="event-card-title">${e.title}</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;">
+          <div class="event-card-title" style="flex:1;">${e.title}</div>
+          <span style="flex-shrink:0;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;background:${sc.bg};color:${sc.color};white-space:nowrap;">${sc.label}</span>
+        </div>
         <div class="event-card-meta">
           <div class="event-meta-row">📅 ${formatEventDate(e.date)}</div>
           <div class="event-meta-row">🕐 ${e.time ? formatTime(e.time) : "TBD"}</div>
@@ -696,7 +717,8 @@ function filterEvents() {
   const club   = document.getElementById("filterClub")?.value  || "";
   const venue  = document.getElementById("filterVenue")?.value || "";
   const date   = document.getElementById("filterDate")?.value  || "";
-  filteredEvents = allEvents.filter(e => {
+  // Filter from the organizer's own events (all statuses)
+  filteredEvents = events.filter(e => {
     if (search && !e.title.toLowerCase().includes(search)) return false;
     if (type  && e.type  !== type)  return false;
     if (club  && e.club  !== club)  return false;
@@ -712,7 +734,7 @@ function clearFilters() {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
-  filteredEvents = [...allEvents];
+  filteredEvents = [...events]; // reset to organizer's own events, all statuses
   renderEventsGrid();
 }
 
@@ -806,9 +828,9 @@ function renderCalendar() {
     const cell = document.createElement("div");
     cell.className = "calendar-day"; cell.textContent = day;
     const status = bookings[day];
-    if (status === "booked")        { cell.classList.add("booked");    cell.title = `Day ${day} — Fully Booked`; }
-    else if (status === "pending")  { cell.classList.add("pending");   cell.title = `Day ${day} — Partially Booked`; cell.addEventListener("click", () => openVenueSlots(day)); }
-    else                            { cell.classList.add("available"); cell.title = `Day ${day} — Available`; cell.addEventListener("click", () => openVenueSlots(day)); }
+    if (status === "booked" || status === "approved")  { cell.classList.add("booked");    cell.title = `Day ${day} — Fully Booked`; }
+    else if (status === "pending") { cell.classList.add("pending");   cell.title = `Day ${day} — Pending Approval`; }
+    else                           { cell.classList.add("available"); cell.title = `Day ${day} — Available (click to book)`; cell.addEventListener("click", () => openVenueSlots(day)); }
     grid.appendChild(cell);
   }
 }
@@ -816,23 +838,177 @@ function renderCalendar() {
 async function openVenueSlots(day) {
   const dt      = new Date(currentYear, currentMonth, day);
   const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-  const dateText = formatMMDDYYYY(dt);
-  setText("venueSlotsSubtitle", `${currentVenue} · ${dateText}`);
-  const tbody = document.getElementById("venueSlotsBody");
-  if (tbody) tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;padding:20px;color:var(--muted)">Loading…</td></tr>`;
-  openModal("venueSlotsModal");
+
+  document.getElementById("vbVenueName").value = currentVenue;
+  document.getElementById("vbDate").value       = dateStr;
+  document.getElementById("venueBookInfo").innerHTML =
+    `<strong>📍 ${currentVenue}</strong> &nbsp;·&nbsp; 📅 ${formatDateYMD(dateStr)}`;
+
+  // Reset form
+  document.getElementById("vbSlotStart").value = "";
+  document.getElementById("vbSlotEnd").value   = "";
+  document.getElementById("vbPurpose").value   = "";
+  document.getElementById("vbDoc").value        = "";
+  document.getElementById("vbSubmitBtn").disabled = false;
+
+  // Populate event dropdown
+  // Populate event dropdown — only organizer's own Pending events
+const evSel = document.getElementById("vbEventId");
+evSel.innerHTML = `<option value="">— Select an event (optional) —</option>`;
+const pendingEvents = events.filter(e => e.status === "Pending");
+if (!pendingEvents.length) {
+  evSel.insertAdjacentHTML("beforeend",
+    `<option disabled>No pending events available</option>`);
+}
+pendingEvents.forEach(e => {
+  evSel.insertAdjacentHTML("beforeend",
+    `<option value="${e.id}">${e.title} (${formatEventDate(e.date)})</option>`);
+});
+  // Load available slots
+  const slotList = document.getElementById("vbSlotList");
+  slotList.innerHTML = `<span style="color:var(--muted);font-size:13px;">Loading slots…</span>`;
+  openModal("venueBookModal");
+
   try {
-    const res = await apiFetch(`/venues/slots?venue_name=${encodeURIComponent(currentVenue)}&date=${dateStr}`);
-    if (!res.ok) throw new Error();
-    const slots     = await res.json();
-    const available = slots.filter(s => s.available);
-    if (!available.length) { tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;padding:20px;color:var(--muted)">No available slots</td></tr>`; return; }
-    tbody.innerHTML = available.map(s => `<tr><td style="padding:10px 12px;">${dateText}</td><td style="padding:10px 12px;">${s.start.slice(0,5)} – ${s.end.slice(0,5)}</td></tr>`).join("");
+    const res   = await apiFetch(`/venues/slots?venue_name=${encodeURIComponent(currentVenue)}&date=${dateStr}`);
+    const slots = res.ok ? await res.json() : [];
+    const avail = slots.filter(s => s.available);
+
+    if (!avail.length) {
+      slotList.innerHTML = `<span style="color:var(--muted);font-size:13px;">No available slots for this date.</span>`;
+      document.getElementById("vbSubmitBtn").disabled = true;
+      return;
+    }
+
+    slotList.innerHTML = avail.map(s => `
+      <button type="button"
+        class="slot-chip"
+        data-start="${s.start}" data-end="${s.end}"
+        onclick="selectSlotChip(this, '${s.start}', '${s.end}')">
+        ${s.start.slice(0,5)} – ${s.end.slice(0,5)}
+      </button>`).join("");
   } catch {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;padding:20px;color:var(--muted)">Failed to load slots</td></tr>`;
+    slotList.innerHTML = `<span style="color:var(--rose);font-size:13px;">Failed to load slots. Try again.</span>`;
   }
 }
 
+function selectSlotChip(el, start, end) {
+  el.classList.toggle("selected"); 
+  const selected = [...document.querySelectorAll(".slot-chip.selected")]
+    .map(c => ({ start: c.dataset.start, end: c.dataset.end }));
+  document.getElementById("vbSlotStart").value = JSON.stringify(selected);
+}
+
+async function submitVenueBooking(e) {
+  e.preventDefault();
+  const raw = document.getElementById("vbSlotStart").value;
+  if (!raw) { showToast("⚠️ Please select at least one time slot"); return; }
+
+  let selectedSlots;
+  try { selectedSlots = JSON.parse(raw); } catch { selectedSlots = []; }
+  if (!selectedSlots.length) { showToast("⚠️ Please select at least one time slot"); return; }
+
+  const btn = document.getElementById("vbSubmitBtn");
+  btn.disabled = true; btn.textContent = "Submitting…";
+
+  const venueName = document.getElementById("vbVenueName").value;
+  const date      = document.getElementById("vbDate").value;
+  const purpose   = document.getElementById("vbPurpose").value;
+  const eventId   = document.getElementById("vbEventId").value;
+  const docFile   = document.getElementById("vbDoc").files[0];
+
+  let successCount = 0;
+  for (const slot of selectedSlots) {
+    const formData = new FormData();
+    formData.append("venue_name", venueName);
+    formData.append("date",       date);
+    formData.append("slot_start", slot.start);
+    formData.append("slot_end",   slot.end);
+    formData.append("purpose",    purpose);
+    formData.append("event_id",   eventId);
+    if (docFile) formData.append("support_doc", docFile);
+
+    try {
+      const token = localStorage.getItem("organizer_authToken");
+      const res = await fetch(`${API}/venues/bookings`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData
+      });
+      if (res.ok) successCount++;
+      else {
+        const err = await res.json().catch(() => ({}));
+        showToast(`❌ Slot ${slot.start.slice(0,5)}–${slot.end.slice(0,5)}: ${err.message || "Failed"}`);
+      }
+    } catch { showToast("❌ Network error"); }
+  }
+
+  if (successCount > 0) {
+    showToast(`✅ ${successCount} booking request(s) submitted!`);
+    closeModal("venueBookModal");
+    await loadVenueBookings();
+    renderCalendar();
+  }
+  btn.disabled = false; btn.textContent = "📩 Submit Booking Request";
+}
+
+// ── Venue tab switcher ────────────────────────────────────────
+function switchVenueTab(tab) {
+  document.querySelectorAll(".venue-tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("vtab-panel-calendar").style.display   = tab === "calendar"    ? "" : "none";
+  document.getElementById("vtab-panel-mybookings").style.display = tab === "mybookings"  ? "" : "none";
+  document.getElementById(`vtab-${tab}`).classList.add("active");
+  if (tab === "mybookings") loadMyVenueBookings();
+}
+
+// ── My Bookings ───────────────────────────────────────────────
+async function loadMyVenueBookings() {
+  const tbody = document.getElementById("myVenueBookingsBody");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="7" class="table-empty">Loading…</td></tr>`;
+  try {
+    const res  = await apiFetch("/venues/bookings/mine");
+    const data = res.ok ? await res.json() : [];
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="table-empty">No bookings yet</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = data.map((b, i) => {
+      const statusColor = b.status === "Approved" ? "var(--emerald)" :
+                          b.status === "Rejected" ? "var(--rose)"    : "var(--amber)";
+      const statusBg    = b.status === "Approved" ? "var(--emerald-light)" :
+                          b.status === "Rejected" ? "var(--rose-light)"    : "var(--amber-light)";
+      const canCancel   = b.status === "Pending";
+      return `
+        <tr style="border-bottom:1px solid var(--line);">
+          <td style="padding:10px 14px;">${i+1}</td>
+          <td style="padding:10px 14px;font-weight:500;">📍 ${b.venue_name}</td>
+          <td style="padding:10px 14px;color:var(--ink2);">${b.event_title || "—"}</td>
+          <td style="padding:10px 14px;color:var(--ink2);">${formatDateYMD(b.date)}</td>
+          <td style="padding:10px 14px;color:var(--ink2);">${(b.slot_start||"").slice(0,5)} – ${(b.slot_end||"").slice(0,5)}</td>
+          <td style="padding:10px 14px;">
+            <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${statusBg};color:${statusColor};">${b.status}</span>
+          </td>
+          <td style="padding:10px 14px;">
+            ${canCancel
+              ? `<button class="btn-ghost" style="font-size:12px;color:var(--rose);" onclick="cancelVenueBooking(${b.id})">Cancel</button>`
+              : `<span style="color:var(--muted);font-size:12px;">—</span>`}
+          </td>
+        </tr>`;
+    }).join("");
+  } catch { tbody.innerHTML = `<tr><td colspan="7" class="table-empty">Failed to load</td></tr>`; }
+}
+
+async function cancelVenueBooking(id) {
+  if (!confirm("Cancel this booking request?")) return;
+  try {
+    const res = await apiFetch(`/venues/bookings/${id}`, { method: "DELETE" });
+    if (res.ok) { showToast("🗑️ Booking cancelled"); loadMyVenueBookings(); }
+    else showToast("❌ Could not cancel");
+  } catch { showToast("❌ Network error"); }
+}
+
+// ── Month nav ─────────────────────────────────────────────────
 document.getElementById("prevMonth")?.addEventListener("click", async () => {
   currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; }
   await loadVenueBookings(); renderCalendar();
@@ -1012,7 +1188,7 @@ async function submitCreateEvent(e) {
   if (reqFile?.files?.length) formData.append("request_upload", reqFile.files[0]);
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("organizer_authToken");
     const res   = await fetch(`${API}/events`, { method: "POST", headers: { "Authorization": `Bearer ${token}` }, body: formData });
     if (res.ok) { showToast("✅ Event created!"); closeModal("createEventModal"); form.reset(); await loadEvents(); }
     else { const err = await res.json().catch(() => ({})); showToast("❌ " + (err.message || "Failed to create event")); }
@@ -1149,8 +1325,9 @@ function setupPressBounce() {
 function wireStaticButtons() {
   document.getElementById("viewAllEventsLink")?.addEventListener("click", () => switchPage("events"));
   document.getElementById("viewAllApprovalsBtn")?.addEventListener("click", () => { switchPage("events"); showToast("Showing all events — filter by 'Draft' status"); });
-  document.querySelectorAll("[data-page]:not(.nav-item)").forEach(el => { el.addEventListener("click", () => switchPage(el.dataset.page)); });
-  // addEventBtn replaced by logoutTopBtn in topbar — create event via quick actions or events page
+  document.querySelectorAll("[data-page]:not(.nav-item):not(#sidebarUserBtn)").forEach(el => {
+  el.addEventListener("click", () => switchPage(el.dataset.page));
+});
   document.getElementById("createEventPageBtn")?.addEventListener("click", () => openModal("createEventModal"));
   loadActivityFeed();
   startClock();
@@ -1214,33 +1391,91 @@ function evMonthLabel(d) {
 function getCalendarEvents() { return window.allEvents || []; }
 
 function renderEventCalendar() {
-  const grid  = document.getElementById("calGrid");
   const label = document.getElementById("calMonthLabel");
-  if (!grid || !label) return;
-  label.textContent = evMonthLabel(evCalCursor);
-  grid.innerHTML = "";
-  ["SU","MO","TU","WE","TH","FR","SA"].forEach(d => {
-    const el = document.createElement("div");
-    el.textContent = d;
-    Object.assign(el.style, { fontSize:"12px", opacity:".6", fontWeight:"700", textAlign:"center" });
-    grid.appendChild(el);
+  if (label) label.textContent = evMonthLabel(evCalCursor);
+
+  const cal = document.getElementById("miniCalendar");
+  if (!cal) return;
+
+  const today        = new Date();
+  const year         = evCalCursor.getFullYear();
+  const month        = evCalCursor.getMonth();
+  const firstDay     = new Date(year, month, 1).getDay();
+  const daysInMonth  = new Date(year, month + 1, 0).getDate();
+
+  // Build event map: key -> array of events
+  const eventMap = {};
+  getCalendarEvents().forEach(e => {
+    const d = new Date(e.date);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const key = `${year}-${month}-${d.getDate()}`;
+      if (!eventMap[key]) eventMap[key] = [];
+      eventMap[key].push(e);
+    }
   });
-  const year        = evCalCursor.getFullYear();
-  const month       = evCalCursor.getMonth();
-  const firstDay    = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month+1, 0).getDate();
-  const eventDates  = new Set(getCalendarEvents().map(e => toYMD(e.date)));
-  for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement("div")); }
+
+  const weekdays = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+  let html = `<div class="cal-weekdays">${weekdays.map(d => `<div class="cal-weekday">${d}</div>`).join("")}</div>`;
+  html += `<div class="cal-days">`;
+
+  for (let i = 0; i < firstDay; i++) html += `<div class="cal-day empty"></div>`;
+
   for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = evYMD(new Date(year, month, day));
-    const cell    = document.createElement("div");
-    cell.textContent = day;
-    Object.assign(cell.style, { height:"36px", display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"10px", cursor:"pointer", border:"1px solid rgba(0,0,0,.06)" });
-    if (eventDates.has(dateStr)) { cell.style.background = "rgba(255,101,132,0.18)"; cell.title = "Has events"; }
-    if (evSelectedDate === dateStr) cell.style.outline = "2px solid rgba(91,63,248,0.35)";
-    cell.addEventListener("click", () => { evSelectedDate = dateStr; renderEventCalendar(); renderEventsForSelectedDate(dateStr); });
-    grid.appendChild(cell);
+    const key      = `${year}-${month}-${day}`;
+    const isToday  = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+    const hasEvent = !!eventMap[key];
+    const isSelected = evSelectedDate === evYMD(new Date(year, month, day));
+    const classes  = ["cal-day", isToday ? "today" : "", hasEvent ? "has-event" : "", isSelected ? "selected" : ""].filter(Boolean).join(" ");
+    const events   = hasEvent ? JSON.stringify(eventMap[key]).replace(/"/g, "&quot;") : "";
+    html += `<div class="${classes}" data-day="${day}" data-events="${events}" onclick="calDayClick(this)">${day}</div>`;
   }
+
+  html += `</div>`;
+  cal.innerHTML = html;
+
+  // Hide detail if no selected date
+  const detail = document.getElementById("calEventDetail");
+  if (detail && !evSelectedDate) detail.style.display = "none";
+}
+
+function calDayClick(el) {
+  if (!el.classList.contains("has-event")) return;
+
+  const detail = document.getElementById("calEventDetail");
+  const dateStr = evYMD(new Date(evCalCursor.getFullYear(), evCalCursor.getMonth(), parseInt(el.dataset.day)));
+
+  // Toggle off if already selected
+  if (evSelectedDate === dateStr) {
+    evSelectedDate = null;
+    if (detail) detail.style.display = "none";
+    renderEventCalendar();
+    return;
+  }
+
+  evSelectedDate = dateStr;
+  renderEventCalendar();
+
+  if (!detail) return;
+  const events = JSON.parse(el.getAttribute("data-events").replace(/&quot;/g, '"'));
+  const e = events[0];
+
+  const titleEl = document.getElementById("calDetailTitle");
+  const metaEl  = document.getElementById("calDetailMeta");
+  const linkEl  = document.getElementById("calDetailLink");
+
+  if (titleEl) titleEl.textContent = e.title;
+  if (metaEl) {
+    const date = new Date(e.date).toLocaleDateString("en-IN", { dateStyle: "medium" });
+    const fee  = e.registration_fee > 0 ? `₹${e.registration_fee}` : "Free";
+    let meta = `📅 ${date} · 🏛️ ${e.venue || "TBA"} · 💰 ${fee} · 🏷️ ${e.club || "—"}`;
+    if (events.length > 1) meta += ` (+${events.length - 1} more)`;
+    metaEl.textContent = meta;
+  }
+  if (linkEl) {
+    linkEl.onclick = () => openEventDetail(e.id);
+  }
+
+  detail.style.display = "block";
 }
 
 function setupEventCalendarNav() {
@@ -1249,26 +1484,8 @@ function setupEventCalendarNav() {
   if (!prev || !next) return;
   if (prev.dataset.bound === "1") return;
   prev.dataset.bound = "1"; next.dataset.bound = "1";
-  prev.addEventListener("click", () => { evCalCursor = new Date(evCalCursor.getFullYear(), evCalCursor.getMonth()-1, 1); renderEventCalendar(); renderEventsForSelectedDate(evSelectedDate); });
-  next.addEventListener("click", () => { evCalCursor = new Date(evCalCursor.getFullYear(), evCalCursor.getMonth()+1, 1); renderEventCalendar(); renderEventsForSelectedDate(evSelectedDate); });
-}
-
-function renderEventsForSelectedDate(dateStr) {
-  const boxTitle = document.getElementById("calSelectedInfo");
-  const listBox  = document.getElementById("calEventList");
-  if (!boxTitle || !listBox) return;
-  if (!dateStr) { boxTitle.textContent = "Select a date to see events"; listBox.innerHTML = ""; return; }
-  const evs = getCalendarEvents().filter(e => toYMD(e.date) === dateStr);
-  boxTitle.textContent = `Events on ${formatDateYMD(dateStr)}`;
-  if (!evs.length) { listBox.innerHTML = `<div class="empty-state" style="padding:14px;border:1px dashed var(--line);border-radius:14px;"><span>📭</span><p style="margin:6px 0 0;">No events on this day</p></div>`; return; }
-  listBox.innerHTML = evs.map(e => `
-    <div class="event-row" style="cursor:pointer;" onclick="openEventDetail(${e.id})">
-      <div class="event-thumb" style="${e.posterUrl ? `background:url(${e.posterUrl}) center/cover;` : "background:linear-gradient(135deg,#5b3ff8,#f04e6e);"}">${e.posterUrl ? "" : "📅"}</div>
-      <div class="event-info">
-        <h4 style="margin:0;">${e.title}</h4>
-        <p style="margin:4px 0 0;opacity:.75;">${e.club || "Club"} · ${e.venue || "TBD"} · ${e.time ? formatTime(e.time) : "TBD"}</p>
-      </div>
-    </div>`).join("");
+  prev.addEventListener("click", () => { evCalCursor = new Date(evCalCursor.getFullYear(), evCalCursor.getMonth()-1, 1); evSelectedDate = null; renderEventCalendar(); });
+  next.addEventListener("click", () => { evCalCursor = new Date(evCalCursor.getFullYear(), evCalCursor.getMonth()+1, 1); evSelectedDate = null; renderEventCalendar(); });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1279,10 +1496,14 @@ let certState = { step:1, eventId:null, eventTitle:null, participantCount:0, tem
 let certClickBound = false;
 
 function certGoStep(n) {
+  // REMOVE the switchPage guard block entirely — it causes recursive resets
   for (let i = 1; i <= 4; i++) {
     document.getElementById(`cpanel-${i}`)?.classList.toggle("active", i === n);
     const step = document.getElementById(`cstep-${i}`);
-    if (step) { step.classList.toggle("active", i === n); step.classList.toggle("complete", i < n); }
+    if (step) {
+      step.classList.toggle("active", i === n);
+      step.classList.toggle("complete", i < n);
+    }
   }
   certState.step = n;
   if (n === 4) updateCertSummary();
@@ -1389,11 +1610,6 @@ function setupCertificateUpload() {
       if (el) el.textContent = this.value;
     });
   }
-
-  // certPreviewBtn uses onclick in HTML — no addEventListener needed here
-
-  // Always Excel-only mode
-  certState.source = "excel";
   checkCertStep2();
 }
 function setCertTemplate(file) {
@@ -1433,6 +1649,8 @@ function setCertSource(src) {
 }
 
 async function previewCertificate() {
+  console.log("previewCertificate called | template:", certState.templateFile?.name);
+  if (event) { event.stopPropagation(); event.preventDefault(); }
   if (!certState.templateFile) { showToast("⚠️ Upload a template first"); return; }
   const container = document.getElementById("certPreviewContainer");
   if (container) container.innerHTML = `<div class="empty-state" style="min-height:300px;"><span>⏳</span><p>Generating preview…</p></div>`;
@@ -1444,7 +1662,7 @@ async function previewCertificate() {
   fd.append("y_pct",        document.getElementById("certYPct")?.value         || 52);
   fd.append("color_hex",    document.getElementById("certColor")?.value        || "#1a1a2e");
   try {
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("organizer_authToken");
     const res   = await fetch(`${API}/certificates/preview`, { method:"POST", headers:{"Authorization":`Bearer ${token}`}, body:fd });
     if (!res.ok) throw new Error();
     const blob   = await res.blob();
@@ -1475,7 +1693,7 @@ async function generateCertificates() {
   if (certState.source === "db"    && certState.eventId)   fd.append("event_id", certState.eventId);
   if (certState.source === "excel" && certState.excelFile) fd.append("excel", certState.excelFile);
   try {
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("organizer_authToken");
     const res   = await fetch(`${API}/certificates/generate`, { method:"POST", headers:{"Authorization":`Bearer ${token}`}, body:fd });
     clearInterval(interval);
     if (fill)  fill.style.width  = "100%";
@@ -1606,7 +1824,7 @@ async function verifyTicketToken(token) {
   lastToken = token;
   setScanResult(`⏳ Verifying ticket...`);
   try {
-    const res  = await fetch(`${API}/tickets/verify`, { method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+localStorage.getItem("authToken")}, body:JSON.stringify({ qr_token:token }) });
+    const res  = await fetch(`${API}/tickets/verify`, { method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+localStorage.getItem("organizer_authToken")}, body:JSON.stringify({ qr_token:token }) });
     const data = await res.json();
     if (!res.ok) { setScanResult(`<b>❌ ${data.message || "Verification failed"}</b>`); return; }
     if (data.status === "VALID") { setScanResult(`<div style="padding:10px;border-radius:12px;background:#ecfdf5;border:1px solid #10b9811f;"><b style="color:#059669;">✅ VALID ENTRY</b><br/><div style="margin-top:8px;"><b>Name:</b> ${data.name}<br/><b>Roll:</b> ${data.roll_no}<br/><b>Dept:</b> ${data.department}<br/><b>Class:</b> ${data.class}<br/><b>Event:</b> ${data.event_title}<br/><b>Ticket:</b> ${data.ticket_id}</div></div>`); return; }
@@ -1622,7 +1840,6 @@ function initTicketScanner() {
   if (!readerEl || !startBtn || !stopBtn) return;
   if (startBtn.dataset.bound === "1") return;
   startBtn.dataset.bound = "1"; stopBtn.dataset.bound = "1";
-  if (!html5Qr) html5Qr = new Html5Qrcode("qr-reader");
 
   startBtn.onclick = async () => {
     if (scanning) return;
@@ -1634,7 +1851,7 @@ function initTicketScanner() {
       const cameras = await Html5Qrcode.getCameras();
       if (!cameras || !cameras.length) { scanning = false; setScanResult("<b>❌ No camera found</b>"); return; }
       startBtn.disabled = true; stopBtn.disabled = false;
-      await html5Qr.start({ facingMode:"environment" }, { fps:10, qrbox:250 }, (decodedText) => verifyTicketToken(extractTokenFromQR(decodedText)), () => {});
+      await html5Qr.start({ facingMode:"environment" }, { fps:10, qrbox:{ width:250, height:250 } }, (decodedText) => verifyTicketToken(extractTokenFromQR(decodedText)), () => {});
       setScanResult("✅ Camera started. Scan a ticket.");
     } catch (e) { console.error(e); scanning = false; startBtn.disabled = false; stopBtn.disabled = true; setScanResult("<b>❌ Camera permission denied / not supported</b>"); }
   };
@@ -1901,6 +2118,11 @@ function renderOrgClubSingle(club, memberCount, clubEvents, execom, content) {
     execomHtml = `<div class="ocs-section"><div class="ocs-section-title">Executive Committee</div><div class="empty-state" style="padding:20px;"><span>👥</span><p>No execom data available.</p></div></div>`;
   }
 
+  // Store execom in window so download button can reference it
+  window.__currentClubExecom = execom;
+  window.__currentClubId     = club.club_id;
+  window.__currentClubName   = name;
+
   content.innerHTML = `
     <div class="ocs-hero" style="background:${theme.bg};">
       <div class="ocs-hero-logo">${logoHtml}</div>
@@ -1926,9 +2148,83 @@ function renderOrgClubSingle(club, memberCount, clubEvents, execom, content) {
             <div class="ocs-stat"><div class="ocs-stat-num" style="color:${theme.accent};">${year}</div><div class="ocs-stat-label">Founded</div></div>
           </div>
         </div>
+        <div class="ocs-about-card" style="margin-top:16px;">
+          <div class="ocs-section-title" style="margin-bottom:12px;">📥 Downloads</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button
+              class="btn-primary"
+              style="width:100%;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;"
+              onclick="downloadClubMembersCSV(window.__currentClubId, window.__currentClubName)"
+            >
+              <span>👥</span> Download Members List
+            </button>
+            <button
+              class="btn-ghost"
+              style="width:100%;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;"
+              onclick="downloadClubExecomCSV(window.__currentClubExecom, window.__currentClubName)"
+            >
+              <span>🏅</span> Download Execom List
+            </button>
+          </div>
+        </div>
       </div>
     </div>`;
 }
+// ─────────────────────────────────────────────────────────────
+// CLUB SINGLE — DOWNLOAD HELPERS
+// ─────────────────────────────────────────────────────────────
+
+async function downloadClubMembersCSV(clubId, clubName) {
+  try {
+    const res = await apiFetch(`/organizer/clubs/${clubId}/members`);
+    if (!res.ok) { showToast("❌ Failed to fetch members"); return; }
+    const data = await res.json();
+    const members = Array.isArray(data) ? data : (data.members || []);
+    if (!members.length) { showToast("⚠️ No members to export"); return; }
+    const headers = ["Sl No", "Name", "Email", "Phone", "Roll No", "Admission No", "Class", "Department", "Joined At"];
+    const rows = members.map((m, i) => [
+      i + 1,
+      m.name || m.student_name || "",
+      m.email || "",
+      m.phone || "",
+      m.roll_no || m.roll || "",
+      m.admission_no || m.admission_number || "",
+      m.class || m.student_class || "",
+      m.department || m.dept || "",
+      m.joined_at || m.created_at || ""
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })),
+      download: `members_${(clubName || "club").replace(/[^a-z0-9]+/gi, "_").toLowerCase()}.csv`
+    });
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast("✅ Members list downloaded");
+  } catch (err) { console.error(err); showToast("❌ Download failed"); }
+}
+
+function downloadClubExecomCSV(execomData, clubName) {
+  if (!execomData || !execomData.length) { showToast("⚠️ No execom data to export"); return; }
+  const headers = ["Sl No", "Name", "Position", "Class", "Email", "Phone"];
+  const rows = execomData.map((m, i) => [
+    i + 1,
+    m.name || "",
+    m.position || "",
+    m.class || m.dept || "",
+    m.email || "",
+    m.phone || ""
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const a = Object.assign(document.createElement("a"), {
+    href: URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })),
+    download: `execom_${(clubName || "club").replace(/[^a-z0-9]+/gi, "_").toLowerCase()}.csv`
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast("✅ Execom list downloaded");
+}
+
 // ═══════════════════════════════════════════════════════════════
 // EVENT DETAIL PAGE  (merged from org.js + org.html + org.css)
 // Call openEventDetail(id) from anywhere in the SPA instead of
@@ -1946,14 +2242,24 @@ async function openEventDetail(id, mode = "view") {
   if (!container) return;
   container.innerHTML = `<div class="empty-state"><span>⏳</span><p>Loading event…</p></div>`;
 
-  // Fetch event data
+  // Fetch event data — check the organizer's own list first (covers all statuses
+  // including Pending/Rejected), then fall back to /events/all for Published events,
+  // then finally the single-event endpoint.
   let eData = null;
   try {
-    const allRes = await apiFetch("/events/all");
-    if (allRes.ok) {
-      const all = await allRes.json();
-      eData = all.find(e => String(e.id) === String(id)) || null;
+    // 1. Check already-loaded organizer events cache (fastest, covers all statuses)
+    if (Array.isArray(events) && events.length) {
+      eData = events.find(e => String(e.id) === String(id)) || null;
     }
+    // 2. Re-fetch /events/my in case cache is stale
+    if (!eData) {
+      const myRes = await apiFetch("/events/my");
+      if (myRes.ok) {
+        const myList = await myRes.json();
+        eData = myList.find(e => String(e.id) === String(id)) || null;
+      }
+    }
+    // 3. Fall back to single-event endpoint (works for any status)
     if (!eData) {
       const singleRes = await apiFetch(`/events/${id}`);
       if (singleRes.ok) eData = await singleRes.json();
@@ -1998,6 +2304,85 @@ function renderEventView(container, eData, id) {
   const pct       = Number(eData.capacity) > 0 ? Math.min(100, Math.round((Number(eData.registered||0)/Number(eData.capacity))*100)) : 0;
   const statusCls = { open:"", draft:"draft", closed:"closed" }[eData.status] || "";
 
+  // ── Status banner: contextual info + action per workflow stage ──
+  const statusBanners = {
+    Pending: `
+      <div style="margin-bottom:18px;padding:14px 18px;border-radius:14px;
+                  background:var(--amber-light,#fef3c7);border:1px solid rgba(180,83,9,.2);
+                  display:flex;align-items:center;gap:12px;">
+        <span style="font-size:22px;">⏳</span>
+        <div>
+          <div style="font-weight:700;color:#b45309;font-size:14px;">Awaiting Faculty Approval</div>
+          <div style="font-size:12.5px;color:#92400e;margin-top:2px;">
+            This event has been submitted and is pending review by a faculty coordinator.
+            You will be able to publish it once it is approved.
+          </div>
+        </div>
+      </div>`,
+    // Draft is the legacy equivalent of Pending — same banner
+    Draft: `
+      <div style="margin-bottom:18px;padding:14px 18px;border-radius:14px;
+                  background:var(--amber-light,#fef3c7);border:1px solid rgba(180,83,9,.2);
+                  display:flex;align-items:center;gap:12px;">
+        <span style="font-size:22px;">⏳</span>
+        <div>
+          <div style="font-weight:700;color:#b45309;font-size:14px;">Awaiting Faculty Approval</div>
+          <div style="font-size:12.5px;color:#92400e;margin-top:2px;">
+            This event has been submitted and is pending review by a faculty coordinator.
+            You will be able to publish it once it is approved.
+          </div>
+        </div>
+      </div>`,
+    Rejected: `
+      <div style="margin-bottom:18px;padding:14px 18px;border-radius:14px;
+                  background:var(--rose-light,#ffe4e6);border:1px solid rgba(190,18,60,.2);
+                  display:flex;align-items:center;gap:12px;">
+        <span style="font-size:22px;">❌</span>
+        <div>
+          <div style="font-weight:700;color:#be123c;font-size:14px;">Event Rejected</div>
+          <div style="font-size:12.5px;color:#9f1239;margin-top:2px;">
+            This event was not approved by the faculty coordinator.
+            Please edit the event and resubmit for review.
+          </div>
+        </div>
+      </div>`,
+    Approved: `
+      <div style="margin-bottom:18px;padding:14px 18px;border-radius:14px;
+                  background:var(--emerald-light,#d1fae5);border:1px solid rgba(6,95,70,.2);
+                  display:flex;align-items:flex-start;gap:12px;">
+        <span style="font-size:22px;">✅</span>
+        <div style="flex:1;">
+          <div style="font-weight:700;color:#065f46;font-size:14px;">Approved by Faculty</div>
+          <div style="font-size:12.5px;color:#047857;margin-top:2px;">
+            Your event has been approved! Click <strong>Publish Event</strong> to make it
+            visible in the student and public portals.
+          </div>
+        </div>
+        <button id="edPublishBtn"
+          style="flex-shrink:0;padding:9px 20px;border-radius:10px;border:none;cursor:pointer;
+                 background:linear-gradient(135deg,#059669,#047857);color:#fff;
+                 font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(5,150,105,.35);
+                 transition:all .2s;white-space:nowrap;"
+          onmouseover="this.style.boxShadow='0 6px 20px rgba(5,150,105,.5)'"
+          onmouseout="this.style.boxShadow='0 4px 14px rgba(5,150,105,.35)'">
+          🌐 Publish Event
+        </button>
+      </div>`,
+    Published: `
+      <div style="margin-bottom:18px;padding:14px 18px;border-radius:14px;
+                  background:var(--violet-light,#ede9fe);border:1px solid rgba(91,63,248,.2);
+                  display:flex;align-items:center;gap:12px;">
+        <span style="font-size:22px;">🌐</span>
+        <div>
+          <div style="font-weight:700;color:var(--violet,#5b3ff8);font-size:14px;">Published — Live to All Portals</div>
+          <div style="font-size:12.5px;color:var(--violet-mid,#7c5cbf);margin-top:2px;">
+            This event is now visible to students and in all public portals.
+          </div>
+        </div>
+      </div>`,
+  };
+  const statusBanner = statusBanners[eData.status] || "";
+
   container.innerHTML = `
     <div class="ed-banner">
       ${bannerImg
@@ -2014,6 +2399,8 @@ function renderEventView(container, eData, id) {
         <button class="btn-primary" id="edEditBtn" style="font-size:13px;">✏️ Edit</button>
       </div>
     </div>
+
+    ${statusBanner}
 
     <div class="ed-layout">
       <!-- LEFT: Main card -->
@@ -2041,6 +2428,7 @@ function renderEventView(container, eData, id) {
           <button class="ed-tab active" data-panel="info">Description</button>
           <button class="ed-tab" data-panel="participants">Participants</button>
           <button class="ed-tab" data-panel="qr">QR / Attendance</button>
+          <button class="ed-tab" data-panel="report">📋 Report</button>
         </div>
 
         <div class="ed-panel active" id="edp-info">
@@ -2057,6 +2445,15 @@ function renderEventView(container, eData, id) {
 
         <div class="ed-panel" id="edp-qr">
           <p class="ed-desc">Use the QR scanner in the <b>QR &amp; Tickets</b> section of the sidebar to scan tickets for this event.</p>
+        </div>
+
+        <div class="ed-panel" id="edp-report">
+          <p class="ed-desc" style="margin-bottom:16px;">Upload a PDF report for this event.</p>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <input type="file" id="edReportFile" accept=".pdf" style="font-size:13px;color:var(--ink2);background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.15);border-radius:10px;padding:10px;flex:1;min-width:180px;" />
+            <button class="btn-primary" id="edUploadReportBtn" style="font-size:13px;white-space:nowrap;">📤 Upload Report</button>
+          </div>
+          <div id="edReportStatus" style="margin-top:14px;"></div>
         </div>
       </div>
 
@@ -2080,12 +2477,6 @@ function renderEventView(container, eData, id) {
           </div>
         </div>
 
-        <div class="ed-hr"></div>
-        <div class="ed-detail-row"><b>Fee:</b> ${eData.registration_fee > 0 ? "₹" + eData.registration_fee : "Free"}</div>
-        <div class="ed-detail-row"><b>Venue:</b> ${eData.venue || "TBD"}</div>
-        <div class="ed-detail-row"><b>Date:</b> ${edFormatDate(eData.date)}</div>
-        <div class="ed-detail-row"><b>Time:</b> ${edFormatTime(eData.time)}</div>
-        <div class="ed-detail-row"><b>Club:</b> ${eData.club || "—"}</div>
       </aside>
     </div>`;
 
@@ -2112,6 +2503,39 @@ function renderEventView(container, eData, id) {
     catch { await navigator.clipboard.writeText(url); showToast("🔗 Link copied!"); }
   });
   document.getElementById("edDownloadBtn")?.addEventListener("click", () => edDownloadCSV(id));
+  document.getElementById("edUploadReportBtn")?.addEventListener("click", () => edUploadReport(id));
+
+  // ── Publish button (only rendered when status === 'Approved') ──
+  document.getElementById("edPublishBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("edPublishBtn");
+    if (!btn) return;
+
+    const confirmed = confirm(
+      `Publish "${eData.title}"?\n\nOnce published, this event will be visible to all students and in other portals. This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    btn.disabled    = true;
+    btn.textContent = "Publishing…";
+
+    try {
+      const res = await apiFetch(`/events/${id}/publish`, { method: "PUT" });
+      if (res.ok) {
+        showToast("🌐 Event published! Now visible in all portals.");
+        await loadEvents();
+        openEventDetail(id); // refresh to show Published banner
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast("❌ " + (err.message || "Publish failed."));
+        btn.disabled    = false;
+        btn.textContent = "🌐 Publish Event";
+      }
+    } catch {
+      showToast("❌ Network error.");
+      btn.disabled    = false;
+      btn.textContent = "🌐 Publish Event";
+    }
+  });
 }
 
 // ─── load participants table ───────────────────────────────────
@@ -2158,6 +2582,37 @@ async function edDownloadCSV(id) {
     });
     a.click();
   } catch { showToast("❌ Download failed."); }
+}
+
+// ─── EVENT REPORT ─────────────────────────────────────────────
+
+async function edUploadReport(id) {
+  const file = document.getElementById("edReportFile")?.files?.[0];
+  const status = document.getElementById("edReportStatus");
+
+  if (!file) { showToast("⚠️ Please select a PDF file."); return; }
+  if (file.type !== "application/pdf") { showToast("⚠️ Only PDF files are allowed."); return; }
+
+  const btn = document.getElementById("edUploadReportBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Uploading…"; }
+
+  const fd = new FormData();
+  fd.append("report", file);
+
+  try {
+    const res = await apiFetch(`/events/${id}/report`, { method: "POST", body: fd });
+    if (res.ok) {
+      showToast("✅ Report uploaded!");
+      if (status) status.innerHTML = `<span style="font-size:13px;color:var(--emerald,#10b981);">✅ <b>${file.name}</b> uploaded successfully.</span>`;
+    } else {
+      const err = await res.json().catch(() => ({}));
+      showToast("❌ " + (err.message || "Upload failed."));
+    }
+  } catch {
+    showToast("❌ Network error.");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "📤 Upload Report"; }
+  }
 }
 
 // ─── EDIT ─────────────────────────────────────────────────────

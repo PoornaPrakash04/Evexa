@@ -58,7 +58,7 @@ form.addEventListener("submit", async function (e) {
     const data = await response.json();
 
     if (response.ok && data.token) {
-      localStorage.setItem("authToken", data.token);
+      localStorage.setItem("organizer_authToken", data.token);
       localStorage.setItem("userRole",  "organizer");
 
       window.location.href = "http://127.0.0.1:5501/frontend/organizer/orgfront.html";
@@ -74,4 +74,15 @@ form.addEventListener("submit", async function (e) {
     btn.textContent = "Sign In";
     btn.disabled    = false;
   }
+});
+// ── Password Toggle ────────────────────────────
+const togglePassword = document.getElementById("togglePassword");
+const passwordInput  = document.getElementById("password");
+
+togglePassword.addEventListener("click", function () {
+  const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+  passwordInput.setAttribute("type", type);
+
+  // Optional: change icon
+  this.textContent = type === "password" ? "👁️" : "🙈";
 });

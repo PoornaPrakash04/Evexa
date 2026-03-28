@@ -482,119 +482,269 @@ function logout() {
   document.addEventListener("keydown", onKey);
 }
 
-// ── Notification Bell ─────────────────────────────────────────
-function initNotifications() {
-  const btn      = document.getElementById("notifBtn");
-  const dropdown = document.getElementById("notifDropdown");
-  const clearBtn = document.getElementById("notifClear");
-  const dot      = document.getElementById("notifDot");
-  if (!btn || !dropdown) return;
+// ── Notification Bell — Full Page ────────────────────────────
+let _notifCurrentTab = "all";
 
-  function getNotifs() {
-    return JSON.parse(localStorage.getItem("evexa_notifs") || "[]");
+function _getNotifs()      { return JSON.parse(localStorage.getItem("evexa_notifs") || "[]"); }
+function _saveNotifs(arr)  { localStorage.setItem("evexa_notifs", JSON.stringify(arr)); }
+
+function _timeAgo(isoString) {
+  const diff  = Date.now() - new Date(isoString).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins  < 1)  return "just now";
+  if (mins  < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
+
+function _notifCategory(n) {
+  if (!n.sourceId) return "other";
+  if (n.sourceId.startsWith("announcement-")) return "announcement";
+  if (n.sourceId.startsWith("upcoming-"))     return "event";
+  return "other";
+}
+
+function _updateBellDot() {
+  const dot    = document.getElementById("notifDot");
+  const notifs = _getNotifs();
+  const unread = notifs.filter(n => !n.read).length;
+  if (!dot) return;
+  dot.classList.toggle("show", unread > 0);
+  dot.textContent = unread > 9 ? "9+" : (unread > 0 ? String(unread) : "");
+}
+
+function _catMeta(cat) {
+  if (cat === "announcement") return { color: "#f59e0b", chipClass: "notif-cat-chip--announcement", label: "Announcement" };
+  if (cat === "event")        return { color: "#6d5efc", chipClass: "notif-cat-chip--event",        label: "Event" };
+  return                               { color: "#10b981", chipClass: "notif-cat-chip--other",        label: "General" };
+}
+
+function _isToday(isoString) {
+  const d = new Date(isoString);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() &&
+         d.getMonth()    === now.getMonth()    &&
+         d.getDate()     === now.getDate();
+}
+
+function _updateSummaryStrip() {
+  const all   = _getNotifs();
+  const event = all.filter(n => _notifCategory(n) === "event");
+  const ann   = all.filter(n => _notifCategory(n) === "announcement");
+  const setBadge = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setBadge("nsBadgeAll",   all.length);
+  setBadge("nsBadgeEvent", event.length);
+  setBadge("nsBadgeAnn",   ann.length);
+}
+
+function _renderNotifPage(tab) {
+  const list  = document.getElementById("notifPageList");
+  const subEl = document.getElementById("notifPageSub");
+  if (!list) return;
+
+  _updateSummaryStrip();
+
+  let notifs = _getNotifs();
+  if (tab !== "all") notifs = notifs.filter(n => _notifCategory(n) === tab);
+
+  // Sort: newest first
+  notifs = [...notifs].sort((a, b) => new Date(b.timestamp || b.time) - new Date(a.timestamp || a.time));
+
+  const unread = _getNotifs().filter(n => !n.read).length;
+  if (subEl) {
+    subEl.textContent = unread > 0
+      ? `${unread} unread notification${unread > 1 ? "s" : ""}`
+      : "All caught up ✓";
   }
-  function saveNotifs(notifs) {
-    localStorage.setItem("evexa_notifs", JSON.stringify(notifs));
+
+  if (!notifs.length) {
+    const emptyLabels = {
+      all:          ["🔕", "You're all caught up!", "No notifications yet."],
+      event:        ["📅", "No event notifications", "Event reminders will appear here."],
+      announcement: ["📢", "No announcements", "Club announcements will appear here."],
+    };
+    const [icon, title, sub] = emptyLabels[tab] || emptyLabels.all;
+    list.innerHTML = `
+      <div class="notif-pg-empty">
+        <div class="notif-pg-empty-icon">${icon}</div>
+        <div class="notif-pg-empty-text">${title}</div>
+        <div class="notif-pg-empty-sub">${sub}</div>
+      </div>`;
+    return;
   }
 
-  function timeAgo(isoString) {
-    const diff = Date.now() - new Date(isoString).getTime();
-    const mins  = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days  = Math.floor(diff / 86400000);
-    if (mins < 1)   return "just now";
-    if (mins < 60)  return `${mins}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
-  }
+  // Group into Today / Earlier
+  const todayItems   = notifs.filter(n => _isToday(n.timestamp || n.time));
+  const earlierItems = notifs.filter(n => !_isToday(n.timestamp || n.time));
 
-  function renderNotifs() {
-    const list   = document.getElementById("notifList");
-    const notifs = getNotifs();
-    const unread = notifs.filter(n => !n.read).length;
-
-    // Update dot
-    if (dot) {
-      dot.classList.toggle("show", unread > 0);
-      dot.textContent = unread > 9 ? "9+" : (unread > 0 ? unread : "");
-    }
-
-    // Update header count
-    const titleEl = document.getElementById("notifDropdownTitle");
-    if (titleEl) {
-      titleEl.textContent = unread > 0 ? `Notifications (${unread})` : "Notifications";
-    }
-
-    if (!list) return;
-    if (!notifs.length) {
-      list.innerHTML = `
-        <div class="notif-empty">
-          <div class="notif-empty-icon">🔔</div>
-          <div class="notif-empty-text">You're all caught up!</div>
-          <div class="notif-empty-sub">No notifications yet.</div>
-        </div>`;
-      return;
-    }
-
-    list.innerHTML = notifs.map(n => `
-      <div class="notif-item ${n.read ? "" : "unread"}" data-id="${n.id}">
-        <div class="notif-item-icon">${n.icon || "🔔"}</div>
-        <div class="notif-item-body">
-          <div class="notif-item-title">${n.title}</div>
-          <div class="notif-item-sub">${n.message}</div>
-          <div class="notif-item-time">${timeAgo(n.timestamp || n.time)}</div>
+  const renderItem = n => {
+    const cat  = _notifCategory(n);
+    const meta = _catMeta(cat);
+    return `
+      <div class="notif-pg-item ${n.read ? "" : "unread"}" data-id="${n.id}">
+        <div class="notif-pg-icon" style="background:${meta.color}22;color:${meta.color};">
+          ${n.icon || (cat === "announcement" ? "📢" : cat === "event" ? "📅" : "🔔")}
         </div>
-        ${!n.read ? `<div class="notif-unread-dot"></div>` : ""}
+        <div class="notif-pg-body">
+          <div class="notif-pg-item-top">
+            <div class="notif-pg-item-title">${n.title}</div>
+            <span class="notif-cat-chip ${meta.chipClass}">${meta.label}</span>
+          </div>
+          <div class="notif-pg-item-msg">${n.message}</div>
+          <div class="notif-pg-item-time">${_timeAgo(n.timestamp || n.time)}</div>
+        </div>
+        ${!n.read ? `<div class="notif-pg-unread-dot"></div>` : ""}
+        <button class="notif-pg-dismiss" onclick="dismissNotif('${n.id}', this)" title="Dismiss">✕</button>
+      </div>`;
+  };
+
+  const renderGroup = (label, items) => {
+    if (!items.length) return "";
+    return `
+      <div class="notif-group-header">
+        <span class="notif-group-label">${label}</span>
+        <span class="notif-group-line"></span>
+        <span class="notif-group-count">${items.length}</span>
       </div>
-    `).join("");
-  }
+      ${items.map(renderItem).join("")}`;
+  };
 
-  // Animate bell on new notifications
-  function ringBell() {
-    btn.classList.add("ring");
-    setTimeout(() => btn.classList.remove("ring"), 600);
-  }
+  list.innerHTML = renderGroup("Today", todayItems) + renderGroup("Earlier", earlierItems);
 
-  // Toggle dropdown
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const isOpen = dropdown.classList.contains("open");
-    dropdown.classList.toggle("open");
+  // Mark all visible as read after a short delay
+  setTimeout(() => {
+    const visibleIds = new Set(notifs.map(n => n.id));
+    const updated    = _getNotifs().map(n => visibleIds.has(n.id) ? { ...n, read: true } : n);
+    _saveNotifs(updated);
+    _updateBellDot();
+    _updateSummaryStrip();
+    document.querySelectorAll(".notif-pg-item.unread").forEach(el => el.classList.remove("unread"));
+    document.querySelectorAll(".notif-pg-unread-dot").forEach(el => el.remove());
+    if (subEl) subEl.textContent = "All caught up ✓";
+  }, 900);
+}
 
-    if (!isOpen) {
-      // Mark all as read after short delay (user can see unread state first)
-      setTimeout(() => {
-        const notifs = getNotifs().map(n => ({ ...n, read: true }));
-        saveNotifs(notifs);
-        renderNotifs();
-      }, 800);
-    }
-  });
+function openNotifPage() {
+  const page    = document.getElementById("notifPage");
+  const overlay = document.getElementById("notifPageOverlay");
+  if (!page) return;
+  _notifCurrentTab = "all";
+  // Reset tabs
+  document.querySelectorAll(".notif-ptab").forEach(t => t.classList.remove("active"));
+  const allTab = document.querySelector(".notif-ptab[data-tab='all']");
+  if (allTab) allTab.classList.add("active");
 
-  // Close on outside click
-  document.addEventListener("click", (e) => {
-    if (!dropdown.contains(e.target) && e.target !== btn) {
-      dropdown.classList.remove("open");
-    }
-  });
+  page.classList.add("open");
+  overlay?.classList.add("open");
+  document.body.style.overflow = "hidden";
 
-  // Clear all with animation
-  clearBtn?.addEventListener("click", () => {
-    const items = document.querySelectorAll(".notif-item");
-    items.forEach((el, i) => {
-      setTimeout(() => {
-        el.style.opacity = "0";
-        el.style.transform = "translateX(20px)";
-        el.style.transition = ".2s ease";
-      }, i * 40);
-    });
+  _updateSummaryStrip();
+  _renderNotifPage("all");
+}
+
+function closeNotifPage() {
+  const page    = document.getElementById("notifPage");
+  const overlay = document.getElementById("notifPageOverlay");
+  page?.classList.remove("open");
+  overlay?.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function switchNotifTab(btn, tab) {
+  document.querySelectorAll(".notif-ptab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+  _notifCurrentTab = tab;
+  _renderNotifPage(tab);
+}
+
+function dismissNotif(id, btn) {
+  // Animate the single item out
+  const item = btn.closest(".notif-pg-item");
+  if (item) {
+    item.style.transition  = "opacity .22s ease, transform .22s ease, max-height .28s ease, padding .28s ease";
+    item.style.opacity     = "0";
+    item.style.transform   = "translateX(28px)";
+    item.style.maxHeight   = item.offsetHeight + "px";
+    // collapse after fade
     setTimeout(() => {
-      saveNotifs([]);
-      renderNotifs();
-    }, items.length * 40 + 200);
-  });
+      item.style.maxHeight = "0";
+      item.style.padding   = "0";
+      item.style.overflow  = "hidden";
+    }, 220);
+    setTimeout(() => {
+      item.remove();
+      // remove group header if it's now empty
+      document.querySelectorAll(".notif-group-header").forEach(gh => {
+        let next = gh.nextElementSibling;
+        if (!next || next.classList.contains("notif-group-header")) gh.remove();
+      });
+    }, 480);
+  }
+  // Remove from storage
+  const updated = _getNotifs().filter(n => n.id !== id);
+  _saveNotifs(updated);
+  _updateBellDot();
+  _updateSummaryStrip();
+  // Update sub-text
+  const unread = updated.filter(n => !n.read).length;
+  const subEl  = document.getElementById("notifPageSub");
+  if (subEl) subEl.textContent = unread > 0 ? `${unread} unread` : "All caught up ✓";
+  // If list is now empty, show empty state after animation
+  setTimeout(() => {
+    const list = document.getElementById("notifPageList");
+    if (list && !list.querySelector(".notif-pg-item")) _renderNotifPage(_notifCurrentTab);
+  }, 500);
+}
 
-  renderNotifs();
+function markAllNotifsRead() {
+  const updated = _getNotifs().map(n => ({ ...n, read: true }));
+  _saveNotifs(updated);
+  _updateBellDot();
+  _updateSummaryStrip();
+  document.querySelectorAll(".notif-pg-item.unread").forEach(el => el.classList.remove("unread"));
+  document.querySelectorAll(".notif-pg-unread-dot").forEach(el => el.remove());
+  const subEl = document.getElementById("notifPageSub");
+  if (subEl) subEl.textContent = "All caught up ✓";
+  // Flash the mark-all button green briefly
+  const btn = document.getElementById("notifMarkAllBtn");
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = "✓ Done!";
+    btn.style.opacity = ".6";
+    setTimeout(() => { btn.textContent = orig; btn.style.opacity = ""; }, 1200);
+  }
+}
+
+function clearAllNotifs() {
+  const items = document.querySelectorAll(".notif-pg-item");
+  items.forEach((el, i) => {
+    setTimeout(() => {
+      el.style.opacity    = "0";
+      el.style.transform  = "translateX(24px)";
+      el.style.transition = ".22s ease";
+    }, i * 45);
+  });
+  setTimeout(() => {
+    _saveNotifs([]);
+    _updateBellDot();
+    _updateSummaryStrip();
+    _renderNotifPage(_notifCurrentTab);
+  }, items.length * 45 + 250);
+}
+
+function initNotifications() {
+  const btn = document.getElementById("notifBtn");
+  if (btn) {
+    btn.classList.remove("ring");
+  }
+  _updateBellDot();
+
+  // Close on Escape
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeNotifPage();
+  });
 
   // Check for upcoming events and auto-generate notifications
   autoGenerateNotifs();
@@ -675,9 +825,7 @@ async function autoGenerateNotifs() {
       const btn = document.getElementById("notifBtn");
       if (btn) { btn.classList.add("ring"); setTimeout(() => btn.classList.remove("ring"), 600); }
       // Re-render dot
-      const dot = document.getElementById("notifDot");
-      const unread = updated.filter(n => !n.read).length;
-      if (dot) dot.classList.toggle("show", unread > 0);
+      _updateBellDot();
     }
   } catch (err) {
     console.error("Auto-notif error:", err);
@@ -696,10 +844,13 @@ function addNotification(icon, title, message) {
     read:      false
   });
   localStorage.setItem("evexa_notifs", JSON.stringify(notifs.slice(0, 20)));
-  const dot = document.getElementById("notifDot");
-  if (dot) dot.classList.add("show");
+  _updateBellDot();
+
   const btn = document.getElementById("notifBtn");
-  if (btn) { btn.classList.add("ring"); setTimeout(() => btn.classList.remove("ring"), 600); }
+  if (btn) {
+    btn.classList.add("ring");
+    setTimeout(() => btn.classList.remove("ring"), 600);
+  }
 }
 
 /* ── UPCOMING REGISTERED MODAL ──────────────────────────────── */
@@ -789,7 +940,18 @@ function closeUpcomingModal() {
   if (overlay) overlay.style.display = "none";
   if (modal)   modal.style.display   = "none";
 }
+async function loadNotifications() {
+  const data = await apiFetch("/student/notifications");
 
+  if (!data) return;
+
+  notificationsData.history = data.history || [];
+  notificationsData.schedule = data.schedule || [];
+  notificationsData.requests = data.requests || [];
+
+  renderNotifications("history");
+  updateNotifDot();
+}
 // Close on Escape key (keep this in place of the existing one)
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") closeUpcomingModal();

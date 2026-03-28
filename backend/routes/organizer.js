@@ -16,7 +16,7 @@ function organizerOnly(req, res, next) {
 // ── GET /api/organizer/me ─────────────────────────────────────
 router.get("/me", authorize(), organizerOnly, (req, res) => {
   db.query(
-    "SELECT id, name, email, club, phone, roll_no, admission_no, class FROM organizers WHERE id = ?",
+    "SELECT id, name, email, club, club_id, phone, roll_no, admission_no, class FROM organizers WHERE id = ?",
     [req.user.id],
     (err, result) => {
       if (err)            return res.status(500).json({ message: "Server error", detail: err.message });
@@ -94,23 +94,25 @@ router.get("/dashboard", authorize(), organizerOnly, (req, res) => {
 
   const sql = `
     SELECT
-      (SELECT COUNT(*) FROM events WHERE organizer_id = ?)                          AS total_events,
-      (SELECT COUNT(*) FROM events WHERE organizer_id = ? AND status = 'Approved')  AS approved_events,
-      (SELECT COUNT(*) FROM events WHERE organizer_id = ? AND status = 'Draft')     AS draft_events,
-      (SELECT COUNT(*) FROM events WHERE organizer_id = ? AND status = 'Rejected')  AS rejected_events,
+      (SELECT COUNT(*) FROM events WHERE organizer_id = ?)                                              AS total_events,
+      (SELECT COUNT(*) FROM events WHERE organizer_id = ? AND status = 'Approved')                      AS approved_events,
+      (SELECT COUNT(*) FROM events WHERE organizer_id = ? AND status IN ('Pending','Draft'))             AS pending_events,
+      (SELECT COUNT(*) FROM events WHERE organizer_id = ? AND status = 'Published')                     AS published_events,
+      (SELECT COUNT(*) FROM events WHERE organizer_id = ? AND status = 'Draft')                         AS draft_events,
+      (SELECT COUNT(*) FROM events WHERE organizer_id = ? AND status = 'Rejected')                      AS rejected_events,
       (SELECT COUNT(*)
        FROM registrations r
        JOIN events e ON e.id = r.event_id
-       WHERE e.organizer_id = ?)                                                     AS total_registrations,
+       WHERE e.organizer_id = ?)                                                                         AS total_registrations,
       (SELECT COUNT(*)
        FROM issues i
        JOIN events e ON e.id = i.event_id
-       WHERE e.organizer_id = ? AND i.status = 'open')                              AS open_issues
+       WHERE e.organizer_id = ? AND i.status = 'open')                                                  AS open_issues
   `;
 
   db.query(
     sql,
-    [organizerId, organizerId, organizerId, organizerId, organizerId, organizerId],
+    [organizerId, organizerId, organizerId, organizerId, organizerId, organizerId, organizerId, organizerId],
     (err, result) => {
       if (err) {
         console.error("GET /organizer/dashboard error:", err);
@@ -119,6 +121,40 @@ router.get("/dashboard", authorize(), organizerOnly, (req, res) => {
       res.json(result[0]);
     }
   );
+});
+
+// ── GET /api/organizer/clubs/:clubId/members ─────────────────
+// Full member list for a club (with student details) — for CSV download
+router.get("/clubs/:clubId/members", authorize(), organizerOnly, (req, res) => {
+  const clubId = parseInt(req.params.clubId, 10);
+  if (isNaN(clubId)) {
+    return res.status(400).json({ message: "Invalid club ID." });
+  }
+
+  const sql = `
+    SELECT
+      cm.id,
+      s.name,
+      s.email,
+      s.phone,
+      s.roll_no,
+      s.admission_no,
+      s.class,
+      s.department,
+      cm.joined_at
+    FROM club_members cm
+    JOIN students s ON s.id = cm.student_id
+    WHERE cm.club_id = ?
+    ORDER BY cm.joined_at ASC
+  `;
+
+  db.query(sql, [clubId], (err, rows) => {
+    if (err) {
+      console.error("GET /organizer/clubs/:clubId/members error:", err);
+      return res.status(500).json({ message: "Server error", detail: err.message });
+    }
+    res.json(rows);
+  });
 });
 
 module.exports = router;

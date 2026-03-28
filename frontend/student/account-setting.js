@@ -107,7 +107,7 @@ if (nameEl) nameEl.value = user.name || "";
     const fullName = (document.getElementById("fullName")?.value || "").trim();
 
     try {
-      const res = await fetch(`${API_BASE}/user/profile`, {
+      const res = await fetch(`${API_BASE}/student/profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -171,7 +171,7 @@ if (nameEl) nameEl.value = user.name || "";
       const token = localStorage.getItem("authToken");
 
       try {
-        const res = await fetch(`${API_BASE}/user/avatar`, {
+        const res = await fetch(`${API_BASE}/student/avatar`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}` },
           body: formData
@@ -233,7 +233,7 @@ if (nameEl) nameEl.value = user.name || "";
       if (nw !== conf)   return showToast("Passwords do not match.", "error");
 
       try {
-        const res = await fetch(`${API_BASE}/user/change-password`, {
+        const res = await fetch(`${API_BASE}/student/change-password`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",

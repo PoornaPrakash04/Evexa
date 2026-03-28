@@ -24,7 +24,10 @@
 
   <form class="signin-form" id="signinForm">
     <input type="text"     id="faculty_no" placeholder="Faculty No." required autocomplete="username"/>
-    <input type="password" id="password"   placeholder="Password"    required autocomplete="current-password"/>
+    <div class="password-wrapper">
+  <input type="password" id="password" placeholder="Password" required autocomplete="current-password"/>
+  <span id="togglePassword" class="eye-icon">👁️</span>
+</div>
     <button type="submit" class="signin-btn">Sign In</button>
   </form>
   <br>

@@ -36,6 +36,93 @@
     display: flex;
     align-items: center;
   }
+
+  /* ── Venue tabs ─────────────────────────────────────────────── */
+  .venue-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .venue-tab {
+    padding: 8px 22px;
+    border-radius: 20px;
+    border: 1px solid var(--border-2);
+    background: var(--surface);
+    color: var(--ink2);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    font-family: var(--font);
+  }
+  .venue-tab.active {
+    background: var(--violet-light);
+    border-color: var(--violet);
+    color: var(--violet-mid);
+  }
+  .venue-tab:hover:not(.active) {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+
+  /* ── Slot chip buttons ──────────────────────────────────────── */
+  .slot-chip {
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border-2);
+    background: var(--surface);
+    color: var(--ink2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.18s;
+    font-family: var(--font);
+  }
+  .slot-chip:hover {
+    border-color: var(--violet);
+    color: var(--violet-mid);
+    background: var(--violet-light);
+  }
+  .slot-chip.selected {
+    background: var(--violet-light);
+    border-color: var(--violet);
+    color: var(--violet-mid);
+    box-shadow: 0 0 0 2px rgba(139,92,246,0.30);
+    font-weight: 700;
+  }
+
+  /* ── Calendar day states ────────────────────────────────────── */
+  .calendar-day.pending {
+    background: var(--amber-light) !important;
+    color: var(--amber) !important;
+    border: 1px solid rgba(245,158,11,0.40) !important;
+    cursor: default;
+    font-weight: 600;
+  }
+  .calendar-day.available {
+    cursor: pointer;
+    transition: background 0.15s, transform 0.12s;
+  }
+  .calendar-day.available:hover {
+    background: var(--violet-light);
+    color: var(--violet-mid);
+    transform: scale(1.08);
+  }
+
+  /* ── Booking modal body scroll ──────────────────────────────── */
+  #venueBookModal .modal-body {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  /* ── Light mode overrides ───────────────────────────────────── */
+  body.light .venue-tab { background:#f5f3ff; border-color:#ddd6fe; color:#6d28d9; }
+  body.light .venue-tab.active { background:#ede9fe; border-color:#8b5cf6; color:#5b21b6; }
+  body.light .slot-chip { background:#f9fafb; border-color:#e5e7eb; color:#374151; }
+  body.light .slot-chip:hover,
+  body.light .slot-chip.selected { background:#ede9fe; border-color:#8b5cf6; color:#5b21b6; }
+  body.light .calendar-day.pending { background:#fef3c7 !important; color:#b45309 !important; border-color:rgba(180,83,9,0.30) !important; }
+  body.light .calendar-day.available:hover { background:#ede9fe; color:#5b21b6; }
 </style>
 </head>
 <body>
@@ -53,52 +140,52 @@
   <nav>
     <div class="nav-section">
       <div class="nav-label">Main</div>
-      <a class="nav-item active" data-page="dashboard">
-        <div class="nav-icon">📊</div> Dashboard
+      <a class="nav-item active" data-page="dashboard" data-tooltip="Dashboard">
+        <div class="nav-icon">📊</div><span class="nav-text">Dashboard</span>
       </a>
-      <a class="nav-item" data-page="events">
-  <div class="nav-icon">📅</div> Events
-</a>
-
-<a class="nav-item" data-page="registrations">
-  <div class="nav-icon">👥</div> Registrations
-</a>
+      <a class="nav-item" data-page="events" data-tooltip="Events">
+        <div class="nav-icon">📅</div><span class="nav-text">Events</span>
+      </a>
+      <a class="nav-item" data-page="registrations" data-tooltip="Registrations">
+        <div class="nav-icon">👥</div><span class="nav-text">Registrations</span>
+      </a>
     </div>
 
     <div class="nav-section">
       <div class="nav-label">Operations</div>
-      <a class="nav-item" data-page="tickets">
-        <div class="nav-icon">🎫</div> QR &amp; Tickets
+      <a class="nav-item" data-page="tickets" data-tooltip="QR & Tickets">
+        <div class="nav-icon">🎫</div><span class="nav-text">QR &amp; Tickets</span>
       </a>
-      <a class="nav-item" data-page="venues">
-        <div class="nav-icon">📍</div> Venues
+      <a class="nav-item" data-page="venues" data-tooltip="Venues">
+        <div class="nav-icon">📍</div><span class="nav-text">Venues</span>
       </a>
-      <a class="nav-item" data-page="certificates">
-        <div class="nav-icon">📜</div> Certificates
+      <a class="nav-item" data-page="certificates" data-tooltip="Certificates">
+        <div class="nav-icon">📜</div><span class="nav-text">Certificates</span>
       </a>
     </div>
 
     <div class="nav-section">
       <div class="nav-label">Communication</div>
-      <a class="nav-item" data-page="announcements">
-        <div class="nav-icon">📢</div> Announcements
+      <a class="nav-item" data-page="announcements" data-tooltip="Announcements">
+        <div class="nav-icon">📢</div><span class="nav-text">Announcements</span>
       </a>
-      
     </div>
 
     <div class="nav-section">
       <div class="nav-label">Team</div>
-     <a class="nav-item" data-page="execom"><div class="nav-icon">👥</div> Club Execom</a>
+      <a class="nav-item" data-page="execom" data-tooltip="Club Execom">
+        <div class="nav-icon">👥</div><span class="nav-text">Club Execom</span>
+      </a>
     </div>
   </nav>
 
   <div class="sidebar-user" id="sidebarUserBtn" data-page="settings" role="button" tabindex="0">
-  <div class="avatar profile-avatar" id="sidebarAvatar">??</div>
-  <div class="user-info">
-    <div class="name profile-name">Loading…</div>
-    <div class="role profile-role">Organizer</div>
+    <div class="avatar profile-avatar" id="sidebarAvatar">??</div>
+    <div class="user-info">
+      <div class="name profile-name">Loading…</div>
+      <div class="role profile-role">Organizer</div>
+    </div>
   </div>
-</div>
 </aside>
 
 <!-- OVERLAY (mobile) -->
@@ -106,34 +193,32 @@
 
 <!-- MAIN -->
 <div class="main" id="mainContent">
-  
-
 
   <!-- TOPBAR -->
   <header class="topbar">
-  <button class="icon-btn" id="sidebarToggle" title="Toggle Sidebar">☰</button>
-  <div class="topbar-title" id="topbarTitle">Dashboard</div>
- 
-  <div class="topbar-actions">
-    <a class="nav-item" data-page="clubs">
-  <div class="nav-icon">🏛️</div> Clubs
-</a>
-    <div class="icon-btn" id="notifBtn" title="Notifications">
-      🔔<div class="dot" id="notifDot"></div>
+    <button class="icon-btn" id="sidebarToggle" title="Toggle Sidebar">☰</button>
+    <div class="topbar-title" id="topbarTitle">Dashboard</div>
+    <div class="topbar-actions">
+      <a class="nav-item" data-page="clubs" data-tooltip="Clubs">
+        <div class="nav-icon">🏛️</div><span class="nav-text">Clubs</span>
+      </a>
+      <div class="icon-btn" id="notifBtn" title="Notifications">
+        🔔<div class="dot" id="notifDot"></div>
+      </div>
+      <button class="icon-btn theme-topbar-btn" id="themeTopbarBtn" title="Switch theme" aria-label="Toggle light/dark mode">
+        <span class="theme-icon-moon">🌙</span>
+        <span class="theme-icon-sun">☀️</span>
+      </button>
+      <button class="btn-primary" id="logoutTopBtn" onclick="logout()">🚪 Logout</button>
     </div>
-    <button class="icon-btn theme-topbar-btn" id="themeTopbarBtn" title="Switch theme" aria-label="Toggle light/dark mode">
-      <span class="theme-icon-moon">🌙</span>
-      <span class="theme-icon-sun">☀️</span>
-    </button>
-    <button class="btn-primary" id="logoutTopBtn" onclick="logout()">🚪 Logout</button>
-  </div>
-</header>
+  </header>
 
-  <!-- PAGE: DASHBOARD -->
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: DASHBOARD
+       ═══════════════════════════════════════════════════════════ -->
   <div class="page active" id="page-dashboard">
     <div class="content">
-    
-      <!-- QUICK ACTIONS — Generate Certs removed -->
+
       <div class="section-title">Quick Actions</div>
       <div class="quick-actions">
         <div class="quick-btn" data-action="newEvent">
@@ -161,12 +246,11 @@
           <p>Book Venue</p>
         </div>
       </div>
-      
+
       <!-- MY EVENTS -->
       <div class="card" style="margin-bottom: 28px;">
         <div class="card-header">
           <h3>📅 My Events</h3>
-          
         </div>
         <div id="dashEventList">
           <div class="empty-state"><span>⏳</span><p>Loading events…</p></div>
@@ -175,77 +259,84 @@
 
       <!-- BOTTOM ROW -->
       <div class="dash-bottom-row">
-  <!-- Pending approvals (left) -->
-  <div class="card">
-    <div class="card-header">
-      <h3>⏳ Pending Approvals</h3>
-    </div>
+        <!-- Pending approvals -->
+        <div class="card">
+          <div class="card-header">
+            <h3>⏳ Pending Approvals</h3>
+          </div>
+          <div id="approvalList">
+            <div class="empty-state"><span>✅</span><p>No pending approvals</p></div>
+          </div>
+          <div class="card-footer">
+            <button class="btn-ghost btn-full" id="viewAllApprovalsBtn">
+              View all approvals →
+            </button>
+          </div>
+        </div>
 
-    <div id="approvalList">
-      <div class="empty-state"><span>✅</span><p>No pending approvals</p></div>
-    </div>
+        <!-- Event calendar -->
+        <div class="panel" id="eventCalendarCard">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">📅 Event Calendar</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <button class="cal-nav-btn" id="calPrev">‹</button>
+              <span class="cal-month-label" id="calMonthLabel"></span>
+              <button class="cal-nav-btn" id="calNext">›</button>
+            </div>
+          </div>
+          <div class="mini-calendar" id="miniCalendar"></div>
+          <div class="cal-event-detail" id="calEventDetail" style="display:none;">
+            <div class="cal-event-detail-title" id="calDetailTitle"></div>
+            <div class="cal-event-detail-meta" id="calDetailMeta"></div>
+            <span class="cal-event-detail-link" id="calDetailLink" style="cursor:pointer;">View Event →</span>
+          </div>
+        </div>
+      </div>
 
-    <div class="card-footer">
-      <button class="btn-ghost btn-full" id="viewAllApprovalsBtn">
-        View all approvals →
-      </button>
+    </div>
+  </div>
+  <!-- /page-dashboard -->
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: ANNOUNCEMENTS
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-announcements">
+    <div class="content">
+      <div class="section-title">
+        <div class="title-left">
+          <button class="btn-back" onclick="switchPage('dashboard')">←</button>
+          Announcements
+        </div>
+        <button class="btn-primary" onclick="openNewAnnouncementModal()">＋ New</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr class="table-head-row">
+                <th class="th">#</th>
+                <th class="th">Title</th>
+                <th class="th">Club</th>
+                <th class="th">Date</th>
+                <th class="th">Type</th>
+                <th class="th">Status</th>
+                <th class="th">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="announcementBody">
+              <tr><td colspan="7" class="table-empty">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Event calendar (right) -->
-  <div class="card" id="eventCalendarCard">
-    <div class="card-header cal-header">
-      <h3>📅 Event Calendar</h3>
-      <div class="cal-nav">
-        <button class="btn-ghost" id="calPrev">‹</button>
-        <span id="calMonthLabel">—</span>
-        <button class="btn-ghost" id="calNext">›</button>
-      </div>
-    </div>
-
-    <div id="calGrid"></div>
-    <div id="calSelectedInfo" class="cal-selected"></div>
-    <div id="calEventList" class="cal-event-list"></div>
-  </div>
-</div>
-
-</div> <!-- ✅ close .content -->
-</div> <!-- ✅ close #page-dashboard -->
-
-<!-- PAGE: ANNOUNCEMENTS -->
-<div class="page" id="page-announcements">
-  <div class="content">
-    <div class="section-title">
-      <div class="title-left">
-        <button class="btn-back" onclick="switchPage('dashboard')">←</button>
-        Announcements
-      </div>
-      <button class="btn-primary" onclick="openNewAnnouncementModal()">＋ New</button>
-    </div>
-
-    <div class="card">
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr class="table-head-row">
-              <th class="th">#</th>
-              <th class="th">Title</th>
-              <th class="th">Club</th>
-              <th class="th">Date</th>
-              <th class="th">Type</th>
-              <th class="th">Status</th>
-              <th class="th">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="announcementBody">
-            <tr><td colspan="7" class="table-empty">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-  <!-- PAGE: EVENTS -->
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: EVENTS
+       ═══════════════════════════════════════════════════════════ -->
   <div class="page" id="page-events">
     <div class="content">
       <div class="section-title">
@@ -273,96 +364,84 @@
     </div>
   </div>
 
-  <!-- PAGE: REGISTRATIONS -->
-<div class="page" id="page-registrations">
-  <div class="content">
-
-    <div class="section-title">
-      <div class="title-left">
-        <button class="btn-back" onclick="switchPage('dashboard')">←</button>
-        Registrations
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: REGISTRATIONS
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-registrations">
+    <div class="content">
+      <div class="section-title">
+        <div class="title-left">
+          <button class="btn-back" onclick="switchPage('dashboard')">←</button>
+          Registrations
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <h3>📌 Event-wise Participants</h3>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr class="table-head-row">
+                <th class="th">#</th>
+                <th class="th">Event Name</th>
+                <th class="th">Download</th>
+              </tr>
+            </thead>
+            <tbody id="eventParticipantsBody">
+              <tr><td colspan="3" class="table-empty">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-
-    <!-- EVENT-WISE DOWNLOAD TABLE -->
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-header">
-        <h3>📌 Event-wise Participants</h3>
-      </div>
-
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr class="table-head-row">
-              <th class="th">#</th>
-              <th class="th">Event Name</th>
-              <th class="th">Download</th>
-            </tr>
-          </thead>
-          <tbody id="eventParticipantsBody">
-            <tr><td colspan="3" class="table-empty">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
   </div>
-</div>
-<!-- PAGE: CLUBS -->
-<div class="page" id="page-clubs">
-  <div class="content">
- 
-    <div class="section-title">
-      <div class="title-left">
-        <button class="btn-back" onclick="switchPage('dashboard')">←</button>
-        Clubs
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: CLUBS
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-clubs">
+    <div class="content">
+      <div class="section-title">
+        <div class="title-left">
+          <button class="btn-back" onclick="switchPage('dashboard')">←</button>
+          Clubs
+        </div>
+      </div>
+      <div class="org-club-filter-bar">
+        <div class="org-club-pills" id="clubPillBar">
+          <button class="org-club-pill active" data-filter="all">All</button>
+          <button class="org-club-pill" data-filter="Technical">Technical</button>
+          <button class="org-club-pill" data-filter="Non-Technical">Non-Technical</button>
+        </div>
+        <input type="text" id="clubSearch" class="org-club-search" placeholder="Search clubs…" oninput="filterClubs()" />
+      </div>
+      <div id="clubsGrid" class="org-clubs-grid">
+        <div class="empty-state empty-state--full"><span>⏳</span><p>Loading clubs…</p></div>
       </div>
     </div>
- 
-    <!-- Filter pills + search -->
-    <div class="org-club-filter-bar">
-      <div class="org-club-pills" id="clubPillBar">
-        <button class="org-club-pill active" data-filter="all">All</button>
-        <button class="org-club-pill" data-filter="Technical">Technical</button>
-        <button class="org-club-pill" data-filter="Non-Technical">Non-Technical</button>
-      </div>
-      <input
-        type="text"
-        id="clubSearch"
-        class="org-club-search"
-        placeholder="Search clubs…"
-        oninput="filterClubs()"
-      />
-    </div>
- 
-    <!-- Grid -->
-    <div id="clubsGrid" class="org-clubs-grid">
-      <div class="empty-state empty-state--full">
-        <span>⏳</span><p>Loading clubs…</p>
-      </div>
-    </div>
- 
   </div>
-</div>
-<!-- PAGE: CLUB SINGLE -->
-<div class="page" id="page-club-single">
-  <div class="content">
- 
-    <div class="section-title" style="margin-bottom:16px;">
-      <div class="title-left">
-        <button class="btn-back" onclick="switchPage('clubs')">←</button>
-        <span id="orgClubSingleTitle">Club Details</span>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: CLUB SINGLE
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-club-single">
+    <div class="content">
+      <div class="section-title" style="margin-bottom:16px;">
+        <div class="title-left">
+          <button class="btn-back" onclick="switchPage('clubs')">←</button>
+          <span id="orgClubSingleTitle">Club Details</span>
+        </div>
+      </div>
+      <div id="orgClubSingleContent">
+        <div class="empty-state"><span>⏳</span><p>Loading…</p></div>
       </div>
     </div>
- 
-    <!-- Dynamic content injected by JS -->
-    <div id="orgClubSingleContent">
-      <div class="empty-state"><span>⏳</span><p>Loading…</p></div>
-    </div>
- 
   </div>
-</div>
-  <!-- PAGE: VENUES -->
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: VENUES  ★ UPDATED — booking flow integrated
+       ═══════════════════════════════════════════════════════════ -->
   <div class="page" id="page-venues">
     <div class="content">
       <div class="section-title">
@@ -371,228 +450,236 @@
           Venues &amp; Availability
         </div>
       </div>
-      <div class="venue-layout">
-        <div class="card venue-sidebar-card">
-          <div class="venue-sidebar-label">Venues</div>
-          <div id="venueList"></div>
-        </div>
-        <div class="card venue-calendar-card">
-          <div class="calendar-nav">
-            <button class="btn-ghost" id="prevMonth">‹</button>
-            <span id="calendarTitle" class="calendar-title"></span>
-            <button class="btn-ghost" id="nextMonth">›</button>
+
+      <!-- Tab bar -->
+      <div class="venue-tabs">
+        <button class="venue-tab active" id="vtab-calendar"   onclick="switchVenueTab('calendar')">📅 Calendar</button>
+        <button class="venue-tab"        id="vtab-mybookings" onclick="switchVenueTab('mybookings')">📋 My Bookings</button>
+      </div>
+
+      <!-- CALENDAR TAB -->
+      <div id="vtab-panel-calendar">
+        <div class="venue-layout">
+          <div class="card venue-sidebar-card">
+            <div class="venue-sidebar-label">Venues</div>
+            <div id="venueList"></div>
           </div>
-          <div id="calendarGrid" class="calendar-grid"></div>
-          <div class="calendar-legend">
-            <span class="legend-item"><span class="legend-dot legend-dot--available"></span>Available</span>
-            <span class="legend-item"><span class="legend-dot legend-dot--partial"></span>Partial</span>
-            <span class="legend-item"><span class="legend-dot legend-dot--booked"></span>Booked</span>
+          <div class="card venue-calendar-card">
+            <div class="calendar-nav">
+              <button class="btn-ghost" id="prevMonth">‹</button>
+              <span id="calendarTitle" class="calendar-title"></span>
+              <button class="btn-ghost" id="nextMonth">›</button>
+            </div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+            <div class="calendar-legend">
+              <span class="legend-item">
+                <span class="legend-dot legend-dot--available"></span>Available — click to book
+              </span>
+              <span class="legend-item">
+                <span class="legend-dot" style="background:var(--amber);border-radius:50%;display:inline-block;width:10px;height:10px;margin-right:4px;"></span>Pending Approval
+              </span>
+              <span class="legend-item">
+                <span class="legend-dot legend-dot--booked"></span>Booked
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <div class="page" id="page-certificates">
-  <div class="content">
-    <div class="section-title">
-      <div class="title-left">
-        <button class="btn-back" onclick="switchPage('dashboard')">←</button>
-        Certificates
-      </div>
-    </div>
-
-    <!-- STEP WIZARD -->
-    <div class="cert-wizard">
-      <!-- Step indicators -->
-      <div class="cert-steps">
-        <div class="cert-step active" id="cstep-1">
-          <div class="cs-num">1</div>
-          <div class="cs-label">Select Event</div>
-        </div>
-        <div class="cs-divider"></div>
-        <div class="cert-step" id="cstep-2">
-          <div class="cs-num">2</div>
-          <div class="cs-label">Upload Template</div>
-        </div>
-        <div class="cs-divider"></div>
-        <div class="cert-step" id="cstep-3">
-          <div class="cs-num">3</div>
-          <div class="cs-label">Configure & Preview</div>
-        </div>
-        <div class="cs-divider"></div>
-        <div class="cert-step" id="cstep-4">
-          <div class="cs-num">4</div>
-          <div class="cs-label">Generate</div>
-        </div>
-      </div>
-
-      <!-- STEP 1: Event selection -->
-      <div class="cert-panel active" id="cpanel-1">
+      <!-- MY BOOKINGS TAB -->
+      <div id="vtab-panel-mybookings" style="display:none;">
         <div class="card">
-          <div class="card-header"><h3>📅 Select Event</h3></div>
-          <div id="certEventsList" class="cert-event-select-list">
-            <div class="empty-state"><span>⏳</span><p>Loading events…</p></div>
+          <div class="card-header">
+            <h3>📋 My Venue Bookings</h3>
+            <button class="btn-ghost" onclick="loadMyVenueBookings()" style="font-size:12px;">↻ Refresh</button>
           </div>
-        </div>
-        <div class="cert-panel-footer">
-          <div id="certStep1Selection" class="cert-selection-badge" style="display:none;"></div>
-          <button type="button" class="btn-primary" id="certStep1Next" disabled onclick="certGoStep(2)">Next →</button>
-        </div>
-      </div>
-
-      <!-- STEP 2: Template upload -->
-      <div class="cert-panel" id="cpanel-2">
-        <div class="cert-two-col">
-          <div class="card">
-            <div class="card-header"><h3>📄 Upload PDF Template</h3></div>
-            <div class="cert-upload-zone" id="certUploadZone">
-              <input type="file" id="certTemplateFile" accept=".pdf" hidden>
-              <div class="cuz-icon">📄</div>
-              <p class="cuz-title">Drop your certificate PDF here</p>
-              <p class="cuz-sub">or <span class="cuz-link" onclick="document.getElementById('certTemplateFile').click()">browse files</span></p>
-              <p class="cuz-hint">Max 20 MB · PDF only</p>
-            </div>
-            <div id="certFileStatus" style="padding:14px 18px;display:none;">
-              <div class="cert-file-chip">
-                <span class="cfc-icon">📄</span>
-                <span class="cfc-name" id="certFileName">—</span>
-                <button class="cfc-remove" onclick="removeCertTemplate()">✕</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-  <div class="card-header"><h3>👥 Participants</h3></div>
-  <div style="padding:18px;">
-    <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">
-      Upload a CSV or Excel file with a <strong>Name</strong> column. Optional: <strong>Email</strong>.
-    </p>
-    <input type="file" id="certExcelFile" accept=".xlsx,.xls,.csv" class="form-file">
-    <div id="certExcelPreview" style="margin-top:12px;font-size:12px;color:var(--emerald);"></div>
-  </div>
-</div>
-        </div>
-
-        <div class="cert-panel-footer">
-          <button type="button" class="btn-ghost" onclick="certGoStep(1)">← Back</button>
-          <button type="button" class="btn-primary" id="certStep2Next" disabled onclick="certGoStep(3)">Next →</button>
-        </div>
-      </div>
-
-      <!-- STEP 3: Configure + Preview -->
-      <div class="cert-panel" id="cpanel-3">
-        <div class="cert-two-col">
-          <div class="card">
-            <div class="card-header"><h3>⚙️ Text Settings</h3></div>
-            <div class="cert-config-form">
-              <div class="cert-config-row">
-                <label>Preview Name</label>
-                <input type="text" id="certPreviewName" class="form-input" value="John Doe" placeholder="Sample name for preview">
-              </div>
-              <div class="cert-config-row">
-                <label>Font Size <span id="certFontSizeVal">36</span>px</label>
-                <input type="range" id="certFontSize" min="16" max="72" value="36" class="cert-slider"
-                  oninput="document.getElementById('certFontSizeVal').textContent=this.value">
-              </div>
-              <div class="cert-config-row">
-                <label>Horizontal Position <span id="certXPctVal">50</span>%</label>
-                <input type="range" id="certXPct" min="10" max="90" value="50" class="cert-slider"
-                  oninput="document.getElementById('certXPctVal').textContent=this.value">
-              </div>
-              <div class="cert-config-row">
-                <label>Vertical Position <span id="certYPctVal">52</span>%</label>
-                <input type="range" id="certYPct" min="10" max="90" value="52" class="cert-slider"
-                  oninput="document.getElementById('certYPctVal').textContent=this.value">
-              </div>
-              <div class="cert-config-row">
-                <label>Name Color</label>
-                <div style="display:flex;align-items:center;gap:10px;">
-                  <input type="color" id="certColor" value="#1a1a2e" class="cert-color-pick">
-                  <span id="certColorHex" style="font-size:12px;color:var(--muted);">#1a1a2e</span>
-                </div>
-              </div>
-              <button
-  type="button"
-  id="certPreviewBtn"
-  class="btn-primary"
-  style="width:100%;"
-  onclick="previewCertificate()">
-  👁️ Preview Certificate
-</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header"><h3>👁️ Preview</h3></div>
-            <div id="certPreviewContainer" class="cert-preview-container">
-              <div class="empty-state" style="min-height:300px;">
-                <span>📄</span>
-                <p>Click "Preview Certificate" to see how it looks</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="cert-panel-footer">
-          <button type="button" class="btn-ghost" onclick="certGoStep(2)">← Back</button>
-          <button type="button" class="btn-primary" onclick="certGoStep(4)">Next →</button>
-        </div>
-      </div>
-
-      <!-- STEP 4: Generate -->
-      <div class="cert-panel" id="cpanel-4">
-        <div class="card cert-summary-card">
-          <div class="card-header"><h3>✅ Ready to Generate</h3></div>
-          <div class="cert-summary-body">
-            <div class="cert-summary-row"><span>Event</span><strong id="csum-event">—</strong></div>
-            <div class="cert-summary-row"><span>Participants</span><strong id="csum-count">—</strong></div>
-            <div class="cert-summary-row"><span>Template</span><strong id="csum-template">—</strong></div>
-            <div class="cert-summary-row"><span>Font Size</span><strong id="csum-fontsize">—</strong></div>
-          </div>
-          <div id="certGenerateProgress" style="display:none;padding:18px;">
-            <div class="cert-progress-bar">
-              <div class="cert-progress-fill" id="certProgressFill"></div>
-            </div>
-            <p id="certProgressLabel" style="text-align:center;font-size:13px;color:var(--muted);margin-top:10px;">Generating…</p>
-          </div>
-          <div class="card-footer" style="display:flex;justify-content:space-between;align-items:center;">
-            <button type="button" class="btn-ghost" onclick="certGoStep(3)">← Back</button>
-            <button type="button" class="btn-primary" id="certGenerateBtn" onclick="generateCertificates()">
-              🎓 Generate &amp; Download ZIP
-            </button>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr class="table-head-row">
+                  <th class="th">#</th>
+                  <th class="th">Venue</th>
+                  <th class="th">Event</th>
+                  <th class="th">Date</th>
+                  <th class="th">Time Slot</th>
+                  <th class="th">Status</th>
+                  <th class="th">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="myVenueBookingsBody">
+                <tr><td colspan="7" class="table-empty">Click the tab to load your bookings…</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Past Generations -->
-    <div class="card" style="margin-top:24px;">
-      <div class="card-header"><h3>📜 Certificate History</h3></div>
-      <div id="certHistoryList">
-        <div class="empty-state"><span>⏳</span><p>Loading…</p></div>
-      </div>
     </div>
   </div>
-</div>
+  <!-- /page-venues -->
 
-  <!-- PAGE: NOTIFICATIONS -->
-  <div class="page" id="page-notifications">
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: CERTIFICATES
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-certificates">
     <div class="content">
       <div class="section-title">
         <div class="title-left">
           <button class="btn-back" onclick="switchPage('dashboard')">←</button>
-          Notifications
+          Certificates
         </div>
       </div>
-      <div class="card">
-      
-        <div id="notifBody" class="notif-body"></div>
+
+      <div class="cert-wizard">
+        <div class="cert-steps">
+          <div class="cert-step active" id="cstep-1">
+            <div class="cs-num">1</div><div class="cs-label">Select Event</div>
+          </div>
+          <div class="cs-divider"></div>
+          <div class="cert-step" id="cstep-2">
+            <div class="cs-num">2</div><div class="cs-label">Upload Template</div>
+          </div>
+          <div class="cs-divider"></div>
+          <div class="cert-step" id="cstep-3">
+            <div class="cs-num">3</div><div class="cs-label">Configure &amp; Preview</div>
+          </div>
+          <div class="cs-divider"></div>
+          <div class="cert-step" id="cstep-4">
+            <div class="cs-num">4</div><div class="cs-label">Generate</div>
+          </div>
+        </div>
+
+        <!-- Step 1 -->
+        <div class="cert-panel active" id="cpanel-1">
+          <div class="card">
+            <div class="card-header"><h3>📅 Select Event</h3></div>
+            <div id="certEventsList" class="cert-event-select-list">
+              <div class="empty-state"><span>⏳</span><p>Loading events…</p></div>
+            </div>
+          </div>
+          <div class="cert-panel-footer">
+            <div id="certStep1Selection" class="cert-selection-badge" style="display:none;"></div>
+            <button type="button" class="btn-primary" id="certStep1Next" disabled onclick="certGoStep(2)">Next →</button>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="cert-panel" id="cpanel-2">
+          <div class="cert-two-col">
+            <div class="card">
+              <div class="card-header"><h3>📄 Upload Template (PDF)</h3></div>
+              <div class="card-body">
+                <div id="certUploadZone" class="cert-upload-zone">
+                  <div class="cert-upload-icon">📄</div>
+                  <p>Drag &amp; drop PDF or <label for="certTemplateFile" style="color:var(--violet);cursor:pointer;text-decoration:underline;">browse</label></p>
+                  <input type="file" id="certTemplateFile" accept=".pdf" style="display:none;">
+                </div>
+                <div id="certFileStatus" style="display:none;" class="cert-file-status">
+                  <span class="cert-file-icon">📄</span>
+                  <span id="certFileName">file.pdf</span>
+                  <button class="btn-ghost" onclick="removeCertTemplate()" style="font-size:12px;color:var(--rose);">✕ Remove</button>
+                </div>
+
+                <div style="margin-top:18px;">
+                  <div class="cert-src-tabs">
+                    <button class="cert-src-tab active" data-src="excel" onclick="setCertSource('excel')">📊 Excel Upload</button>
+                  </div>
+                  <div id="certSrcExcel" style="margin-top:12px;">
+                    <label class="form-label">Upload Excel with names (.xlsx / .csv)</label>
+                    <input type="file" id="certExcelFile" accept=".xlsx,.xls,.csv" class="form-file">
+                    <div id="certExcelPreview" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
+                  </div>
+                  <div id="certSrcDB" style="display:none;margin-top:12px;">
+                    <div id="certParticipantsList" style="max-height:260px;overflow-y:auto;border-radius:10px;border:1px solid var(--line);"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cert-panel-footer">
+            <button type="button" class="btn-ghost" onclick="certGoStep(1)">← Back</button>
+            <button type="button" class="btn-primary" id="certStep2Next" disabled onclick="certGoStep(3)">Next →</button>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="cert-panel" id="cpanel-3">
+          <div class="cert-two-col">
+            <div class="card">
+              <div class="card-header"><h3>⚙️ Configure</h3></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+                <div class="ed-form-group">
+                  <label>Font Size (px)</label>
+                  <input type="number" id="certFontSize" value="36" min="10" max="120" class="form-input">
+                </div>
+                <div class="ed-form-group">
+                  <label>Name X Position (%)</label>
+                  <input type="number" id="certXPct" value="50" min="0" max="100" class="form-input">
+                </div>
+                <div class="ed-form-group">
+                  <label>Name Y Position (%)</label>
+                  <input type="number" id="certYPct" value="52" min="0" max="100" class="form-input">
+                </div>
+                <div class="ed-form-group">
+                  <label>Font Color</label>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="color" id="certColor" value="#1a1a2e" style="width:44px;height:36px;border-radius:8px;border:1px solid var(--line);cursor:pointer;">
+                    <span id="certColorHex" style="font-size:13px;color:var(--muted);">#1a1a2e</span>
+                  </div>
+                </div>
+                <div class="ed-form-group">
+                  <label>Preview Name</label>
+                  <input type="text" id="certPreviewName" value="John Doe" class="form-input">
+                </div>
+                <button type="button" class="btn-primary" onclick="event.stopPropagation(); previewCertificate(event)">👁 Preview Certificate</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3>🖼 Preview</h3></div>
+              <div id="certPreviewContainer" style="min-height:300px;display:flex;align-items:center;justify-content:center;">
+                <div class="empty-state"><span>👁</span><p>Preview will appear here</p></div>
+              </div>
+            </div>
+          </div>
+          <div class="cert-panel-footer">
+            <button type="button" class="btn-ghost" onclick="certGoStep(2)">← Back</button>
+            <button type="button" class="btn-primary" onclick="certGoStep(4)">Next →</button>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="cert-panel" id="cpanel-4">
+          <div class="card" style="max-width:560px;margin:0 auto;">
+            <div class="card-header"><h3>🎓 Generate Certificates</h3></div>
+            <div class="card-body" style="padding:24px;">
+              <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+                <div class="ed-detail-row"><b>Event:</b> <span id="csum-event">—</span></div>
+                <div class="ed-detail-row"><b>Participants:</b> <span id="csum-count">—</span></div>
+                <div class="ed-detail-row"><b>Template:</b> <span id="csum-template">—</span></div>
+                <div class="ed-detail-row"><b>Font Size:</b> <span id="csum-fontsize">—</span></div>
+              </div>
+              <div id="certGenerateProgress" style="display:none;margin-bottom:16px;">
+                <div style="height:8px;border-radius:8px;background:var(--line);overflow:hidden;">
+                  <div id="certProgressFill" style="height:100%;width:0%;background:var(--g-violet);border-radius:8px;transition:width .3s;"></div>
+                </div>
+                <div id="certProgressLabel" style="font-size:12px;color:var(--muted);margin-top:6px;text-align:center;">Preparing…</div>
+              </div>
+              <button type="button" class="btn-primary btn-submit" id="certGenerateBtn" onclick="generateCertificates()">
+                🎓 Generate &amp; Download ZIP
+              </button>
+            </div>
+          </div>
+          <div class="cert-panel-footer">
+            <button type="button" class="btn-ghost" onclick="certGoStep(3)">← Back</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- PAGE: EXECOM -->
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: EXECOM
+       ═══════════════════════════════════════════════════════════ -->
   <div class="page" id="page-execom">
     <div class="content">
       <div class="section-title">
@@ -608,14 +695,18 @@
     </div>
   </div>
 
-  <!-- PAGE: EVENT DETAIL (merged from org.html) -->
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: EVENT DETAIL
+       ═══════════════════════════════════════════════════════════ -->
   <div class="page" id="page-event-detail">
     <div class="content">
       <div id="edContainer"></div>
     </div>
   </div>
 
-  <!-- PAGE: SETTINGS -->
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: SETTINGS
+       ═══════════════════════════════════════════════════════════ -->
   <div class="page" id="page-settings">
     <div class="content">
       <div class="section-title">
@@ -651,13 +742,14 @@
             <div class="account-field"><span class="field-label">Admission No</span><span id="pfAdmissionNo">—</span></div>
             <div class="account-field account-field--last"><span class="field-label">Class</span><span id="pfClass">—</span></div>
           </div>
-          
         </div>
       </div>
     </div>
   </div>
 
-  <!-- PAGE: QR & TICKETS -->
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: QR & TICKETS
+       ═══════════════════════════════════════════════════════════ -->
   <div class="page" id="page-tickets">
     <div class="content">
       <div class="section-title">
@@ -667,42 +759,41 @@
         </div>
       </div>
       <div class="card" style="padding:20px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <h3 style="margin:0;">🎫 Ticket Scanner</h3>
-
-    <div style="display:flex;gap:10px;">
-      <button id="startScan" class="btn-primary">Start Camera</button>
-      <button id="stopScan" class="btn-ghost" disabled>Stop</button>
-    </div>
-  </div>
-
-  <div style="display:grid;grid-template-columns: 1fr 320px;gap:20px;align-items:start;">
-    <!-- Camera -->
-    <div>
-      <div id="qr-reader" style="width:100%;max-width:520px;"></div>
-      <p style="margin:10px 0 0;color:#7a7a7a;font-size:13px;">
-        Point the camera at the QR code on the student ticket.
-      </p>
-    </div>
-
-    <!-- Result -->
-    <div class="card" style="border:1px solid rgba(0,0,0,.08);">
-      <div class="card-header" style="padding:12px 14px;">
-        <h3 style="margin:0;font-size:16px;">Scan Result</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h3 style="margin:0;">🎫 Ticket Scanner</h3>
+          <div style="display:flex;gap:10px;">
+            <button id="startScan" class="btn-primary">Start Camera</button>
+            <button id="stopScan" class="btn-ghost" disabled>Stop</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;">
+          <div>
+            <div id="qr-reader" style="width:100%;max-width:520px;"></div>
+            <p style="margin:10px 0 0;color:#7a7a7a;font-size:13px;">
+              Point the camera at the QR code on the student ticket.
+            </p>
+          </div>
+          <div class="card" style="border:1px solid rgba(0,0,0,.08);">
+            <div class="card-header" style="padding:12px 14px;">
+              <h3 style="margin:0;font-size:16px;">Scan Result</h3>
+            </div>
+            <div id="scanResult" style="padding:14px;font-size:14px;line-height:1.45;">
+              Scan a ticket to verify entry.
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="scanResult" style="padding:14px;font-size:14px;line-height:1.45;">
-        Scan a ticket to verify entry.
-      </div>
-    </div>
-  </div>
-</div>
     </div>
   </div>
 
 </div>
 <!-- /main -->
 
-<!-- MODALS -->
+<!-- ═══════════════════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════════════════ -->
+
+<!-- Create Event Modal -->
 <div class="modal-overlay" id="createEventModal">
   <div class="modal-box">
     <div class="modal-header">
@@ -739,6 +830,7 @@
   </div>
 </div>
 
+<!-- Announcement Modal -->
 <div class="modal-overlay" id="addAnnouncementModal">
   <div class="modal-box modal-box--sm">
     <div class="modal-header">
@@ -758,6 +850,7 @@
   </div>
 </div>
 
+<!-- Event Detail Modal -->
 <div class="modal-overlay" id="eventDetailModal">
   <div class="modal-box">
     <div class="modal-header">
@@ -768,6 +861,59 @@
   </div>
 </div>
 
+<!-- ★ VENUE BOOKING MODAL (new) ─────────────────────────────── -->
+<div class="modal-overlay" id="venueBookModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>📍 Book a Venue Slot</h3>
+      <button class="modal-close" onclick="closeModal('venueBookModal')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Info banner -->
+      <div id="venueBookInfo"
+           style="margin-bottom:16px;padding:12px 14px;
+                  background:var(--violet-light);border-radius:10px;
+                  font-size:13px;color:var(--violet-mid);font-weight:500;"></div>
+
+      <form id="venueBookForm" onsubmit="submitVenueBooking(event)" class="modal-form">
+        <!-- Hidden state -->
+        <input type="hidden" id="vbVenueName">
+        <input type="hidden" id="vbDate">
+        <input type="hidden" id="vbSlotStart">
+        <input type="hidden" id="vbSlotEnd">
+
+        <!-- Time slot picker -->
+        <label class="form-label">Select Time Slot *</label>
+        <div id="vbSlotList"
+             style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;min-height:36px;">
+        </div>
+
+        <!-- Link to event -->
+        <label class="form-label">Link to Event (optional)</label>
+        <select id="vbEventId" class="form-select form-select--full">
+          <option value="">— Select an event —</option>
+        </select>
+
+        <!-- Purpose -->
+        <label class="form-label">Purpose / Notes</label>
+        <textarea id="vbPurpose" class="form-textarea" rows="3"
+                  placeholder="e.g. Annual Tech Fest – Workshop session"></textarea>
+
+        <!-- Supporting document -->
+        <label class="form-label">Supporting Document (PDF / Image)</label>
+        <input type="file" id="vbDoc" accept=".pdf,image/*" class="form-file">
+
+        <button type="submit" class="btn-primary btn-submit" id="vbSubmitBtn" disabled>
+          📩 Submit Booking Request
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- /venueBookModal -->
+
+<!-- Old slots modal kept for safety (now unused — booking modal replaced it) -->
 <div class="modal-overlay" id="venueSlotsModal">
   <div class="modal-box modal-box--sm">
     <div class="modal-header">
@@ -790,8 +936,7 @@
   </div>
 </div>
 
-<div id="toast" class="toast"></div>
-<!-- EXECOM EDIT / ADD MODAL -->
+<!-- Execom Edit / Add Modal -->
 <div class="modal-overlay" id="execomEditModal">
   <div class="modal-box modal-box--sm">
     <div class="modal-header">
@@ -809,6 +954,9 @@
     </form>
   </div>
 </div>
+
+<div id="toast" class="toast"></div>
+
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="orgscript.js"></script>
 </body>

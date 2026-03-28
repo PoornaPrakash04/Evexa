@@ -3,7 +3,14 @@ const db = require("../db");
 const auth = require("../middleware/authMiddleware");
 
 const router = express.Router();
+const multer = require("multer");
+const path   = require("path");
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename:    (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ storage });
 // Generate hourly slots
 function generateSlots() {
   const slots = [];
@@ -63,8 +70,14 @@ router.get("/", auth(["ORGANIZER", "STUDENT"]), (req, res) => {
   });
 });
 // Book slot
-router.post("/book", auth(["ORGANIZER"]), (req, res) => {
-  const { venue_name, event_id, date, time } = req.body;
+
+router.post("/bookings", auth(["ORGANIZER"]), upload.single("support_doc"), (req, res) => {
+  console.log("BOOKING BODY:", req.body); 
+  const { venue_name, event_id, date, slot_start, slot_end, purpose } = req.body;
+
+  if (!venue_name || !date || !slot_start || !slot_end) {
+    return res.status(400).json({ message: "venue_name, date, slot_start and slot_end are required." });
+  }
 
   db.query("SELECT id FROM venues WHERE name = ?", [venue_name], (err, results) => {
     if (err || !results.length)
@@ -73,17 +86,19 @@ router.post("/book", auth(["ORGANIZER"]), (req, res) => {
     const venue_id = results[0].id;
 
     db.query(
-      `INSERT INTO venue_bookings (event_id, venue_id, date, time, status)
-       VALUES (?, ?, ?, ?, 'Pending')`,
-      [event_id, venue_id, date, time],
-      (err) => {
-        if (err) return res.status(400).json({ message: "Booking failed", error: err.message });
-        res.json({ message: "Venue booked successfully" });
-      }
-    );
+  `INSERT INTO venue_bookings (event_id, venue_id, date, time, slot_end, status, purpose, organizer_id)
+   VALUES (?, ?, ?, ?, ?, 'Pending', ?, ?)`,
+  [event_id || null, venue_id, date, slot_start, slot_end || null, purpose || null, req.user.id],
+  (err) => {
+    if (err) {
+      console.error("Booking insert error:", err);
+      return res.status(400).json({ message: "Booking failed", error: err.message });
+    }
+    res.json({ message: "Venue booked successfully" });
+  }
+);
   });
 });
-
 router.get("/calendar", auth(["ORGANIZER", "STUDENT"]), (req, res) => {
   const { venue_name, year, month } = req.query;
   
@@ -112,6 +127,95 @@ router.get("/calendar", auth(["ORGANIZER", "STUDENT"]), (req, res) => {
       }
       console.log("Calendar results:", results); // DEBUG
       res.json(results);
+    }
+  );
+});
+// GET organizer's own bookings
+router.get("/bookings/mine", auth(["ORGANIZER"]), (req, res) => {
+  db.query(
+    `SELECT vb.id, v.name AS venue_name, vb.date, vb.time AS slot_start, vb.status,
+            e.title AS event_title
+     FROM venue_bookings vb
+     JOIN venues v ON v.id = vb.venue_id
+     LEFT JOIN events e ON e.id = vb.event_id
+     WHERE vb.organizer_id = ?
+     ORDER BY vb.date DESC`,
+    [req.user.id],
+    (err, results) => {
+      if (err) return res.status(500).json({ message: err.message });
+      res.json(results);
+    }
+  );
+});
+
+// DELETE (cancel) a booking
+router.delete("/bookings/:id", auth(["ORGANIZER"]), (req, res) => {
+  db.query(
+    "DELETE FROM venue_bookings WHERE id = ? AND organizer_id = ? AND status = 'Pending'",
+    [req.params.id, req.user.id],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: err.message });
+      if (!result.affectedRows) return res.status(404).json({ message: "Booking not found or already approved." });
+      res.json({ message: "Booking cancelled" });
+    }
+  );
+});
+// Hall coordinator approves/rejects a venue booking
+router.put("/bookings/:id/status", auth(["HALL_COORDINATOR"]), (req, res) => {
+  const { status } = req.body; // "Approved" or "Rejected"
+
+  if (!["Approved", "Rejected"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status." });
+  }
+
+  // Get the booking to find the linked event
+  db.query(
+    "SELECT * FROM venue_bookings WHERE id = ?",
+    [req.params.id],
+    (err, results) => {
+      if (err || !results.length) {
+        return res.status(404).json({ message: "Booking not found." });
+      }
+
+      const booking = results[0];
+
+      // Only allow action on Faculty Approved bookings
+      if (booking.status !== "Faculty Approved") {
+        return res.status(400).json({ message: "Booking must be Faculty Approved first." });
+      }
+
+      // Update venue booking status
+      db.query(
+        "UPDATE venue_bookings SET status = ? WHERE id = ?",
+        [status, req.params.id],
+        (err2) => {
+          if (err2) return res.status(500).json({ message: "Server error" });
+
+          // If hall coordinator approved, mark the event as fully Approved
+          if (status === "Approved" && booking.event_id) {
+            db.query(
+              "UPDATE events SET status = 'Approved' WHERE id = ? AND status = 'Faculty Approved'",
+              [booking.event_id],
+              (err3) => {
+                if (err3) console.error("Event approval error:", err3);
+              }
+            );
+          }
+
+          // If rejected, push event back to Pending so organizer knows
+          if (status === "Rejected" && booking.event_id) {
+            db.query(
+              "UPDATE events SET status = 'Pending' WHERE id = ?",
+              [booking.event_id],
+              (err3) => {
+                if (err3) console.error("Event revert error:", err3);
+              }
+            );
+          }
+
+          res.json({ message: `Venue booking ${status}.` });
+        }
+      );
     }
   );
 });

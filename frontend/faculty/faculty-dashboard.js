@@ -9,7 +9,6 @@ var API = "http://localhost:5000/api";
 window.API = API;
 
 // ── PENDING STATUS HELPER ─────────────────────────────────────────────────
-// Centralised so we never miss a variant from the backend
 function isPendingStatus(status) {
   return ["pending", "review", "submitted", "awaiting", "under review", "new"]
     .includes((status || "").toLowerCase().trim());
@@ -18,10 +17,7 @@ function isPendingStatus(status) {
 // ── AUTH ──────────────────────────────────────────────────────────────────
 async function apiFetch(endpoint, opts = {}) {
   const token = localStorage.getItem("authToken");
-  if (!token) {
-    window.location.href = "fcsignin.html";
-    return null;
-  }
+  if (!token) { window.location.href = "faculty-signin.html"; return null; }
 
   try {
     const base = (typeof API !== "undefined" ? API : window.API) || "http://localhost:5000/api";
@@ -30,13 +26,13 @@ async function apiFetch(endpoint, opts = {}) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        ...(opts.headers || {})
+        ...(opts.headers || {}),
       },
     });
 
     if (res.status === 401) {
       localStorage.removeItem("authToken");
-      window.location.href = "fcsignin.html";
+      window.location.href = "faculty-signin.html";
       return null;
     }
 
@@ -46,6 +42,11 @@ async function apiFetch(endpoint, opts = {}) {
       console.error(`[apiFetch] ${endpoint} → ${res.status} | body: ${body}`);
       return null;
     }
+
+    // FIX: 204 No Content (DELETE success) has no body — don't call .json()
+    if (res.status === 204 || res.headers.get("content-length") === "0") return {};
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) return {};
 
     const data = await res.json();
     console.log(`[apiFetch] ${endpoint} →`, data);
@@ -64,17 +65,32 @@ let chartsInited   = false;
 let feedbackInited = false;
 let selectedClubId = "all";
 
-let cachedProfile   = null;
-let cachedProposals = [];
-let cachedEvents    = [];
-let cachedClubs     = [];
-let cachedFeedback  = [];
+let cachedProfile       = null;
+let cachedProposals     = [];
+let cachedEvents        = [];
+let cachedClubs         = [];
+let cachedFeedback      = [];
+let cachedRegistrations = [];
 
 let localNotifs = JSON.parse(localStorage.getItem("evexa_faculty_notifs") || "[]");
 function saveNotifs() {
   localStorage.setItem("evexa_faculty_notifs", JSON.stringify(localNotifs.slice(0, 50)));
 }
+function addLocalNotif(type, icon, title, sub, sourceId = null) {
+  localNotifs.unshift({
+    id: `${Date.now()}-${Math.random()}`,
+    sourceId, // 🔥 VERY IMPORTANT
+    type,
+    icon,
+    title,
+    sub,
+    time: new Date().toISOString(),
+    read: false
+  });
 
+  saveNotifs();
+  updateNotifBadge();
+}
 // ── BOOT ──────────────────────────────────────────────────────────────────
 async function boot() {
   applyTheme();
@@ -106,16 +122,25 @@ async function boot() {
     if (pd) pd.style.display = "none";
   });
   document.getElementById("postAnnounceBtn")?.addEventListener("click", postAnnouncement);
-
+  
   document.addEventListener("click", e => {
     const wrap = document.getElementById("notifBtn")?.closest(".notif-wrap");
     const dd = document.getElementById("notifDropdown");
     if (dd && !wrap?.contains(e.target)) dd.classList.remove("open");
   });
 
+  document.getElementById("eventListBody")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".event-name-btn");
+  if (!btn) return;
+  const eventId = btn.dataset.eventId;
+  console.log("clicked event id =", eventId);
+  openFacultyEventDetailPage(eventId);
+});
+
   initBulk();
   initSearchFilters();
   initCalNav();
+  initAllClubsFilters();
 
   let profile = await apiFetch("/faculty/me");
   if (!profile) profile = await apiFetch("/auth/me");
@@ -124,7 +149,7 @@ async function boot() {
   if (!profile.faculty_no && !profile.department && profile.roll_no) {
     localStorage.removeItem("authToken");
     showToast("Please log in with your faculty account.", "error");
-    setTimeout(() => window.location.href = "fcsignin.html", 1500);
+    setTimeout(() => window.location.href = "faculty-signin.html", 1500);
     return;
   }
 
@@ -147,11 +172,66 @@ async function boot() {
 
   await refreshAll();
 
-  renderDashboard();
+  currentPage = "dashboard";
+  selectedClubId = "all";
+
+  const eventOverlay = document.getElementById("eventDetailOverlay");
+  const eventDrawer  = document.getElementById("eventDetailDrawer");
+  const proposalDetail = document.getElementById("proposalDetail");
+
+  if (eventOverlay) eventOverlay.style.display = "none";
+  if (eventDrawer) {
+    eventDrawer.style.display = "none";
+    eventDrawer.classList.remove("open");
+  }
+  if (proposalDetail) proposalDetail.style.display = "none";
+
+  const savedPage = localStorage.getItem("facultyCurrentPage") || "dashboard";
+  currentPage = savedPage;
+  navigateTo(savedPage);
+
   updateNotifBadge();
   syncNotifs();
 }
+async function downloadFacultyEventReport(eventId) {
+  try {
+    const res = await apiFetch(`/events/${eventId}/participants`);
+    const data = Array.isArray(res) ? res : [];
 
+    if (!data.length) {
+      showToast("No data to export.", "error");
+      return;
+    }
+
+    const headers = ["Name", "Email", "Department", "Class", "Phone"];
+    const rows = data.map(p => [
+      p.name || "",
+      p.email || "",
+      p.department || "",
+      p.class || "",
+      p.phone_no || p.phone || ""
+    ]);
+
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `event_report_${eventId}.csv`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+    showToast("⬇️ Report downloaded!", "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Download failed.", "error");
+  }
+}
 function openNotifHistoryPage(e) {
   if (e) e.stopPropagation();
   if (currentPage === "notif-history") {
@@ -166,24 +246,25 @@ function openNotifHistoryPage(e) {
 }
 
 async function refreshAll() {
-  // FIX: all fetches now go through apiFetch so the auth token is always sent
-  const [proposals, events, clubs, feedback] = await Promise.all([
+  const [proposals, events, clubs, feedback, registrations] = await Promise.all([
     apiFetch("/faculty/proposals"),
     apiFetch("/events"),
     apiFetch("/clubs/my-clubs"),
     apiFetch("/faculty/feedback"),
+    apiFetch("/faculty/registrations").catch(() => null),
   ]);
 
-  cachedProposals = Array.isArray(proposals) ? proposals : [];
-  cachedEvents    = Array.isArray(events)    ? events    : [];
-  cachedClubs     = Array.isArray(clubs)     ? clubs     : [];
-  cachedFeedback  = Array.isArray(feedback)  ? feedback  : [];
+  cachedProposals     = Array.isArray(proposals)     ? proposals     : [];
+  cachedEvents        = Array.isArray(events)        ? events        : [];
+  cachedClubs         = Array.isArray(clubs)         ? clubs         : [];
+  cachedFeedback      = Array.isArray(feedback)      ? feedback      : [];
+  cachedRegistrations = Array.isArray(registrations) ? registrations : [];
 
-  // Debug: log what we got so you can verify status strings from your backend
   console.log("[refreshAll] proposals:", cachedProposals.length,
     cachedProposals.map(p => ({ id: p.id, title: p.title, status: p.status })));
   console.log("[refreshAll] events:", cachedEvents.length,
     cachedEvents.map(e => ({ id: e.id, title: e.title, status: e.status })));
+  console.log("[refreshAll] registrations:", cachedRegistrations.length);
 
   updateBadges();
 }
@@ -200,10 +281,12 @@ const PAGE_META = {
   "feedback":      ["Feedback & Reports",       "Student feedback ratings and comments."],
   "announcements": ["Announcements",            "Post and manage club announcements."],
   "notif-history": ["Notification History",     "All alerts and system updates."],
-  "venues": ["Venues & Availability", "Check venue availability by date."],
+  "venues":        ["Venues & Availability",    "Check venue availability by date."],
 };
 
 function navigateTo(page) {
+  localStorage.setItem("facultyCurrentPage", page);
+
   document.querySelectorAll("[id^='pg-']").forEach(e => e.style.display = "none");
 
   const pg = document.getElementById("pg-" + page);
@@ -214,6 +297,12 @@ function navigateTo(page) {
   );
 
   currentPage = page;
+
+  const backBtn = document.getElementById("backBtn");
+if (backBtn) {
+  const hideBackPages = ["dashboard", "notif-history", "event-detail"];
+  backBtn.style.display = hideBackPages.includes(page) ? "none" : "inline-flex";
+}
 
   const [t, s] = PAGE_META[page] || ["", ""];
   const selectedClub = getSelectedClub();
@@ -235,16 +324,17 @@ function navigateTo(page) {
   const renders = {
     "dashboard":     renderDashboard,
     "proposals":     renderProposals,
-    "event-list": () => { renderEventList(); },
-    "venues": () => loadVenues(),
+    "event-list":    () => { renderEventList(); },
+    "venues":        () => loadVenues(),
     "pending":       renderPendingPage,
     "all-clubs":     renderAllClubs,
     "clubs":         renderClubs,
     "announcements": renderAnnouncements,
     "notif-history": renderNotifHistory,
     "feedback":      renderFeedback,
-    "analytics":     () => {
+    "analytics": async () => {
       chartsInited = false;
+      await refreshAll();
       setTimeout(initCharts, 60);
     },
   };
@@ -364,7 +454,52 @@ function dashCalDayClick(el2, day) {
 
   panel.style.display = "";
 }
+async function loadFacultyParticipants(eventId) {
+  const wrap = document.getElementById("facultyParticipantsWrap");
+  if (!wrap) return;
 
+  wrap.innerHTML = "Loading participants...";
+
+  try {
+    const res = await apiFetch(`/events/${eventId}/participants`);
+    const data = Array.isArray(res) ? res : [];
+
+    if (!data.length) {
+      wrap.innerHTML = "<p>No participants found.</p>";
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Dept</th>
+            <th>Class</th>
+            <th>Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((p, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${p.name || "-"}</td>
+              <td>${p.email || "-"}</td>
+              <td>${p.department || "-"}</td>
+              <td>${p.class || "-"}</td>
+              <td>${p.phone_no || p.phone || "-"}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  } catch (err) {
+    console.error(err);
+    wrap.innerHTML = "Failed to load participants.";
+  }
+}
 async function loadAnnouncementBoard() {
   const ab = document.getElementById("dashAnnouncements");
   if (!ab) return;
@@ -432,10 +567,8 @@ async function renderProposals(filter = "all", search = "", category = "all") {
   const tbody = document.getElementById("proposalsBody");
   if (!tbody) return;
 
-  // Show loading state
   tbody.innerHTML = `<tr><td colspan="7" class="td-empty">Loading proposals…</td></tr>`;
 
-  // FIX: always use apiFetch so the auth token is sent for both calls
   const [freshProposals, freshEvents] = await Promise.all([
     apiFetch("/faculty/proposals"),
     apiFetch("/events"),
@@ -444,31 +577,23 @@ async function renderProposals(filter = "all", search = "", category = "all") {
   if (Array.isArray(freshProposals)) cachedProposals = freshProposals;
   if (Array.isArray(freshEvents))    cachedEvents    = freshEvents;
 
-  // ── FIX: deduplication uses a source-prefixed key so proposal id=1
-  //         and event id=1 are never treated as the same item
   const proposalItems = (Array.isArray(cachedProposals) ? cachedProposals : []).map(p => ({
     ...p,
     _src: "proposal",
     _key: `proposal-${p.id}`,
   }));
 
-  // Pull pending events that aren't already covered by a proposal entry
-  // FIX: DO NOT remove events based on proposal IDs
-const pendingEventItems = (Array.isArray(cachedEvents) ? cachedEvents : [])
-  .filter(e => isPendingStatus(e.status))
-  .map(e => ({
-    ...e,
-    _src: "event",
-    _key: `event-${e.id}`,
-    organizer: e.organizer || e.created_by || "—",
-  }));
-  console.log("👉 ALL EVENTS:", cachedEvents.map(e => ({
-  id: e.id,
-  title: e.title,
-  status: e.status
-})));
+  const pendingEventItems = (Array.isArray(cachedEvents) ? cachedEvents : [])
+    .filter(e => isPendingStatus(e.status))
+    .map(e => ({
+      ...e,
+      _src: "event",
+      _key: `event-${e.id}`,
+      organizer: e.organizer || e.created_by || "—",
+    }));
 
-  // Merge and deduplicate by _key (source-aware), not by raw id
+  console.log("👉 ALL EVENTS:", cachedEvents.map(e => ({ id: e.id, title: e.title, status: e.status })));
+
   const seen = new Set();
   const merged = [];
   [...proposalItems, ...pendingEventItems].forEach(item => {
@@ -477,7 +602,6 @@ const pendingEventItems = (Array.isArray(cachedEvents) ? cachedEvents : [])
     merged.push(item);
   });
 
-  // FIX: filter uses isPendingStatus() so all backend status variants are accepted
   let list = merged.filter(p => isPendingStatus(p.status));
 
   if (selectedClubId !== "all") list = list.filter(matchesSelectedClub);
@@ -496,7 +620,6 @@ const pendingEventItems = (Array.isArray(cachedEvents) ? cachedEvents : [])
 
   window.currentProposalList = list;
 
-  // Debug logs — remove once confirmed working
   console.log("📋 cachedProposals raw statuses:", cachedProposals.map(p => p.status));
   console.log("📋 pendingEventItems:", pendingEventItems.length);
   console.log("📋 final list after filter:", list.length, list.map(p => ({ id: p.id, title: p.title, status: p.status })));
@@ -535,7 +658,6 @@ const pendingEventItems = (Array.isArray(cachedEvents) ? cachedEvents : [])
 
 // ── PROPOSAL DETAIL ───────────────────────────────────────────────────────
 function showProposalDetail(key) {
-  // key is now "proposal-{id}" or "event-{id}" (source-aware)
   const p = (window.currentProposalList || []).find(x => x._key === key);
   if (!p) { console.warn("Proposal not found for key:", key); return; }
 
@@ -601,9 +723,6 @@ function showProposalDetail(key) {
       </div>
     `;
   }
-
-  document.getElementById("proposalDetail").style.display = "";
-  document.getElementById("proposalDetail").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function formatTime(t) {
@@ -621,16 +740,11 @@ function formatTime(t) {
 }
 
 // ── APPROVE / REJECT ──────────────────────────────────────────────────────
-// FIX: approve/reject now route to the correct endpoint based on _src
 function resolveApproveEndpoint(id, src) {
-  return src === "event"
-    ? `/events/${id}/approve`
-    : `/faculty/proposals/${id}/approve`;
+  return src === "event" ? `/events/${id}/approve` : `/faculty/proposals/${id}/approve`;
 }
 function resolveRejectEndpoint(id, src) {
-  return src === "event"
-    ? `/events/${id}/reject`
-    : `/faculty/proposals/${id}/reject`;
+  return src === "event" ? `/events/${id}/reject` : `/faculty/proposals/${id}/reject`;
 }
 
 async function approveProposal(id, src = "proposal") {
@@ -703,49 +817,510 @@ async function quickReject(id, src)  { await rejectProposal(id, src);  renderDas
 
 // ── EVENT LIST ────────────────────────────────────────────────────────────
 async function renderEventList(search = "", status = "all") {
-  if (!cachedEvents.length) {
-    // FIX: use apiFetch so the auth token is always sent
-    const fresh = await apiFetch("/events");
-    cachedEvents = Array.isArray(fresh) ? fresh : [];
-  }
+  const fresh = await apiFetch("/events");
+  cachedEvents = Array.isArray(fresh) ? fresh : [];
 
   const tbody = document.getElementById("eventListBody");
   if (!tbody) return;
 
-  // Show only approved/completed events in Event List
-  let list = cachedEvents.filter(e =>
-    ["approved", "completed"].includes((e.status || "").toLowerCase())
-  );
-
-  if (selectedClubId !== "all") {
-    list = list.filter(matchesSelectedClub);
-  }
+  let list = [...cachedEvents];
 
   if (status !== "all") {
-    list = list.filter(e => (e.status || "").toLowerCase() === status.toLowerCase());
+    list = list.filter(e => (e.status || "").toLowerCase().trim() === status.toLowerCase());
   }
 
   if (search) {
+    const q = String(search).toLowerCase();
     list = list.filter(e =>
-      (e.title || "").toLowerCase().includes(search) ||
-      (e.club || "").toLowerCase().includes(search)
+      String(e.title || "").toLowerCase().includes(q) ||
+      String(e.club || "").toLowerCase().includes(q)
     );
   }
 
-  tbody.innerHTML = list.length ? list.map(e => `
-    <tr>
-      <td><span class="ev-name">${e.title}</span></td>
-      <td>${e.club || "—"}</td>
-      <td>${fmtDate(e.date || e.event_date || e.start_date)}</td>
-      <td>${e.venue || "—"}</td>
-      <td><span class="tag">${e.category || e.type || "General"}</span></td>
-      <td>${e.capacity || "—"}</td>
-      <td>${e.registration_fee > 0 ? "₹" + e.registration_fee : "Free"}</td>
-      <td><span class="badge ${e.status || "approved"}">${cap(e.status || "approved")}</span></td>
-      <td><button class="mini-btn" onclick="downloadParticipants(${e.id})">⬇️ Download</button></td>
-    </tr>
-  `).join("")
-  : `<tr><td colspan="9" class="td-empty">No approved or completed events found.</td></tr>`;
+  list.sort((a, b) => {
+    const da = parseEventDate(a.date || a.event_date || a.start_date);
+    const db = parseEventDate(b.date || b.event_date || b.start_date);
+    return (db || 0) - (da || 0);
+  });
+
+  window.currentEventList = list;
+
+  tbody.innerHTML = list.length
+    ? list.map(e => `
+      <tr>
+        <td>
+          <button type="button" class="event-name-btn" data-event-id="${e.id}">
+            ${e.title || "Untitled"} <span class="ev-link-icon">↗</span>
+          </button>
+        </td>
+        <td>${e.club || e.organizer || "—"}</td>
+        <td>${fmtDate(e.date || e.event_date || e.start_date)}</td>
+        <td>${e.venue || "—"}</td>
+        <td><span class="tag">${e.category || e.type || "General"}</span></td>
+        <td>${e.capacity || "—"}</td>
+        <td>${e.registration_fee > 0 ? "₹" + e.registration_fee : "Free"}</td>
+        <td><span class="badge ${(e.status || "approved").toLowerCase()}">${cap(e.status || "approved")}</span></td>
+        <td>
+          <button
+            type="button"
+            class="mini-btn"
+            onclick="downloadParticipants(${e.id}); event.stopPropagation();"
+          >⬇️ Download</button>
+        </td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="9" class="td-empty">No events found.</td></tr>`;
+}
+async function openFacultyEventDetailPage(eventId) {
+  navigateTo("event-detail");
+
+  const body = document.getElementById("facultyEventDetailBody");
+  if (!body) return;
+
+  body.innerHTML = `<div class="list-empty" style="padding:24px;">Loading event details…</div>`;
+
+  try {
+    if (!Array.isArray(cachedEvents) || !cachedEvents.length) {
+      const evs = await apiFetch("/events");
+      cachedEvents = Array.isArray(evs) ? evs : [];
+    }
+
+    if (!Array.isArray(cachedProposals) || !cachedProposals.length) {
+      const props = await apiFetch("/faculty/proposals");
+      cachedProposals = Array.isArray(props) ? props : [];
+    }
+
+    let ev = cachedEvents.find(e => String(e.id) === String(eventId));
+
+    if (!ev) {
+      const one = await apiFetch(`/events/${eventId}`);
+      if (one) ev = one;
+    }
+
+    if (!ev) {
+      body.innerHTML = `<div class="list-empty" style="padding:24px;">Event not found.</div>`;
+      return;
+    }
+
+    const proposal = cachedProposals.find(p =>
+      String(p.id) === String(ev.proposal_id) ||
+      String(p.event_id) === String(eventId) ||
+      String((p.title || "").trim().toLowerCase()) === String((ev.title || "").trim().toLowerCase())
+    );
+
+    const data = { ...ev, ...(proposal || {}) };
+
+    // registration count fallback
+    let registered = Number(data.registered_count || data.registered || 0);
+    try {
+      const countRes = await apiFetch(`/registrations/count/${eventId}`);
+      if (countRes && typeof countRes.count !== "undefined") {
+        registered = Number(countRes.count || 0);
+      }
+    } catch (_) {}
+
+    const capacity  = Number(data.capacity || data.expected_participants || 0);
+    const seatsLeft = Math.max(0, capacity - registered);
+    const pct       = capacity > 0 ? Math.min(100, Math.round((registered / capacity) * 100)) : 0;
+
+    const posterUrl = data.poster || data.posterUrl
+      ? `http://localhost:5000/uploads/${data.poster || data.posterUrl}`
+      : "";
+
+    body.innerHTML = `
+      <div class="fed-page">
+
+        <div class="fed-hero">
+          ${
+            posterUrl
+              ? `<img src="${posterUrl}" alt="${data.title || "Event"}" class="fed-poster"
+                     onerror="this.outerHTML='<div class=&quot;fed-poster fed-poster-fallback&quot;>📅</div>';">`
+              : `<div class="fed-poster fed-poster-fallback">📅</div>`
+          }
+
+          <div class="fed-hero-content">
+            <div class="fed-top-row">
+              <div>
+                <h1 class="fed-title">${data.title || "Untitled Event"}</h1>
+                <div class="fed-sub">
+                  ${(data.club || data.organizer || "—")} · ${fmtDate(data.date || data.event_date || data.start_date)}
+                </div>
+              </div>
+
+              <div class="fed-actions">
+                <button class="btn-primary" onclick="downloadFacultyEventReport(${data.id})">⬇ Download Report</button>
+              </div>
+            </div>
+
+            <div class="fed-badges">
+              <span class="badge">${cap(data.status || "approved")}</span>
+              <span class="badge">${data.category || data.type || "General"}</span>
+              <span class="badge">${data.registration_fee > 0 ? "₹" + data.registration_fee : "Free"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="fed-grid">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Event Overview</div></div>
+            <div class="panel-body">
+              <div class="fed-desc">${data.description || data.details || "No description available."}</div>
+
+              <div class="fed-info-grid">
+                <div class="fed-info-card"><b>Date</b><span>${fmtDate(data.date || data.event_date || data.start_date)}</span></div>
+                <div class="fed-info-card"><b>Time</b><span>${formatTime(data.time || data.start_time)}</span></div>
+                <div class="fed-info-card"><b>Venue</b><span>${data.venue || "—"}</span></div>
+                <div class="fed-info-card"><b>Club</b><span>${data.club || data.organizer || "—"}</span></div>
+                <div class="fed-info-card"><b>Category</b><span>${data.category || data.type || "General"}</span></div>
+                <div class="fed-info-card"><b>Created By</b><span>${data.created_by || data.submitted_by || "—"}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Registration Summary</div></div>
+            <div class="panel-body">
+              <div class="fed-kpi-grid">
+                <div class="fed-kpi">
+                  <div class="fed-kpi-num">${registered}</div>
+                  <div class="fed-kpi-label">Registered</div>
+                </div>
+                <div class="fed-kpi">
+                  <div class="fed-kpi-num">${capacity}</div>
+                  <div class="fed-kpi-label">Capacity</div>
+                </div>
+                <div class="fed-kpi">
+                  <div class="fed-kpi-num">${seatsLeft}</div>
+                  <div class="fed-kpi-label">Seats Left</div>
+                </div>
+                <div class="fed-kpi">
+                  <div class="fed-kpi-num">${pct}%</div>
+                  <div class="fed-kpi-label">Filled</div>
+                </div>
+              </div>
+
+              <div class="fed-progress">
+                <div class="fed-progress-fill" style="width:${pct}%"></div>
+              </div>
+
+              <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn ghost sm" onclick="loadFacultyParticipants(${data.id})">👥 View Participants</button>
+              </div>
+
+              <div id="facultyParticipantsWrap" style="margin-top:16px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    console.error("openFacultyEventDetailPage error:", err);
+    body.innerHTML = `<div class="list-empty" style="padding:24px;">Failed to load event details.</div>`;
+  }
+}
+
+// ── EVENT DETAIL DRAWER ───────────────────────────────────────────────────
+async function showEventDetail(eventId) {
+  try {
+    let ev = (window.currentEventList || []).find(e => String(e.id) === String(eventId));
+    if (!ev) {
+      const fresh = await apiFetch(`/events/${eventId}`);
+      if (fresh) ev = fresh;
+    }
+    if (!ev) { showToast("Event details not found.", "error"); return; }
+
+    if (!Array.isArray(cachedProposals) || !cachedProposals.length) {
+      const fp = await apiFetch("/faculty/proposals");
+      cachedProposals = Array.isArray(fp) ? fp : [];
+    }
+
+    const proposal = cachedProposals.find(p =>
+      String(p.id) === String(ev.proposal_id) ||
+      String(p.event_id) === String(eventId) ||
+      String(p.title || "").trim().toLowerCase() === String(ev.title || "").trim().toLowerCase()
+    );
+
+    const data = { ...ev, ...(proposal || {}) };
+    const statusCls = (data.status || "approved").toLowerCase();
+
+    const overlay = document.getElementById("eventDetailOverlay");
+    const drawer  = document.getElementById("eventDetailDrawer");
+    const body    = document.getElementById("eventDetailBody");
+
+    if (!overlay || !drawer || !body) {
+      showToast("Drawer elements not found.", "error");
+      return;
+    }
+
+    // Update drawer header
+    el("edDrawerTitle")?.text(data.title || "Event Details");
+    el("edDrawerSub")?.text(
+      `${data.club || data.organizer || "—"}  ·  ${fmtDate(data.date || data.event_date || data.start_date)}`
+    );
+
+    const capacity   = Number(data.capacity || data.expected_participants || 0);
+    const registered = Number(data.registered_count || data.registered || 0);
+    const seatsLeft  = Math.max(0, capacity - registered);
+    const pct        = capacity > 0 ? Math.min(100, Math.round((registered / capacity) * 100)) : 0;
+
+    const posterUrl = data.posterUrl
+      ? `http://localhost:5000/uploads/${data.posterUrl}`
+      : null;
+
+    body.innerHTML = `
+      ${posterUrl
+        ? `<div class="ed-banner"><img src="${posterUrl}" alt="${data.title}" onerror="this.parentElement.style.background='var(--g-violet)';this.remove()"/></div>`
+        : `<div class="ed-banner" style="display:flex;align-items:center;justify-content:center;font-size:52px;background:var(--g-violet);">📅</div>`}
+
+      <div class="ed-body-layout">
+
+        <!-- LEFT: main content -->
+        <div class="ed-main-col">
+
+          <div class="ed-title">${data.title || "Untitled Event"}</div>
+
+          <div class="ed-badges">
+            <span class="ed-badge primary">${data.category || data.type || "General"}</span>
+            <span class="ed-badge">${data.club || data.organizer || "—"}</span>
+            <span class="badge ${statusCls}" style="font-size:11px;">${cap(data.status || "approved")}</span>
+            <span class="ed-badge">${data.registration_fee > 0 ? "₹" + data.registration_fee : "Free"}</span>
+          </div>
+
+          <div class="ed-meta">
+            <div class="ed-meta-row">📅 <span>${fmtDate(data.date || data.event_date || data.start_date)}</span></div>
+            <div class="ed-meta-row">🕐 <span>${formatTime(data.time || data.start_time)}</span></div>
+            <div class="ed-meta-row">📍 <span>${data.venue || "—"}</span></div>
+            <div class="ed-meta-row">👥 <span>${registered} / ${capacity} registered</span></div>
+            <div class="ed-meta-row">🎓 <span>Created by ${data.created_by || data.submitted_by || "—"}</span></div>
+            <div class="ed-meta-row">📆 <span>Submitted ${fmtDate(data.created_at || data.submitted_at)}</span></div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="ed-tabs">
+            <button class="ed-tab active" data-panel="edp-description">📝 Description</button>
+            <button class="ed-tab" data-panel="edp-participants">👥 Participants</button>
+            ${data.objectives ? `<button class="ed-tab" data-panel="edp-objectives">🎯 Objectives</button>` : ""}
+          </div>
+
+          <!-- Description panel -->
+          <div class="ed-panel active" id="edp-description">
+            <p class="ed-desc">${data.description || "No description provided."}</p>
+            ${data.requirements ? `
+              <div style="margin-top:16px;">
+                <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">📋 Requirements</div>
+                <p class="ed-desc">${data.requirements}</p>
+              </div>` : ""}
+            ${data.target_audience ? `
+              <div style="margin-top:16px;">
+                <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">👤 Target Audience</div>
+                <p class="ed-desc">${data.target_audience}</p>
+              </div>` : ""}
+            ${data.document_url ? `
+              <div style="margin-top:16px;">
+                <a href="${data.document_url}" target="_blank" class="mini-btn" style="display:inline-flex;">📎 View Proposal Document</a>
+              </div>` : ""}
+          </div>
+
+          <!-- Participants panel -->
+          <div class="ed-panel" id="edp-participants">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <span style="font-size:13px;font-weight:700;color:var(--text);">Registered Participants</span>
+              <button class="mini-btn" onclick="edDownloadParticipants(${data.id}, '${(data.title || "event").replace(/'/g, "\\'")}')">
+                ⬇️ Download CSV
+              </button>
+            </div>
+            <div id="edParticipantsWrap">
+              <p class="ed-desc" style="color:var(--text-3);">Click here to load participants…</p>
+            </div>
+          </div>
+
+          ${data.objectives ? `
+          <!-- Objectives panel -->
+          <div class="ed-panel" id="edp-objectives">
+            <p class="ed-desc">${data.objectives}</p>
+          </div>` : ""}
+
+        </div><!-- /ed-main-col -->
+
+        <!-- RIGHT: sidebar stats -->
+        <div class="ed-side-col">
+
+          <div class="ed-reg-label">Registration</div>
+          <div class="ed-reg-row">
+            <span>${seatsLeft} seats left</span>
+            <span>${registered} / ${capacity}</span>
+          </div>
+          <div class="ed-progress-bar">
+            <div class="ed-progress-fill" style="width:${pct}%"></div>
+          </div>
+
+          <div class="ed-kpi-grid">
+            <div class="ed-kpi">
+              <div class="ed-kpi-icon">👥</div>
+              <div class="ed-kpi-val">${registered}</div>
+              <div class="ed-kpi-label">Registered</div>
+            </div>
+            <div class="ed-kpi">
+              <div class="ed-kpi-icon">🪑</div>
+              <div class="ed-kpi-val">${capacity}</div>
+              <div class="ed-kpi-label">Capacity</div>
+            </div>
+            <div class="ed-kpi">
+              <div class="ed-kpi-icon">📅</div>
+              <div class="ed-kpi-val" style="font-size:13px;line-height:1.3;">${fmtDate(data.date || data.event_date || data.start_date)}</div>
+              <div class="ed-kpi-label">Date</div>
+            </div>
+            <div class="ed-kpi">
+              <div class="ed-kpi-icon">💰</div>
+              <div class="ed-kpi-val" style="font-size:15px;">${data.registration_fee > 0 ? "₹" + data.registration_fee : "Free"}</div>
+              <div class="ed-kpi-label">Fee</div>
+            </div>
+          </div>
+
+          <div class="ed-hr"></div>
+
+          <div class="ed-detail-row"><b>Status:</b>
+            <span class="badge ${statusCls}" style="margin-left:6px;font-size:11px;">${cap(data.status || "approved")}</span>
+          </div>
+          <div class="ed-detail-row"><b>Venue:</b> ${data.venue || "—"}</div>
+          <div class="ed-detail-row"><b>Time:</b> ${formatTime(data.time || data.start_time)}</div>
+          <div class="ed-detail-row"><b>Category:</b> ${data.category || data.type || "General"}</div>
+          <div class="ed-detail-row"><b>Club:</b> ${data.club || data.organizer || "—"}</div>
+          <div class="ed-detail-row"><b>Created by:</b> ${data.created_by || data.submitted_by || "—"}</div>
+          <div class="ed-detail-row"><b>Submitted:</b> ${fmtDate(data.created_at || data.submitted_at)}</div>
+
+          ${isPendingStatus(data.status) ? `
+          <div class="ed-hr"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Quick Actions</div>
+          <div style="display:flex;gap:8px;">
+            <button class="mini-btn approve" style="flex:1;justify-content:center;"
+              onclick="approveProposal(${data.id}, '${data._src || "proposal"}');closeEventDetail();">
+              ✅ Approve
+            </button>
+            <button class="mini-btn reject" style="flex:1;justify-content:center;"
+              onclick="rejectProposal(${data.id}, '${data._src || "proposal"}');closeEventDetail();">
+              ❌ Reject
+            </button>
+          </div>` : ""}
+
+        </div><!-- /ed-side-col -->
+
+      </div><!-- /ed-body-layout -->
+    `;
+
+    // Wire tabs
+    let participantsLoaded = false;
+    body.querySelectorAll(".ed-tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        body.querySelectorAll(".ed-tab").forEach(t => t.classList.remove("active"));
+        body.querySelectorAll(".ed-panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        body.querySelector(`#${btn.dataset.panel}`)?.classList.add("active");
+
+        if (btn.dataset.panel === "edp-participants" && !participantsLoaded) {
+          participantsLoaded = true;
+          edLoadParticipants(data.id);
+        }
+      });
+    });
+
+    // Open drawer
+    overlay.style.display = "block";
+    drawer.style.display  = "flex";
+    requestAnimationFrame(() => drawer.classList.add("open"));
+    document.body.style.overflow = "hidden";
+
+  } catch (err) {
+    console.error("showEventDetail error:", err);
+    showToast("Failed to open event details.", "error");
+  }
+}
+
+// ── LOAD PARTICIPANTS INTO DRAWER TAB ─────────────────────────────────────
+async function edLoadParticipants(eventId) {
+  const wrap = document.getElementById("edParticipantsWrap");
+  if (!wrap) return;
+  wrap.innerHTML = `<p class="ed-desc" style="color:var(--text-3);">Loading…</p>`;
+  try {
+    const res  = await apiFetch(`/events/${eventId}/participants`);
+    const data = Array.isArray(res) ? res : [];
+    if (!data.length) {
+      wrap.innerHTML = `<p class="ed-desc" style="color:var(--text-3);">No registrations yet.</p>`;
+      return;
+    }
+    wrap.innerHTML = `
+      <table class="ed-ptable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Dept</th>
+            <th>Class</th>
+            <th>Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((p, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${p.name || "—"}</td>
+              <td>${p.email || "—"}</td>
+              <td>${p.department || "—"}</td>
+              <td>${p.class || "—"}</td>
+              <td>${p.phone_no || p.phone || "—"}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+  } catch {
+    wrap.innerHTML = `<p class="ed-desc" style="color:var(--text-3);">Failed to load participants.</p>`;
+  }
+}
+
+// ── DOWNLOAD PARTICIPANTS FROM DRAWER ─────────────────────────────────────
+async function edDownloadParticipants(eventId, eventTitle) {
+  try {
+    const res  = await apiFetch(`/events/${eventId}/participants`);
+    const data = Array.isArray(res) ? res : [];
+    if (!data.length) { showToast("No participants found.", "error"); return; }
+    const headers = ["#", "Name", "Email", "Department", "Class", "Phone"];
+    const rows    = data.map((p, i) => [
+      i + 1,
+      p.name || "",
+      p.email || "",
+      p.department || "",
+      p.class || "",
+      p.phone_no || p.phone || ""
+    ]);
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `participants_${(eventTitle || "event").replace(/[^a-z0-9]+/gi, "_").toLowerCase()}_${eventId}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast("⬇️ Download started!", "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Download failed.", "error");
+  }
+}
+
+// ── CLOSE EVENT DETAIL ────────────────────────────────────────────────────
+function closeEventDetail() {
+  const overlay = document.getElementById("eventDetailOverlay");
+  const drawer  = document.getElementById("eventDetailDrawer");
+
+  if (drawer) {
+    drawer.classList.remove("open");
+    // Wait for CSS transition to finish before hiding
+    setTimeout(() => {
+      if (drawer) drawer.style.display = "none";
+    }, 300);
+  }
+  if (overlay) overlay.style.display = "none";
+  document.body.style.overflow = "";
 }
 
 // ── ALL CLUBS PAGE ────────────────────────────────────────────────────────
@@ -759,8 +1334,7 @@ async function renderAllClubs(search = "", category = "all") {
 
   grid.innerHTML = `<div class="list-empty" style="padding:20px;">Loading…</div>`;
 
-  let fresh = await apiFetch("/clubs/all");
-  if (!Array.isArray(fresh) || !fresh.length) fresh = await apiFetch("/clubs");
+  let fresh = await apiFetch("/clubs");
   if (!Array.isArray(fresh) || !fresh.length) fresh = [];
   allClubsData = fresh.length ? fresh : [...cachedClubs];
 
@@ -776,8 +1350,14 @@ async function renderAllClubs(search = "", category = "all") {
       (c.description || "").toLowerCase().includes(search)
     );
   }
+
   if (category !== "all") {
-    list = list.filter(c => (c.category || c.type || "").toLowerCase() === category);
+    list = list.filter(c => {
+      const raw = (c.club_category || c.category || c.type || "").toLowerCase().trim();
+      if (category === "technical")     return raw === "technical";
+      if (category === "non-technical") return raw === "non-technical";
+      return raw === category.toLowerCase();
+    });
   }
 
   if (!list.length) {
@@ -805,7 +1385,7 @@ async function renderAllClubs(search = "", category = "all") {
           <div class="ac-emoji">${c.logo || emojis[i % emojis.length]}</div>
           <div style="flex:1;min-width:0;">
             <div class="ac-name">${clubName}</div>
-            <div class="ac-cat">${c.category || c.type || "Club"}</div>
+            <div class="ac-cat">${c.club_category || c.category || c.type || "Club"}</div>
           </div>
           <span class="badge ${c.status === 'inactive' ? 'rejected' : 'approved'}" style="flex-shrink:0;">${c.status || "Active"}</span>
         </div>
@@ -917,7 +1497,9 @@ function filterClubEvents() {
   const search = (document.getElementById("clubEventSearch")?.value || "").toLowerCase();
 
   let list = currentClubEvents;
-  if (status !== "all") list = list.filter(e => (e.status || "approved") === status);
+  if (status !== "all") list = list.filter(e =>
+    (e.status || "approved").toLowerCase() === status.toLowerCase()
+  );
   if (search) list = list.filter(e =>
     (e.title || "").toLowerCase().includes(search) ||
     (e.venue || "").toLowerCase().includes(search) ||
@@ -1058,33 +1640,63 @@ function openAllClubProposals()    { setSelectedClub("all"); navigateTo("proposa
 function openAllClubAnalytics()    { setSelectedClub("all"); chartsInited = false; navigateTo("analytics"); }
 
 // ── ANALYTICS ─────────────────────────────────────────────────────────────
-function initCharts() {
+function eventMatchesClub(event, club) {
+  const cId   = String(club.id   ?? club.club_id  ?? "").trim();
+  const cName = (club.club_name  ?? club.name     ?? "").trim().toLowerCase();
+  const eId   = String(event.club_id ?? event.clubId ?? "").trim();
+  const eName = (event.club ?? event.club_name ?? "").trim().toLowerCase();
+
+  if (cId && eId && cId === eId) return true;
+
+  const norm = s => s
+    .replace(/\bclub\b/gi, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const cn = norm(cName);
+  const en = norm(eName);
+  if (cn && en && cn === en) return true;
+  if (cn && en && (cn.includes(en) || en.includes(cn))) return true;
+
+  return false;
+}
+
+async function initCharts() {
+  chartsInited = true;
+
   const filteredProposals = cachedProposals.filter(matchesSelectedClub);
-  const filteredEvents = cachedEvents.filter(matchesSelectedClub);
-  const filteredFeedback = cachedFeedback.filter(f => {
+  const filteredEvents    = cachedEvents.filter(matchesSelectedClub);
+  const filteredFeedback  = cachedFeedback.filter(f => {
     if (selectedClubId === "all") return true;
-    const selectedClub = getSelectedClub();
-    if (!selectedClub) return false;
-    const clubId   = String(selectedClub.id ?? selectedClub.club_id ?? "").trim();
-    const clubName = String(selectedClub.club_name ?? selectedClub.name ?? "").trim().toLowerCase();
-    const fClubId  = String(f.club_id ?? f.clubId ?? "").trim();
-    const fClubName= String(f.club ?? f.club_name ?? "").trim().toLowerCase();
-    return (clubId && fClubId && clubId === fClubId) || (clubName && fClubName && clubName === fClubName);
+    const sc = getSelectedClub();
+    return sc ? eventMatchesClub(f, sc) : false;
   });
+
+  const filteredRegs = cachedRegistrations.filter(r => {
+    if (selectedClubId === "all") return true;
+    const sc = getSelectedClub();
+    return sc ? eventMatchesClub(r, sc) : false;
+  });
+
+  const regCountFromEvents = filteredEvents.reduce((sum, e) =>
+    sum + (e.registrations_count ?? e.registered_count ?? e.participant_count ?? 0), 0);
+
+  const totalRegistrations = filteredRegs.length || regCountFromEvents;
+
+  console.log("📊 Analytics — filteredEvents:", filteredEvents.length,
+    "filteredProposals:", filteredProposals.length,
+    "totalRegistrations:", totalRegistrations);
 
   const now      = new Date();
   const approved = filteredProposals.filter(p => (p.status || "").toLowerCase() === "approved").length;
-  const avgRating= filteredFeedback.length
-    ? (filteredFeedback.reduce((s, f) => s + (f.rating || 0), 0) / filteredFeedback.length).toFixed(1)
-    : "—";
 
   const kpi = document.getElementById("analyticsKpi");
   if (kpi) {
     kpi.innerHTML = [
-      { k: "kv", icon: "📋", val: filteredProposals.length, label: "Total Proposals" },
-      { k: "kp", icon: "✅", val: approved,                 label: "Approved Events" },
-      { k: "kc", icon: "👥", val: 0,                        label: "Student Registrations" },
-      { k: "kl", icon: "⭐", val: avgRating,                label: "Avg Feedback Rating" },
+      { k: "kv", icon: "📋", val: filteredProposals.length, label: "Total Proposals"      },
+      { k: "kp", icon: "✅", val: approved,                 label: "Approved Events"       },
+      { k: "kc", icon: "👥", val: totalRegistrations,       label: "Student Registrations" },
     ].map(d => `
       <div class="kpi-card ${d.k}">
         <div class="kpi-icon">${d.icon}</div>
@@ -1100,11 +1712,22 @@ function initCharts() {
   for (let i = 7; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     labels.push(MONTH_NAMES[d.getMonth()]);
-    evCounts.push(filteredEvents.filter(e => {
+
+    const monthEvs = filteredEvents.filter(e => {
       const ed = parseEventDate(e.date || e.event_date || e.start_date);
       return ed && ed.getFullYear() === d.getFullYear() && ed.getMonth() === d.getMonth();
-    }).length);
-    regCounts.push(0);
+    });
+    evCounts.push(monthEvs.length);
+
+    const regsFromEvFields = monthEvs.reduce((sum, e) =>
+      sum + (e.registrations_count ?? e.registered_count ?? e.participant_count ?? 0), 0);
+
+    const regsFromCache = filteredRegs.filter(r => {
+      const rd = parseEventDate(r.created_at || r.date || r.registered_at);
+      return rd && rd.getFullYear() === d.getFullYear() && rd.getMonth() === d.getMonth();
+    }).length;
+
+    regCounts.push(regsFromEvFields || regsFromCache);
   }
 
   const chartDefaults = {
@@ -1112,7 +1735,11 @@ function initCharts() {
     plugins: { legend: { display: false } },
     scales: {
       x: { grid: { display: false }, ticks: { color: "rgba(240,242,255,.4)", font: { weight: 600, size: 11 } } },
-      y: { grid: { color: "rgba(255,255,255,.05)" }, ticks: { color: "rgba(240,242,255,.4)", font: { weight: 600, size: 11 } } },
+      y: {
+        grid: { color: "rgba(255,255,255,.05)" },
+        ticks: { color: "rgba(240,242,255,.4)", font: { weight: 600, size: 11 }, stepSize: 1 },
+        beginAtZero: true,
+      },
     },
   };
 
@@ -1128,62 +1755,61 @@ function initCharts() {
     options: chartDefaults,
   });
 
- const technical = filteredEvents.filter(e =>
-  ["technical","workshop","seminar","competition"].includes((e.category || e.type || "").toLowerCase())
-).length;
+  const TECHNICAL_KEYWORDS = ["ieee","iedc","robotics","coding","tech","computer","ai","ml","cyber","hack","software","hardware"];
 
-const nonTechnical = Math.max(0, filteredEvents.length - technical);
+  const technical    = filteredEvents.filter(e => {
+    const s = [e.category || "", e.type || "", e.club || "", e.club_name || "", e.title || ""].join(" ").toLowerCase();
+    return TECHNICAL_KEYWORDS.some(kw => s.includes(kw));
+  }).length;
+  const nonTechnical = Math.max(0, filteredEvents.length - technical);
+  const total        = filteredEvents.length || 1;
 
-const total = technical + nonTechnical || 1;
   tryChart("typeChart", {
     type: "doughnut",
-    data: {labels: ["Technical","Non-Technical"],
-    datasets: [{ data: [technical||1, nonTechnical||1] , backgroundColor: ["#8b5cf6","#ec4899"], borderWidth: 0, hoverOffset: 6 }] },
+    data: {
+      labels: ["Technical", "Non-Technical"],
+      datasets: [{ data: [technical || 0, nonTechnical || 0], backgroundColor: ["#8b5cf6", "#ec4899"], borderWidth: 0, hoverOffset: 6 }]
+    },
     options: { responsive: false, plugins: { legend: { display: false } }, cutout: "68%" },
   });
 
   const leg = document.getElementById("typeChartLegend");
   if (leg) {
     leg.innerHTML = [
-  {
-    color: "#8b5cf6",
-    label: "Technical",
-    pct: Math.round((technical / total) * 100),
-    cnt: technical
-  },
-  {
-    color: "#ec4899",
-    label: "Non-Technical",
-    pct: Math.round((nonTechnical / total) * 100),
-    cnt: nonTechnical
-  }
-].map(d => `
-  <div class="leg-row">
-    <div class="leg-swatch" style="background:${d.color};"></div>
-    <div>
-      <div class="leg-text">${d.label} — ${d.pct}%</div>
-      <div class="leg-pct">${d.cnt} events</div>
-    </div>
-  </div>
-`).join("");
+      { color: "#8b5cf6", label: "Technical",     pct: Math.round((technical    / total) * 100), cnt: technical    },
+      { color: "#ec4899", label: "Non-Technical", pct: Math.round((nonTechnical / total) * 100), cnt: nonTechnical },
+    ].map(d => `
+      <div class="leg-row">
+        <div class="leg-swatch" style="background:${d.color};"></div>
+        <div>
+          <div class="leg-text">${d.label} — ${d.pct}%</div>
+          <div class="leg-pct">${d.cnt} events</div>
+        </div>
+      </div>
+    `).join("");
   }
 
   const selectedClub = getSelectedClub();
-  const clubNames  = selectedClub ? [selectedClub.club_name || selectedClub.name || "Club"] : cachedClubs.map(c => c.club_name || c.name || "Club");
-  const clubCounts = selectedClub ? [filteredEvents.length] : cachedClubs.map(c => {
-    const cId = c.id || c.club_id;
-    const cName = c.club_name || c.name || "";
-    return cachedEvents.filter(e =>
-      String(e.club_id ?? e.clubId ?? "") === String(cId) ||
-      String(e.club ?? e.club_name ?? "").trim().toLowerCase() === cName.trim().toLowerCase()
-    ).length;
-  });
+  const clubNames  = selectedClub
+    ? [selectedClub.club_name || selectedClub.name || "Club"]
+    : cachedClubs.map(c => c.club_name || c.name || "Club");
+
+  const clubCounts = selectedClub
+    ? [cachedEvents.filter(e => eventMatchesClub(e, selectedClub)).length]
+    : cachedClubs.map(c => cachedEvents.filter(e => eventMatchesClub(e, c)).length);
+
+  console.log("🏛️ clubChart — labels:", clubNames, "counts:", clubCounts);
 
   tryChart("clubChart", {
     type: "bar",
     data: {
       labels: clubNames.length ? clubNames : ["No clubs"],
-      datasets: [{ data: clubCounts.length ? clubCounts : [0], backgroundColor: ["rgba(139,92,246,.7)","rgba(236,72,153,.7)","rgba(6,182,212,.7)","rgba(132,204,22,.7)","rgba(245,158,11,.7)"], borderRadius: 7, borderSkipped: false }],
+      datasets: [{
+        data: clubCounts.length ? clubCounts : [0],
+        backgroundColor: ["rgba(139,92,246,.7)","rgba(236,72,153,.7)","rgba(6,182,212,.7)","rgba(132,204,22,.7)","rgba(245,158,11,.7)"],
+        borderRadius: 7,
+        borderSkipped: false
+      }],
     },
     options: { ...chartDefaults, indexAxis: "y" },
   });
@@ -1225,40 +1851,32 @@ async function renderFeedback(search = "") {
 }
 
 // ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────
+// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────
 async function renderAnnouncements() {
-  const [mine, all] = await Promise.all([apiFetch("/announcements/my-posts"), apiFetch("/announcements/faculty")]);
-  const ICONS = { Urgent:"🚨", Event:"📅", Info:"ℹ️", General:"📣" };
-
   const al = document.getElementById("announceList");
-  if (al) {
-    const list = Array.isArray(mine) ? mine : [];
-    al.innerHTML = list.length ? list.map(a => `
-      <div class="announce-card">
-        <div style="display:flex;justify-content:space-between;gap:8px;">
-          <div class="announce-title">${ICONS[a.type] || "📣"} ${a.title}</div>
-          <span class="badge purple">${a.type || "General"}</span>
-        </div>
-        <div class="announce-meta">${fmtDate(a.created_at)}</div>
-        <div class="announce-body">${a.message}</div>
-      </div>
-    `).join("") : `<div class="list-empty">No posts yet.</div>`;
+  if (!al) return;
+
+  const mine = await apiFetch("/announcements/my-posts");
+  const list = Array.isArray(mine) ? mine : [];
+
+  if (!list.length) {
+    al.innerHTML = `<div class="list-empty">No posts yet.</div>`;
+    return;
   }
 
-  const aal = document.getElementById("adminAnnounceList");
-  if (aal) {
-    const myIds = new Set((Array.isArray(mine) ? mine : []).map(a => a.id));
-    const list = (Array.isArray(all) ? all : []).filter(a => !myIds.has(a.id));
-    aal.innerHTML = list.length ? list.map(a => `
-      <div class="announce-card">
-        <div style="display:flex;justify-content:space-between;gap:8px;">
-          <div class="announce-title">${ICONS[a.type] || "📢"} ${a.title}</div>
-          <span class="badge ${a.type === "Urgent" ? "pending" : "purple"}">${a.type || "General"}</span>
+  al.innerHTML = list.map(a => `
+    <div class="announce-card" data-ann-id="${a.id}">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="announce-title">${a.title}</div>
+        <div style="display:flex;gap:6px;">
+          <button class="mini-btn" onclick="editAnnouncement(${a.id})">✏️</button>
+          <button class="mini-btn reject" onclick="deleteAnnouncement(${a.id})">🗑️</button>
         </div>
-        <div class="announce-meta">${a.club || "Admin"} · ${fmtDate(a.created_at)}</div>
-        <div class="announce-body">${a.message}</div>
       </div>
-    `).join("") : `<div class="list-empty">No announcements from clubs or admin.</div>`;
-  }
+      <div class="announce-meta">${fmtDate(a.created_at)}</div>
+      <div class="announce-body">${a.message}</div>
+    </div>
+  `).join("");
 }
 
 async function postAnnouncement() {
@@ -1266,54 +1884,212 @@ async function postAnnouncement() {
   const message = document.getElementById("announceBody")?.value.trim();
   const type    = document.getElementById("announceType")?.value;
 
-  if (!title || !message) { showToast("Fill in title and message.", "error"); return; }
+  if (!title || !message) {
+    showToast("Fill in title and message.", "error");
+    return;
+  }
 
-  const res = await apiFetch("/announcements", { method: "POST", body: JSON.stringify({ title, message, type }) });
+  const res = await apiFetch("/announcements", {
+    method: "POST",
+    body: JSON.stringify({ title, message, type })
+  });
+
   if (res) {
-    showToast("📢 Announcement posted!", "success");
     document.getElementById("announceTitle").value = "";
     document.getElementById("announceBody").value = "";
-    addLocalNotif("admin", "📢", "Announcement Posted", title);
-    renderAnnouncements();
+
+    addLocalNotif(
+      "admin",
+      "📢",
+      title,
+      message,
+      `ann-${res.id}`
+    );
+
+    saveNotifs();
+    updateNotifBadge();
+    renderNotifDropdown();
+    renderNotifHistory();
+
+    showToast("📢 Announcement posted!", "success");
+    await renderAnnouncements();
   } else {
     showToast("Failed to post.", "error");
   }
 }
 
+function editAnnouncement(id) {
+  const card = document.querySelector(`[data-ann-id="${id}"]`);
+  const currentTitle   = card?.querySelector(".announce-title")?.textContent?.trim() || "";
+  const currentMessage = card?.querySelector(".announce-body")?.textContent?.trim() || "";
+
+  const modal = document.createElement("div");
+  modal.id = "editAnnModal";
+  modal.innerHTML = `
+    <div onclick="document.getElementById('editAnnModal').remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;backdrop-filter:blur(4px);"></div>
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      z-index:3001;background:var(--surface,#1a1a2e);border:1px solid rgba(139,92,246,.35);
+      border-radius:20px;width:min(460px,92vw);padding:28px 24px;
+      box-shadow:0 24px 60px rgba(0,0,0,.6);">
+      <div style="font-size:16px;font-weight:800;color:var(--text,#f0f2ff);margin-bottom:18px;">✏️ Edit Announcement</div>
+      <label style="font-size:11px;font-weight:700;color:var(--text-3,#94a3b8);text-transform:uppercase;letter-spacing:.6px;">Title</label>
+      <input id="editAnnTitle" value="${currentTitle.replace(/"/g,'&quot;')}"
+        style="width:100%;margin:6px 0 14px;padding:10px 12px;border-radius:10px;
+          border:1px solid rgba(139,92,246,.3);background:var(--surface-2,#0d0d1a);
+          color:var(--text,#f0f2ff);font-size:13px;font-family:var(--font,inherit);
+          outline:none;box-sizing:border-box;"/>
+      <label style="font-size:11px;font-weight:700;color:var(--text-3,#94a3b8);text-transform:uppercase;letter-spacing:.6px;">Message</label>
+      <textarea id="editAnnMessage" rows="4"
+        style="width:100%;margin:6px 0 20px;padding:10px 12px;border-radius:10px;
+          border:1px solid rgba(139,92,246,.3);background:var(--surface-2,#0d0d1a);
+          color:var(--text,#f0f2ff);font-size:13px;font-family:var(--font,inherit);
+          resize:vertical;outline:none;box-sizing:border-box;">${currentMessage}</textarea>
+      <div style="display:flex;gap:10px;">
+        <button onclick="document.getElementById('editAnnModal').remove()"
+          style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2,rgba(255,255,255,.1));
+            background:var(--surface-2,#0d0d1a);color:var(--text,#f0f2ff);
+            font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>
+        <button onclick="submitEditAnnouncement(${id})"
+          style="flex:1;padding:10px;border-radius:11px;border:none;
+            background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;
+            font-size:13px;font-weight:700;cursor:pointer;">Save Changes</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById("editAnnTitle")?.focus();
+}
+
+async function submitEditAnnouncement(id) {
+  const title   = document.getElementById("editAnnTitle")?.value.trim();
+  const message = document.getElementById("editAnnMessage")?.value.trim();
+
+  if (!title || !message) {
+    showToast("Title and message are required.", "error");
+    return;
+  }
+
+  const res = await apiFetch(`/announcements/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ title, message }),
+  });
+
+  if (res !== null) {
+    const sid = `ann-${id}`;
+
+    localNotifs = localNotifs.map(n => {
+      if (n.sourceId === sid) {
+        return {
+          ...n,
+          title: title,
+          sub: message
+        };
+      }
+      return n;
+    });
+
+    saveNotifs();
+    updateNotifBadge();
+    renderNotifDropdown();
+    renderNotifHistory();
+
+    document.getElementById("editAnnModal")?.remove();
+    showToast("✏️ Announcement updated!", "success");
+    await renderAnnouncements();
+  } else {
+    showToast("Failed to update.", "error");
+  }
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm("Are you sure you want to delete this announcement?")) return;
+
+  const res = await apiFetch(`/announcements/${id}`, { method: "DELETE" });
+
+  if (res !== null) {
+    localNotifs = localNotifs.filter(n => n.sourceId !== `ann-${id}`);
+    saveNotifs();
+    updateNotifBadge();
+    renderNotifDropdown();
+    renderNotifHistory();
+
+    showToast("🗑️ Announcement deleted", "success");
+    await renderAnnouncements();
+  } else {
+    showToast("Failed to delete.", "error");
+  }
+}
 // ── NOTIFICATIONS ─────────────────────────────────────────────────────────
 async function syncNotifs() {
   const ann = await apiFetch("/announcements/faculty");
   if (!Array.isArray(ann)) return;
 
-  const existIds = new Set(localNotifs.map(n => n.sourceId));
+  const existIds = new Set(localNotifs.map(n => n.sourceId).filter(Boolean));
   const ICONS = { Urgent:"🚨", Event:"📅", Info:"ℹ️", General:"📣" };
   let added = 0;
 
-  ann.forEach(a => {
-    const sid = `ann-${a.id}`;
-    if (existIds.has(sid)) return;
-    localNotifs.unshift({ id: `${Date.now()}-${Math.random()}`, sourceId: sid, type: "admin", icon: ICONS[a.type] || "📢", title: a.title, sub: `${a.club || "Admin"}: ${a.message?.slice(0, 60)}…`, time: a.created_at || new Date().toISOString(), read: false });
-    added++;
+ ann.forEach(a => {
+  const sid = `ann-${a.id}`;
+  const existing = localNotifs.find(n => n.sourceId === sid);
+
+  if (existing) {
+    existing.title = a.title;
+    existing.sub = a.message || "";
+    existing.time = a.created_at || existing.time;
+    return;
+  }
+
+  localNotifs.unshift({
+    id: `${Date.now()}-${Math.random()}`,
+    sourceId: sid,
+    type: "admin",
+    icon: ICONS[a.type] || "📢",
+    title: a.title,
+    sub: a.message || "",
+    time: a.created_at || new Date().toISOString(),
+    read: false
   });
+  added++;
+});
 
   cachedProposals.filter(p => isPendingStatus(p.status)).forEach(p => {
     const sid = `prop-${p.id}`;
-    if (!existIds.has(sid)) {
-      localNotifs.push({ id: `${Date.now()}-${Math.random()}`, sourceId: sid, type: "event", icon: "📋", title: "New Event Proposal", sub: `${p.title || "Untitled"} · ${p.club || "—"}`, time: p.created_at || new Date().toISOString(), read: false });
-      added++;
-    }
+    if (existIds.has(sid)) return;
+
+    localNotifs.push({
+      id: `${Date.now()}-${Math.random()}`,
+      sourceId: sid,
+      type: "event",
+      icon: "📋",
+      title: "New Event Proposal",
+      sub: `${p.title || "Untitled"} · ${p.club || "—"}`,
+      time: p.created_at || new Date().toISOString(),
+      read: false
+    });
+    added++;
   });
 
   if (added) saveNotifs();
   updateNotifBadge();
   renderNotifDropdown();
 }
+function addLocalNotif(type, icon, title, sub, sourceId = null) {
+  localNotifs.unshift({
+    id: `${Date.now()}-${Math.random()}`,
+    sourceId,
+    type,
+    icon,
+    title,
+    sub,
+    time: new Date().toISOString(),
+    read: false
+  });
 
-function addLocalNotif(type, icon, title, sub) {
-  localNotifs.unshift({ id: `${Date.now()}-${Math.random()}`, type, icon, title, sub, time: new Date().toISOString(), read: false });
-  saveNotifs(); updateNotifBadge(); renderNotifDropdown();
+  saveNotifs();
+  updateNotifBadge();
+  renderNotifDropdown();
 }
-
 function updateNotifBadge() {
   const unread = localNotifs.filter(n => !n.read).length;
   const cnt = document.getElementById("notifCount");
@@ -1441,20 +2217,17 @@ function initBulk() {
     showToast(`🎓 ${eligible.length} approved!`, "success");
   });
 }
-// ─────────────────────────────────────────────────────────────
-// VENUES
-// ─────────────────────────────────────────────────────────────
 
+// ── VENUES ────────────────────────────────────────────────────────────────
 let venues = [];
 let currentVenue = "";
 const venueBookings = {};
 let currentMonth = new Date().getMonth();
-let currentYear = new Date().getFullYear();
+let currentYear  = new Date().getFullYear();
 
 async function loadVenues() {
   try {
     const data = await apiFetch("/venues");
-
     if (Array.isArray(data)) {
       venues = data.map(v => v.name);
       currentVenue = venues[0] || "";
@@ -1471,10 +2244,8 @@ async function loadVenues() {
 function renderVenueSidebar() {
   const list = document.getElementById("venueList");
   if (!list) return;
-
   list.innerHTML = venues.map(v => `
-    <div class="venue-list-item ${v === currentVenue ? "active" : ""}"
-         onclick="selectVenue('${v}')">
+    <div class="venue-list-item ${v === currentVenue ? "active" : ""}" onclick="selectVenue('${v}')">
       ${v}
     </div>
   `).join("");
@@ -1489,14 +2260,11 @@ async function selectVenue(name) {
 
 async function loadVenueBookings() {
   if (!currentVenue) return;
-
   try {
     const data = await apiFetch(
       `/venues/calendar?venue_name=${encodeURIComponent(currentVenue)}&month=${currentMonth + 1}&year=${currentYear}`
     );
-
     venueBookings[currentVenue] = {};
-
     if (Array.isArray(data)) {
       data.forEach(item => {
         venueBookings[currentVenue][item.day] = (item.status || "available").toLowerCase();
@@ -1512,18 +2280,14 @@ function renderCalendar() {
   const title = document.getElementById("calendarTitle");
   if (!grid || !title) return;
 
-  const months = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
-  ];
-
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   title.textContent = `${months[currentMonth]} ${currentYear}`;
   grid.innerHTML = "";
 
-  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const firstDay    = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const today = new Date();
-  const bookings = venueBookings[currentVenue] || {};
+  const today       = new Date();
+  const bookings    = venueBookings[currentVenue] || {};
 
   for (let i = 0; i < firstDay; i++) {
     const empty = document.createElement("div");
@@ -1533,47 +2297,30 @@ function renderCalendar() {
 
   for (let d = 1; d <= daysInMonth; d++) {
     const status = bookings[d] || "available";
-
-    const cell = document.createElement("div");
+    const cell   = document.createElement("div");
     cell.className = `venue-day ${status}`;
-
-    if (
-      d === today.getDate() &&
-      currentMonth === today.getMonth() &&
-      currentYear === today.getFullYear()
-    ) {
+    if (d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
       cell.classList.add("today");
     }
-
-    cell.innerHTML = `
-      <span class="day-number">${d}</span>
-      <span class="day-dot"></span>
-    `;
-
+    cell.innerHTML = `<span class="day-number">${d}</span><span class="day-dot"></span>`;
     grid.appendChild(cell);
   }
 }
 
-// Month navigation
 document.getElementById("prevMonth")?.addEventListener("click", async () => {
   currentMonth--;
-  if (currentMonth < 0) {
-    currentMonth = 11;
-    currentYear--;
-  }
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
   await loadVenueBookings();
   renderCalendar();
 });
 
 document.getElementById("nextMonth")?.addEventListener("click", async () => {
   currentMonth++;
-  if (currentMonth > 11) {
-    currentMonth = 0;
-    currentYear++;
-  }
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
   await loadVenueBookings();
   renderCalendar();
 });
+
 // ── SEARCH & FILTER ───────────────────────────────────────────────────────
 function initSearchFilters() {
   document.getElementById("proposalSearch")?.addEventListener("input", debounce(e =>
@@ -1599,6 +2346,24 @@ function initSearchFilters() {
   document.getElementById("allClubsCategory")?.addEventListener("change", e =>
     renderAllClubs(document.getElementById("allClubsSearch")?.value.toLowerCase(), e.target.value)
   );
+}
+
+// ── ALL CLUBS FILTERS ─────────────────────────────────────────────────────
+function initAllClubsFilters() {
+  const searchInput = document.getElementById("allClubsSearch");
+  const categorySelect = document.getElementById("allClubsCategory");
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      renderAllClubs(searchInput.value.toLowerCase(), categorySelect?.value || "all");
+    });
+  }
+
+  if (categorySelect) {
+    categorySelect.addEventListener("change", () => {
+      renderAllClubs(searchInput?.value.toLowerCase() || "", categorySelect.value);
+    });
+  }
 }
 
 // ── THEME ─────────────────────────────────────────────────────────────────
@@ -1628,7 +2393,7 @@ function logout() {
       <div style="font-size:12px;color:var(--text-3);margin-bottom:24px;">Are you sure you want to sign out of your faculty account?</div>
       <div style="display:flex;gap:10px;justify-content:center;">
         <button onclick="this.closest('div[style*=fixed]').parentElement.remove()" style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Cancel</button>
-        <button onclick="localStorage.removeItem('authToken');window.location.href='fcsignin.html';" style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
+        <button onclick="localStorage.removeItem('authToken');window.location.href='faculty-signin.html';" style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
       </div>
     </div>
   `;
@@ -1716,18 +2481,15 @@ function getSelectedClub() {
   if (selectedClubId === "all") return null;
   return cachedClubs.find(c => String(c.id ?? c.club_id ?? "") === String(selectedClubId)) || null;
 }
+
 function matchesSelectedClub(item) {
   if (selectedClubId === "all") return true;
   const sc = getSelectedClub();
   if (!sc) return false;
-  const sid  = String(sc.id ?? sc.club_id ?? "").trim();
-  const sname= String(sc.club_name ?? sc.name ?? sc.title ?? "").trim().toLowerCase();
-  const iid  = String(item.club_id ?? item.clubId ?? "").trim();
-  const iname= String(item.club ?? item.club_name ?? item.clubName ?? "").trim().toLowerCase();
-  return (sid && iid && iid === sid) || (sname && iname && iname === sname);
+  return eventMatchesClub(item, sc);
 }
 
-// ── PARTICIPANT DOWNLOAD ──────────────────────────────────────────────────
+// ── PARTICIPANT DOWNLOAD (event list table button) ────────────────────────
 async function downloadParticipants(eventId) {
   try {
     const data = await apiFetch(`/events/${eventId}/participants`);
@@ -1750,5 +2512,4 @@ async function downloadParticipants(eventId) {
   }
 }
 
-// ── START ─────────────────────────────────────────────────────────────────
 boot();

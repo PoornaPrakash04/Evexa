@@ -136,11 +136,11 @@ router.get("/participants/:eventId", authorize(["ORGANIZER"]), (req, res) => {
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
   const sql = `
-    SELECT r.id, s.id AS student_id, s.name, s.email, s.roll_no, r.status
-    FROM registrations r
-    JOIN students s ON s.id = r.student_id
-    WHERE r.event_id = ?
-    ORDER BY s.name ASC
+    SELECT r.id, s.id AS student_id, s.name, s.email, s.roll_no
+FROM registrations r
+JOIN students s ON s.id = r.student_id
+WHERE r.event_id = ?
+ORDER BY s.name ASC
   `;
 
   db.query(sql, [eventId], (err, rows) => {
@@ -245,10 +245,10 @@ router.post(
           db.query(
             `
             SELECT s.id AS student_id, s.name, s.email
-            FROM registrations r
-            JOIN students s ON s.id = r.student_id
-            WHERE r.event_id = ?
-            ORDER BY s.name ASC
+FROM registrations r
+JOIN students s ON s.id = r.student_id
+WHERE r.event_id = ?
+ORDER BY s.name ASC
           `,
             [eventId],
             (err, rows) => {

@@ -1,4 +1,4 @@
-//db.js
+// db.js
 require("dotenv").config();
 const mysql = require("mysql2");
 
@@ -19,7 +19,4 @@ db.connect((err) => {
   console.log("✅ MySQL Connected to", process.env.DB_NAME || "evexa");
 });
 
-// Standard callback-style query (used by most routes)
-// ALSO supports await via the promise property
-module.exports = db;
-module.exports.promise = () => db.promise();
+module.exports = db; 

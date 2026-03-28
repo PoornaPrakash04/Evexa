@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 
 async function hashPasswords() {
   const passwords = [
-    "dileena",
+    "5678",
   ];
 
   const saltRounds = 10;

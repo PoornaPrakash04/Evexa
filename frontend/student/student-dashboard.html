@@ -74,18 +74,10 @@
 
   <!-- Notification Bell -->
   <div class="notif-wrap">
-    <button class="icon-btn notif-btn" id="notifBtn" title="Notifications">
+    <button class="icon-btn notif-btn" id="notifBtn" title="Notifications" onclick="openNotifPage()">
       🔔
       <span class="notif-dot" id="notifDot"></span>
     </button>
-    <div class="notif-dropdown" id="notifDropdown">
-      <div class="notif-dropdown-head">
-  <span class="notif-dropdown-title" id="notifDropdownTitle">Notifications</span>
-</div>
-      <div class="notif-dropdown-list" id="notifList">
-        <div class="notif-empty">No notifications yet.</div>
-      </div>
-    </div>
   </div>
 
   <button class="top-link" id="clubsBtn" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
@@ -97,7 +89,7 @@
 
       <!-- Content -->
       <section class="content">
-
+        
         <!-- ── My Progress Card ─────────────────────────────────────── -->
         <div class="progress-section">
           <div class="progress-card">
@@ -204,7 +196,7 @@
         <div class="profile-meta">
           <div class="profile-name" id="profileName">Arjun Kumar</div>
           <div class="profile-line">Reg No: <span id="profileReg">STU-2026-019</span></div>
-          <div class="profile-line">Email: <span id="profileEmail">arjun@example.com</span></div>
+          <div class="profile-line">Email: <span id="profileEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2140534b544f614459404c514d440f424e4c">[email&#160;protected]</a></span></div>
           <div class="profile-line">Phone: <span id="profilePhone">+91 90000 00000</span></div>
         </div>
       </div>
@@ -258,6 +250,68 @@
     <p class="modal-empty">Loading...</p>
   </div>
 </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       NOTIFICATIONS PAGE OVERLAY
+       ══════════════════════════════════════════════════════════ -->
+  <div class="notif-page-overlay" id="notifPageOverlay" onclick="closeNotifPage()"></div>
+
+  <div class="notif-page" id="notifPage" aria-hidden="true">
+    <div class="notif-page-inner">
+
+      <!-- ── Header ── -->
+      <div class="notif-page-header">
+        <div class="notif-page-header-left">
+          <button class="notif-page-back" onclick="closeNotifPage()" aria-label="Back">←</button>
+          <div>
+            <div class="notif-page-title">🔔 Notifications</div>
+            <div class="notif-page-sub" id="notifPageSub">All caught up</div>
+          </div>
+        </div>
+        <div class="notif-page-header-actions">
+          <button class="notif-mark-all-btn" id="notifMarkAllBtn" onclick="markAllNotifsRead()" title="Mark all as read">✓ Mark all read</button>
+          <button class="notif-page-clear" id="notifPageClear" onclick="clearAllNotifs()" title="Clear all notifications">🗑 Clear all</button>
+        </div>
+      </div>
+
+      <!-- ── Summary strip ── -->
+      <div class="notif-summary-strip" id="notifSummaryStrip">
+        <div class="notif-summary-pill" id="nsPillAll">
+          <span class="ns-icon">🔔</span>
+          <span class="ns-label">All</span>
+          <span class="ns-badge" id="nsBadgeAll">0</span>
+        </div>
+        <div class="notif-summary-pill" id="nsPillEvent">
+          <span class="ns-icon">📅</span>
+          <span class="ns-label">Events</span>
+          <span class="ns-badge ns-badge--blue" id="nsBadgeEvent">0</span>
+        </div>
+        <div class="notif-summary-pill" id="nsPillAnn">
+          <span class="ns-icon">📢</span>
+          <span class="ns-label">Announcements</span>
+          <span class="ns-badge ns-badge--amber" id="nsBadgeAnn">0</span>
+        </div>
+      </div>
+
+      <!-- ── Filter tabs ── -->
+      <div class="notif-page-tabs">
+        <button class="notif-ptab active" data-tab="all"          onclick="switchNotifTab(this,'all')">All</button>
+        <button class="notif-ptab"        data-tab="event"        onclick="switchNotifTab(this,'event')">📅 Events</button>
+        <button class="notif-ptab"        data-tab="announcement" onclick="switchNotifTab(this,'announcement')">📢 Announcements</button>
+      </div>
+
+      <!-- ── Notification list ── -->
+      <div class="notif-page-list" id="notifPageList">
+        <div class="notif-pg-empty">
+          <div class="notif-pg-empty-icon">🔕</div>
+          <div class="notif-pg-empty-text">You're all caught up!</div>
+          <div class="notif-pg-empty-sub">No notifications yet.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <script src="theme.js"></script>
   <script src="student-dashboard.js"></script>
 </body>

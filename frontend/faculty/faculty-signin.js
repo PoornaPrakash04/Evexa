@@ -79,3 +79,11 @@ form.addEventListener("submit", async (e) => {
     btn.disabled    = false;
   }
 });
+// Password toggle
+const togglePassword = document.getElementById("togglePassword");
+
+togglePassword.addEventListener("click", () => {
+  const type = pwInput.type === "password" ? "text" : "password";
+  pwInput.type = type;
+  togglePassword.textContent = type === "password" ? "👁️" : "🙈";
+});

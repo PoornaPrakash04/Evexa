@@ -189,3 +189,21 @@ box-shadow:0 12px 25px rgba(0,0,0,.12);
 .back-wrapper:hover .arrow{
 transform:translateX(-4px);
 }
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.eye-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 18px;
+}

@@ -5,6 +5,37 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Faculty Dashboard | EVEXA</title>
   <link rel="stylesheet" href="faculty-dashboard.css"/>
+  <style>
+    /* ── BACK BUTTON ─────────────────────────────────────────── */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border-2, rgba(255,255,255,0.12));
+      background: var(--surface-2, rgba(255,255,255,0.06));
+      color: var(--text, #f0f2ff);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: var(--font, inherit);
+      transition: background 0.18s, border-color 0.18s, transform 0.12s;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .back-btn:hover {
+      background: var(--surface-3, rgba(255,255,255,0.11));
+      border-color: var(--violet, #8b5cf6);
+      transform: translateX(-2px);
+    }
+    .back-btn .back-arrow {
+      font-size: 15px;
+      line-height: 1;
+    }
+    /* hide by default; JS toggles visibility */
+    #backBtn { display: none; }
+  </style>
 </head>
 <body>
 <div class="app">
@@ -29,11 +60,11 @@
         <span class="icon">📋</span><span class="nav-label">Event Proposals</span>
         <span class="nav-badge orange" id="badge-proposals">–</span>
       </button>
+
       <div class="section-label">Venue</div>
       <button class="nav-item" data-page="venues" data-tooltip="Venues">
-  <span class="icon">📍</span><span class="nav-label">Venues</span>
-</button>
-      
+        <span class="icon">📍</span><span class="nav-label">Venues</span>
+      </button>
 
       <div class="section-label">Events</div>
       <button class="nav-item" data-page="event-list" data-tooltip="All Events">
@@ -50,9 +81,7 @@
       <button class="nav-item" data-page="analytics" data-tooltip="Analytics">
         <span class="icon">📊</span><span class="nav-label">Analytics</span>
       </button>
-      <button class="nav-item" data-page="feedback" data-tooltip="Feedback">
-        <span class="icon">💬</span><span class="nav-label">Feedback &amp; Reports</span>
-      </button>
+      
 
       <div class="section-label">Communication</div>
       <button class="nav-item" data-page="announcements" data-tooltip="Announcements">
@@ -78,6 +107,12 @@
     <header class="topbar">
       <div class="topbar-left">
         <button class="icon-btn" id="sidebarToggle" aria-label="Menu">☰</button>
+
+        <!-- BACK BUTTON — shown on every page except dashboard -->
+        <button class="back-btn" id="backBtn" onclick="navigateTo('dashboard')" title="Back to Dashboard">
+          <span class="back-arrow">←</span> Back
+        </button>
+
         <div class="page-title">
           <div class="title" id="pageTitle">Dashboard</div>
           <div class="subtitle" id="pageSub">Welcome back - here's your faculty overview.</div>
@@ -113,6 +148,20 @@
 
     <!-- Content -->
     <section class="content" id="content">
+      <!-- ══════════ EVENT DETAIL FULL PAGE ══════════ -->
+<div id="pg-event-detail" class="page-section" style="display:none">
+  <div class="filter-bar">
+    <button class="btn ghost sm" onclick="navigateTo('event-list')">← Back to Events</button>
+  </div>
+
+  <div id="facultyEventDetailPage">
+    <div class="panel">
+      <div class="panel-body" id="facultyEventDetailBody">
+        <div class="list-empty" style="padding:24px;">Select an event</div>
+      </div>
+    </div>
+  </div>
+</div>
 
       <!-- ══════════ DASHBOARD ══════════ -->
       <div id="pg-dashboard" class="page-section">
@@ -133,10 +182,7 @@
               <div class="hero-stat-label">Active Events</div>
             </div>
             <div class="hero-divider"></div>
-            <div class="hero-stat">
-              <div class="hero-stat-val" id="heroStudents">–</div>
-              <div class="hero-stat-label">Students Enrolled</div>
-            </div>
+            
           </div>
         </div>
 
@@ -166,10 +212,12 @@
             </div>
             <div class="panel" id="dashSelectedDatePanel" style="display:none; margin-top:16px;">
               <div class="panel-header">
-                <div>
-                  <div class="panel-title">📋 Events on Selected Date</div>
-                  <div class="panel-sub" id="dashSelectedDateSub">Event details</div>
-                </div>
+                <div class="event-detail-header">
+  <h2 class="event-detail-title">Event Details</h2>
+  <button class="event-close-btn" onclick="closeEventDetail()">✕</button>
+</div>
+
+<div class="event-detail-sub">Full information from the event proposal</div>
               </div>
               <div class="table-wrap">
                 <table>
@@ -205,54 +253,55 @@
         </div>
 
       </div><!-- /pg-dashboard -->
-      <!-- PAGE: VENUES -->
-       
-<div id="pg-venues" class="page-section" style="display:none">
-  <div class="panel">
-    <div class="panel-header">
-      <div>
-        <div class="panel-title">📍 Venues &amp; Availability</div>
-        <div class="panel-sub">Check venue status by date</div>
-      </div>
-    </div>
 
-    <div class="venue-match-layout">
-      <!-- Left venue list -->
-      <div class="venue-match-sidebar">
-        <div class="venue-match-label">VENUES</div>
-        <div id="venueList" class="venue-match-list"></div>
-      </div>
+      <!-- ══════════ VENUES ══════════ -->
+      <div id="pg-venues" class="page-section" style="display:none">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">📍 Venues &amp; Availability</div>
+              <div class="panel-sub">Check venue status by date</div>
+            </div>
+          </div>
 
-      <!-- Right calendar -->
-      <div class="venue-match-calendar-wrap">
-        <div class="venue-match-topbar">
-          <button type="button" class="venue-match-nav" id="prevMonth">‹</button>
-          <div id="calendarTitle" class="venue-match-title"></div>
-          <button type="button" class="venue-match-nav" id="nextMonth">›</button>
+          <div class="venue-match-layout">
+            <!-- Left venue list -->
+            <div class="venue-match-sidebar">
+              <div class="venue-match-label">VENUES</div>
+              <div id="venueList" class="venue-match-list"></div>
+            </div>
+
+            <!-- Right calendar -->
+            <div class="venue-match-calendar-wrap">
+              <div class="venue-match-topbar">
+                <button type="button" class="venue-match-nav" id="prevMonth">‹</button>
+                <div id="calendarTitle" class="venue-match-title"></div>
+                <button type="button" class="venue-match-nav" id="nextMonth">›</button>
+              </div>
+
+              <div class="venue-match-weekdays">
+                <div>SUN</div>
+                <div>MON</div>
+                <div>TUE</div>
+                <div>WED</div>
+                <div>THU</div>
+                <div>FRI</div>
+                <div>SAT</div>
+              </div>
+
+              <div id="calendarGrid" class="venue-match-grid"></div>
+
+              <div class="venue-match-legend">
+                <span><i class="vm-dot vm-available"></i> Available</span>
+                <span><i class="vm-dot vm-partial"></i> Partial</span>
+                <span><i class="vm-dot vm-booked"></i> Booked</span>
+                <span><i class="vm-dot vm-today"></i> Today</span>
+              </div>
+            </div>
+          </div>
         </div>
+      </div><!-- /pg-venues -->
 
-        <div class="venue-match-weekdays">
-          <div>SUN</div>
-          <div>MON</div>
-          <div>TUE</div>
-          <div>WED</div>
-          <div>THU</div>
-          <div>FRI</div>
-          <div>SAT</div>
-        </div>
-
-        <div id="calendarGrid" class="venue-match-grid"></div>
-
-        <div class="venue-match-legend">
-          <span><i class="vm-dot vm-available"></i> Available</span>
-          <span><i class="vm-dot vm-partial"></i> Partial</span>
-          <span><i class="vm-dot vm-booked"></i> Booked</span>
-          <span><i class="vm-dot vm-today"></i> Today</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
       <!-- ══════════ EVENT PROPOSALS ══════════ -->
       <div id="pg-proposals" class="page-section" style="display:none">
 
@@ -332,11 +381,8 @@
           <input class="search-input" id="allClubsSearch" placeholder="🔍  Search clubs…"/>
           <select class="filter-select" id="allClubsCategory">
             <option value="all">All Categories</option>
-            <option value="academic">Academic</option>
             <option value="technical">Technical</option>
-            <option value="cultural">Cultural</option>
-            <option value="sports">Sports</option>
-            <option value="social">Social</option>
+            <option value="non-technical">Non-Technical</option>
           </select>
         </div>
 
@@ -436,44 +482,44 @@
         </div>
       </div><!-- /pg-analytics -->
 
-      <!-- ══════════ FEEDBACK ══════════ -->
-      <div id="pg-feedback" class="page-section" style="display:none">
-        <div class="panel">
-          <div class="panel-header">
-            <div><div class="panel-title">💬 Student Comments</div><div class="panel-sub">Recent feedback</div></div>
-            <input class="search-input" id="feedbackSearch" placeholder="🔍  Search comments…" style="width:200px"/>
-          </div>
-          <div class="comments-grid" id="commentsGrid"><div class="list-empty" style="padding:20px;">Loading…</div></div>
-        </div>
-      </div><!-- /pg-feedback -->
+      
 
       <!-- ══════════ ANNOUNCEMENTS ══════════ -->
       <div id="pg-announcements" class="page-section" style="display:none">
         <div class="two-col">
           <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">✏️ Post Announcement</div><div class="panel-sub">Notify students &amp; clubs</div></div></div>
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">✏️ Post Announcement</div>
+                <div class="panel-sub">Notify students &amp; clubs</div>
+              </div>
+            </div>
             <div class="panel-body" style="display:flex;flex-direction:column;gap:12px;">
-              <input class="search-input" id="announceTitle" placeholder="Announcement title…" style="width:100%"/>
-              <textarea class="search-input" id="announceBody" placeholder="Write your message…" rows="5" style="width:100%;resize:vertical;"></textarea>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <input class="search-input" id="announceTitle" placeholder="Announcement title..." />
+              <textarea class="search-input" id="announceBody" placeholder="Write your message..." style="min-height:120px;resize:vertical;"></textarea>
+              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                 <select class="filter-select" id="announceType">
                   <option value="General">📣 General</option>
-                  <option value="Event">📅 Event</option>
                   <option value="Info">ℹ️ Info</option>
+                  <option value="Event">📅 Event</option>
                   <option value="Urgent">🚨 Urgent</option>
                 </select>
                 <button class="btn primary" id="postAnnounceBtn">📢 Post Announcement</button>
               </div>
             </div>
           </div>
+
           <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">📋 Posted Announcements</div><div class="panel-sub">Your recent posts</div></div></div>
-            <div class="panel-body" id="announceList"><div class="list-empty">Loading…</div></div>
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">📋 Posted Announcements</div>
+                <div class="panel-sub">Your recent posts</div>
+              </div>
+            </div>
+            <div class="panel-body" id="announceList">
+              <div class="list-empty">Loading…</div>
+            </div>
           </div>
-        </div>
-        <div class="panel">
-          <div class="panel-header"><div><div class="panel-title">📌 Admin Announcements</div><div class="panel-sub">From institution admin</div></div></div>
-          <div class="panel-body" id="adminAnnounceList"><div class="list-empty">Loading…</div></div>
         </div>
       </div><!-- /pg-announcements -->
 
@@ -490,6 +536,21 @@
     </section><!-- /content -->
   </main>
 </div>
+
+<!-- Event Detail Overlay -->
+<div id="eventDetailOverlay" style="display:none" onclick="closeEventDetail()"></div>
+
+<!-- Event Detail Drawer -->
+<aside id="eventDetailDrawer" style="display:none">
+  <div class="ed-drawer-topbar">
+    <div>
+      <div class="ed-drawer-title" id="edDrawerTitle">Event Details</div>
+      <div class="ed-drawer-sub" id="edDrawerSub">Full information from the event proposal</div>
+    </div>
+    <button class="ed-close-btn" onclick="closeEventDetail()">✕</button>
+  </div>
+  <div id="eventDetailBody" style="flex:1;overflow-y:auto;padding:0;"></div>
+</aside>
 
 <!-- Profile Drawer -->
 <div class="overlay" id="overlay"></div>
