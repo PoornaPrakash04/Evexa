@@ -995,7 +995,7 @@
       <h3 id="execomModalTitle">✏️ Edit Member</h3>
       <button class="modal-close" onclick="closeModal('execomEditModal')">✕</button>
     </div>
-    <form id="execomEditForm" onsubmit="submitExecomEdit(event)" class="modal-form">
+    <form id="execomEditForm" class="modal-form">
       <input type="hidden" id="execomEditId">
       <input type="text" id="execomEditName" class="form-input" placeholder="Full Name *" required>
       <input type="text" id="execomEditPosition" class="form-input" placeholder="Position (e.g. Chairperson) *" required>
@@ -1009,7 +1009,7 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <script src="orgscript.js"></script>
 </body>

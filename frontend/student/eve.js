@@ -24,7 +24,7 @@ let DB = {
 };
 
 // ── Auth helper ───────────────────────────────────────────────────────────
-function getToken() { return localStorage.getItem("authToken") || ""; }
+function getToken() { return localStorage.getItem("student_auth_token") || ""; }
 
 async function apiFetch(endpoint) {
   try {

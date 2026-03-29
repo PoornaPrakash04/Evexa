@@ -7,6 +7,11 @@ let registeredEventIds = [];
 let currentFilter     = "all";
 let currentSearch     = "";
 
+// ── IST-safe date formatter ───────────────────────────
+function formatDateIST(raw, opts) {
+  return new Date(raw).toLocaleDateString("en-IN", { ...opts, timeZone: "Asia/Kolkata" });
+}
+
 // ── Detect filter from URL ────────────────────────────
 const urlFilter = new URLSearchParams(window.location.search).get("filter");
 if (urlFilter) {
@@ -40,7 +45,7 @@ document.querySelectorAll(".nav-item").forEach(item => {
 
 // ── Fetch registered event IDs ────────────────────────
 async function loadRegisteredIds() {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) return;
   try {
     const res = await fetch(`${API_BASE}/attendance/my-registrations`, {
@@ -59,7 +64,8 @@ async function loadRegisteredIds() {
 async function loadEvents() {
   try {
     const res = await fetch(`${API_BASE}/events`);
-    allEvents = await res.json();
+    const data = await res.json();
+    allEvents = data.filter(e => (e.status || "").toLowerCase() !== "pending");
     await loadRegisteredIds();
     renderGrid();
   } catch (err) {
@@ -69,46 +75,38 @@ async function loadEvents() {
   }
 }
 
-// ── Map backend status to badge labels ────────────────
+// ── Map backend status to display status ──────────────
 function getStatus(event) {
-  const now = new Date();
+  const s = (event.status || "").toLowerCase();
 
-  // Build proper event datetime (uses local time)
-  const eventDateTime = event.date
-    ? new Date(`${event.date}T${event.time || "00:00:00"}`)
-    : null;
+  if (!s || s === "approved") return "open";
+  if (s === "completed")      return "past";
+  if (s === "cancelled")      return "past";
 
-  // Full check
   if (event.capacity && (event.registered_count || 0) >= event.capacity) return "full";
 
-  // If no date, treat as open
-  if (!eventDateTime || isNaN(eventDateTime.getTime())) return "open";
-
-  // Past event → not in open/upcoming buckets
-  if (eventDateTime < now) return "past";
-
-  // Upcoming = within next 7 days
-  const diffMs = eventDateTime - now;
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-  if (diffDays <= 7) return "upcoming";
   return "open";
 }
+
 // ── Build one event card ──────────────────────────────
 function renderCard(e) {
   const poster = (e.poster && e.poster !== "default.jpg")
     ? `http://localhost:5000/uploads/${e.poster}`
     : `https://placehold.co/600x200/6d5efc/ffffff?text=${encodeURIComponent(e.title)}`;
 
+  // ✅ IST-safe date display
   const eventDate = e.date
-    ? new Date(e.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    ? formatDateIST(e.date, { day: "numeric", month: "short", year: "numeric" })
     : "TBA";
 
   const status    = getStatus(e);
-  const statusMap = { open: "Open", full: "Full", upcoming: "Upcoming", past: "Completed" };
+  const statusMap = { open: "Open", full: "Full", past: "Completed" };
   const fee       = e.registration_fee > 0 ? `₹${e.registration_fee}` : "Free";
   const capacity  = e.capacity || 0;
   const isRegistered = registeredEventIds.includes(String(e.id));
+
+  // Strip seconds from time display (HH:MM:SS → HH:MM)
+  const displayTime = e.time ? String(e.time).slice(0, 5) : "TBA";
 
   return `
     <div class="event-card" data-id="${e.id}" role="button" tabindex="0" aria-label="View details for ${e.title}">
@@ -118,7 +116,7 @@ function renderCard(e) {
       <div class="event-body">
         <div class="event-title-row">
           <div class="event-name">${e.title}</div>
-          <span class="status-badge ${status}">${statusMap[status]}</span>
+          <span class="status-badge ${status}">${statusMap[status] || "Open"}</span>
         </div>
 
         ${isRegistered ? `<div class="registered-tag">🎟️ Registered</div>` : ""}
@@ -128,7 +126,7 @@ function renderCard(e) {
             <span class="meta-icon">📅</span>
             <span class="meta-label">${eventDate}</span>
             &nbsp;·&nbsp;
-            <span>${e.time || "TBA"}</span>
+            <span>${displayTime}</span>
           </div>
           <div class="meta-row">
             <span class="meta-icon">🏛️</span>
@@ -169,15 +167,15 @@ function getFiltered() {
     const status = getStatus(e);
 
     let matchFilter = false;
-    if (currentFilter === "all")        matchFilter = true;
+    if (currentFilter === "all")             matchFilter = true;
     else if (currentFilter === "registered") matchFilter = registeredEventIds.includes(String(e.id));
-    else                                matchFilter = status === currentFilter;
+    else                                     matchFilter = status === currentFilter;
 
     const q = currentSearch.toLowerCase();
     const matchSearch =
       !q ||
       e.title?.toLowerCase().includes(q) ||
-      e.club?.toLowerCase().includes(q) ||
+      e.club?.toLowerCase().includes(q)  ||
       e.venue?.toLowerCase().includes(q) ||
       e.type?.toLowerCase().includes(q);
 
@@ -228,7 +226,6 @@ document.getElementById("filterBar")?.querySelectorAll(".filter-btn").forEach(bt
     btn.classList.add("active");
     currentFilter = btn.dataset.filter;
 
-    // Update page title when switching filters
     const title    = document.querySelector(".title");
     const subtitle = document.querySelector(".subtitle");
     if (currentFilter === "registered") {

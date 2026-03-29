@@ -66,8 +66,7 @@ form.addEventListener("submit", async (e) => {
     }
 
     // ── Store token + role ────────────────────────────
-    localStorage.setItem("authToken", data.token);
-    localStorage.setItem("userRole",  "faculty");
+    localStorage.setItem("faculty_auth_token", data.token);
 
     // ── Redirect to faculty dashboard ─────────────────
     window.location.href = "faculty-dashboard.html";

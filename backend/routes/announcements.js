@@ -56,19 +56,39 @@ router.get("/my-posts", authorize(), (req, res) => {
 });
 
 // ── GET /api/announcements/student ───────────────────────────
-// (your existing student route — unchanged)
+// Returns:
+//   1. Announcements from clubs the student is a member of (organizer-posted)
+//   2. Announcements posted by faculty in-charge of student's clubs
+//   3. Announcements posted by admins (visible to all students)
 router.get("/student", authorize(), (req, res) => {
   db.query(
-    `SELECT a.id, a.title, a.message, a.club, a.type, a.created_at
+    `SELECT DISTINCT a.id, a.title, a.message, a.club, a.type, a.created_at
      FROM announcements a
-     INNER JOIN clubs c ON c.club_name = a.club
-     INNER JOIN club_members cm ON cm.club_id = c.club_id
-     WHERE cm.student_id = ?
-       AND a.status = 'Published'
+     WHERE a.status = 'Published'
        AND a.is_archived = 0
+       AND (
+         -- Club announcements: student is a member of that club
+         a.club IN (
+           SELECT c.club_name FROM clubs c
+           INNER JOIN club_members cm ON cm.club_id = c.club_id
+           WHERE cm.student_id = ?
+         )
+         OR
+         -- Faculty announcements: faculty is in-charge of a club the student belongs to
+         a.created_by IN (
+           SELECT c.faculty_id FROM clubs c
+           INNER JOIN club_members cm ON cm.club_id = c.club_id
+           WHERE cm.student_id = ? AND c.faculty_id IS NOT NULL
+         )
+         OR
+         -- Admin announcements: visible to all students
+         a.created_by IN (
+           SELECT id FROM admins
+         )
+       )
      ORDER BY a.created_at DESC
      LIMIT 50`,
-    [req.user.id],
+    [req.user.id, req.user.id],
     (err, results) => {
       if (err) {
         console.error("Student announcements error:", err);
@@ -159,37 +179,80 @@ router.post("/", authorize(), (req, res) => {
 router.put("/:id", authorize(), (req, res) => {
   const { title, message, type } = req.body;
 
-  db.query(
-    `UPDATE announcements 
-     SET title = ?, message = ?, type = ?
-     WHERE id = ? AND created_by = ?`,
-    [title, message, type, req.params.id, req.user.id],
-    (err, result) => {
-      if (err) return res.status(500).json({ message: "Server error" });
-
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: "Not found or unauthorized" });
+  if (req.user.role === "FACULTY") {
+    // Faculty: verify they own it via created_by
+    db.query(
+      `UPDATE announcements SET title = ?, message = ?, type = ?
+       WHERE id = ? AND created_by = ?`,
+      [title, message, type, req.params.id, req.user.id],
+      (err, result) => {
+        if (err) return res.status(500).json({ message: "Server error" });
+        if (result.affectedRows === 0)
+          return res.status(404).json({ message: "Not found or unauthorized" });
+        res.json({ message: "Announcement updated" });
       }
-
-      res.json({ message: "Announcement updated" });
-    }
-  );
+    );
+  } else {
+    // Organizer: verify ownership by matching their club
+    db.query(
+      "SELECT club FROM organizers WHERE id = ?",
+      [req.user.id],
+      (err, orgResult) => {
+        if (err) return res.status(500).json({ message: "Server error" });
+        if (!orgResult.length) return res.status(404).json({ message: "Organizer not found" });
+        const club = orgResult[0].club;
+        db.query(
+          `UPDATE announcements SET title = ?, message = ?, type = ?
+           WHERE id = ? AND club = ?`,
+          [title, message, type, req.params.id, club],
+          (err2, result) => {
+            if (err2) return res.status(500).json({ message: "Server error" });
+            if (result.affectedRows === 0)
+              return res.status(404).json({ message: "Not found or unauthorized" });
+            res.json({ message: "Announcement updated" });
+          }
+        );
+      }
+    );
+  }
 });
+
 // ── DELETE /api/announcements/:id ────────────────────────────
 router.delete("/:id", authorize(), (req, res) => {
-  db.query(
-    "DELETE FROM announcements WHERE id = ? AND created_by = ?",
-    [req.params.id, req.user.id],
-    (err, result) => {
-  if (err) return res.status(500).json({ message: "Server error" });
-
-  if (result.affectedRows === 0) {
-    return res.status(404).json({ message: "Not found or unauthorized" });
+  if (req.user.role === "FACULTY") {
+    // Faculty: verify they own it via created_by
+    db.query(
+      "DELETE FROM announcements WHERE id = ? AND created_by = ?",
+      [req.params.id, req.user.id],
+      (err, result) => {
+        if (err) return res.status(500).json({ message: "Server error" });
+        if (result.affectedRows === 0)
+          return res.status(404).json({ message: "Not found or unauthorized" });
+        res.json({ message: "Announcement deleted" });
+      }
+    );
+  } else {
+    // Organizer: verify ownership by matching their club
+    db.query(
+      "SELECT club FROM organizers WHERE id = ?",
+      [req.user.id],
+      (err, orgResult) => {
+        if (err) return res.status(500).json({ message: "Server error" });
+        if (!orgResult.length) return res.status(404).json({ message: "Organizer not found" });
+        const club = orgResult[0].club;
+        db.query(
+          "DELETE FROM announcements WHERE id = ? AND club = ?",
+          [req.params.id, club],
+          (err2, result) => {
+            if (err2) return res.status(500).json({ message: "Server error" });
+            if (result.affectedRows === 0)
+              return res.status(404).json({ message: "Not found or unauthorized" });
+            res.json({ message: "Announcement deleted" });
+          }
+        );
+      }
+    );
   }
-
-  res.json({ message: "Announcement deleted" });
-}
-  );
 });
 
 module.exports = router;

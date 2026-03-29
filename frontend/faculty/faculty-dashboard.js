@@ -16,7 +16,7 @@ function isPendingStatus(status) {
 
 // ── AUTH ──────────────────────────────────────────────────────────────────
 async function apiFetch(endpoint, opts = {}) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("faculty_auth_token");
   if (!token) { window.location.href = "faculty-signin.html"; return null; }
 
   try {
@@ -31,7 +31,7 @@ async function apiFetch(endpoint, opts = {}) {
     });
 
     if (res.status === 401) {
-      localStorage.removeItem("authToken");
+      localStorage.removeItem("faculty_auth_token");
       window.location.href = "faculty-signin.html";
       return null;
     }
@@ -71,6 +71,26 @@ let cachedEvents        = [];
 let cachedClubs         = [];
 let cachedFeedback      = [];
 let cachedRegistrations = [];
+
+// Hall Coordinator state
+let cachedHallProposals  = [];
+let cachedHallVenues     = [];
+let myRoleId             = null;   // set after /me resolves
+
+// Role IDs (mirrors backend ROLE constants)
+const FACULTY_ROLE = {
+  HOD:                 1,
+  STAFF:               2,
+  STAFF_ADVISOR:       3,
+  FACULTY_COORDINATOR: 4,
+  DEAN:                5,
+};
+
+function isFacultyCoordinator() { return myRoleId === FACULTY_ROLE.FACULTY_COORDINATOR; }
+
+// Hall Coordinator = anyone whose venue list is non-empty.
+// We set this flag after loading hall venues.
+let isHallCoordinator = false;
 
 let localNotifs = JSON.parse(localStorage.getItem("evexa_faculty_notifs") || "[]");
 function saveNotifs() {
@@ -147,28 +167,33 @@ async function boot() {
   if (!profile) return;
 
   if (!profile.faculty_no && !profile.department && profile.roll_no) {
-    localStorage.removeItem("authToken");
+    localStorage.removeItem("faculty_auth_token");
     showToast("Please log in with your faculty account.", "error");
     setTimeout(() => window.location.href = "faculty-signin.html", 1500);
     return;
   }
 
   cachedProfile = profile;
+  myRoleId = profile.role_id ?? null;
 
   const name = profile.name || "Faculty";
   const initials = name.split(" ").filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2) || "FA";
   const department = profile.department || "Faculty Advisor";
-  const facultyNo = profile.faculty_no || "";
+  const facultyNo  = profile.faculty_no || "";
+  const roleName   = profile.role_name  || "Faculty";
 
   el("miniName")?.text(name);
-  el("miniRole")?.text(facultyNo ? `${facultyNo} · ${department}` : department);
+  el("miniRole")?.text(facultyNo ? `${facultyNo} · ${roleName}` : roleName);
   el("miniAvatar")?.text(initials);
   el("topAvatar")?.text(initials);
-  el("rolePill")?.text(`Faculty · ${department}`);
+  el("rolePill")?.text(`${roleName} · ${department}`);
 
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   el("heroGreeting")?.text(`${greet}, ${name.split(" ")[0]}`);
+
+  // Inject Hall nav items (will show only if this faculty manages venues)
+  await injectHallCoordinatorNav();
 
   await refreshAll();
 
@@ -195,7 +220,7 @@ async function boot() {
 }
 async function downloadFacultyEventReport(eventId) {
   try {
-    const res = await apiFetch(`/events/${eventId}/participants`);
+    const res = await apiFetch(`/faculty/events/${eventId}/participants`);
     const data = Array.isArray(res) ? res : [];
 
     if (!data.length) {
@@ -246,12 +271,14 @@ function openNotifHistoryPage(e) {
 }
 
 async function refreshAll() {
-  const [proposals, events, clubs, feedback, registrations] = await Promise.all([
+  const [proposals, events, clubs, feedback, registrations, hallProposals, hallVenues] = await Promise.all([
     apiFetch("/faculty/proposals"),
-    apiFetch("/events"),
+    apiFetch("/events/all"),
     apiFetch("/clubs/my-clubs"),
     apiFetch("/faculty/feedback"),
     apiFetch("/faculty/registrations").catch(() => null),
+    apiFetch("/faculty/hall/proposals").catch(() => null),
+    apiFetch("/faculty/hall/venues").catch(() => null),
   ]);
 
   cachedProposals     = Array.isArray(proposals)     ? proposals     : [];
@@ -259,29 +286,90 @@ async function refreshAll() {
   cachedClubs         = Array.isArray(clubs)         ? clubs         : [];
   cachedFeedback      = Array.isArray(feedback)      ? feedback      : [];
   cachedRegistrations = Array.isArray(registrations) ? registrations : [];
+  cachedHallProposals = Array.isArray(hallProposals) ? hallProposals : [];
+  cachedHallVenues    = Array.isArray(hallVenues)    ? hallVenues    : [];
 
-  console.log("[refreshAll] proposals:", cachedProposals.length,
-    cachedProposals.map(p => ({ id: p.id, title: p.title, status: p.status })));
-  console.log("[refreshAll] events:", cachedEvents.length,
-    cachedEvents.map(e => ({ id: e.id, title: e.title, status: e.status })));
-  console.log("[refreshAll] registrations:", cachedRegistrations.length);
+  isHallCoordinator = cachedHallVenues.length > 0;
+
+  console.log("[refreshAll] proposals:", cachedProposals.length);
+  console.log("[refreshAll] hall proposals:", cachedHallProposals.length, "| hall venues:", cachedHallVenues.length);
 
   updateBadges();
+  updateHallNavVisibility();
+}
+
+// Show / hide Hall Coordinator nav items
+function updateHallNavVisibility() {
+  const hallSection    = document.getElementById("nav-section-hall");
+  const hallProposalNav = document.getElementById("nav-hall-proposals");
+  const hallVenueNav   = document.getElementById("nav-hall-venues");
+  if (hallSection)      hallSection.style.display     = isHallCoordinator ? "" : "none";
+  if (hallProposalNav)  hallProposalNav.style.display  = isHallCoordinator ? "" : "none";
+  if (hallVenueNav)     hallVenueNav.style.display     = isHallCoordinator ? "" : "none";
+}
+
+// Dynamically inject Hall Coordinator nav items (called once after profile loads)
+async function injectHallCoordinatorNav() {
+  const navEl = document.querySelector(".nav");
+  if (!navEl || document.getElementById("nav-section-hall")) return;
+
+  const section = document.createElement("div");
+  section.className   = "section-label";
+  section.id          = "nav-section-hall";
+  section.style.display = "none";
+  section.textContent = "Hall Management";
+
+  const btnProposals = document.createElement("button");
+  btnProposals.className    = "nav-item";
+  btnProposals.id           = "nav-hall-proposals";
+  btnProposals.dataset.page = "hall-proposals";
+  btnProposals.dataset.tooltip = "Hall Proposals";
+  btnProposals.style.display = "none";
+  btnProposals.innerHTML = `
+    <span class="icon">🏛️</span>
+    <span class="nav-label">Hall Proposals</span>
+    <span class="nav-badge orange" id="badge-hall-proposals">–</span>`;
+  btnProposals.addEventListener("click", () => navigateTo("hall-proposals"));
+
+  const btnVenues = document.createElement("button");
+  btnVenues.className    = "nav-item";
+  btnVenues.id           = "nav-hall-venues";
+  btnVenues.dataset.page = "hall-venues";
+  btnVenues.dataset.tooltip = "My Venues";
+  btnVenues.style.display = "none";
+  btnVenues.innerHTML = `<span class="icon">🏟️</span><span class="nav-label">My Venues</span>`;
+  btnVenues.addEventListener("click", () => navigateTo("hall-venues"));
+
+  const clubsLabel = [...navEl.querySelectorAll(".section-label")]
+    .find(el2 => el2.textContent.includes("Clubs"));
+
+  if (clubsLabel) {
+    navEl.insertBefore(section, clubsLabel);
+    navEl.insertBefore(btnProposals, clubsLabel);
+    navEl.insertBefore(btnVenues, clubsLabel);
+  } else {
+    navEl.appendChild(section);
+    navEl.appendChild(btnProposals);
+    navEl.appendChild(btnVenues);
+  }
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────
 const PAGE_META = {
-  "dashboard":     ["Dashboard",                "Welcome back — here's your faculty overview."],
-  "proposals":     ["Event Proposal Review",    "Review, approve or reject submitted proposals."],
-  "event-list":    ["All Events",               "Complete event list across your clubs."],
-  "pending":       ["Pending Queue",            "All items requiring your immediate action."],
-  "all-clubs":     ["All Clubs",                "Browse all clubs and their events."],
-  "clubs":         ["Club & Academic Oversight", "Your incharge clubs and their activity."],
-  "analytics":     ["Reports & Analytics",      "Events, participation, and academic statistics."],
-  "feedback":      ["Feedback & Reports",       "Student feedback ratings and comments."],
-  "announcements": ["Announcements",            "Post and manage club announcements."],
-  "notif-history": ["Notification History",     "All alerts and system updates."],
-  "venues":        ["Venues & Availability",    "Check venue availability by date."],
+  "dashboard":        ["Dashboard",                 "Welcome back — here's your faculty overview."],
+  "proposals":        ["Event Proposal Review",     "Review, approve or reject submitted proposals."],
+  "event-list":       ["All Events",                "Complete event list across your clubs."],
+  "pending":          ["Pending Queue",             "All items requiring your immediate action."],
+  "all-clubs":        ["All Clubs",                 "Browse all clubs and their events."],
+  "clubs":            ["Club & Academic Oversight", "Your incharge clubs and their activity."],
+  "analytics":        ["Reports & Analytics",       "Events, participation, and academic statistics."],
+  "feedback":         ["Feedback & Reports",        "Student feedback ratings and comments."],
+  "announcements":    ["Announcements",             "Post and manage club announcements."],
+  "notif-history":    ["Notification History",      "All alerts and system updates."],
+  "venues":           ["Venues & Availability",     "Check venue availability by date."],
+  "account-settings": ["Account Settings",          "Update your faculty profile and password."],
+  "hall-proposals":   ["Hall Proposals",            "Forwarded proposals awaiting your venue confirmation."],
+  "hall-venues":      ["My Venues",                 "Manage availability for venues under your coordination."],
 };
 
 function navigateTo(page) {
@@ -322,16 +410,19 @@ if (backBtn) {
   }
 
   const renders = {
-    "dashboard":     renderDashboard,
-    "proposals":     renderProposals,
-    "event-list":    () => { renderEventList(); },
-    "venues":        () => loadVenues(),
-    "pending":       renderPendingPage,
-    "all-clubs":     renderAllClubs,
-    "clubs":         renderClubs,
-    "announcements": renderAnnouncements,
-    "notif-history": renderNotifHistory,
-    "feedback":      renderFeedback,
+    "dashboard":      renderDashboard,
+    "proposals":      renderProposals,
+    "event-list":     () => { renderEventList(); },
+    "venues":         () => loadVenues(),
+    "pending":        renderPendingPage,
+    "all-clubs":      renderAllClubs,
+    "clubs":          renderClubs,
+    "announcements":  renderAnnouncements,
+    "notif-history":  renderNotifHistory,
+    "feedback":       renderFeedback,
+    "hall-proposals": renderHallProposals,
+    "hall-venues":    renderHallVenues,
+    "account-settings": () => { initAccountSettings(); asLoadProfile(); },
     "analytics": async () => {
       chartsInited = false;
       await refreshAll();
@@ -352,13 +443,51 @@ async function renderDashboard() {
     return dt && dt >= now;
   });
 
-  el("heroPending")?.text(pending.length);
+  // For Faculty Coordinators the hero shows proposals pending their review;
+  // for Hall Coordinators it also adds forwarded proposals awaiting their action.
+  const totalPending = pending.length + (isHallCoordinator ? cachedHallProposals.length : 0);
+
+  el("heroPending")?.text(totalPending);
   el("heroClubs")?.text(cachedClubs.length);
   el("heroEvents")?.text(activeEv.length);
   el("heroStudents")?.text(0);
 
+  // Show/hide hall quick card on dashboard
+  renderHallQuickCard();
+
   renderDashboardCalendar();
   renderClubsQuick();
+}
+
+function renderHallQuickCard() {
+  // Remove existing if present
+  document.getElementById("dashHallCard")?.remove();
+  if (!isHallCoordinator || !cachedHallProposals.length) return;
+
+  const heroStrip = document.getElementById("heroStrip");
+  if (!heroStrip) return;
+
+  const card = document.createElement("div");
+  card.id = "dashHallCard";
+  card.style.cssText = `
+    margin-top:14px;padding:14px 18px;border-radius:14px;
+    background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);
+    display:flex;align-items:center;gap:14px;cursor:pointer;
+  `;
+  card.innerHTML = `
+    <div style="font-size:26px;">🏛️</div>
+    <div style="flex:1;">
+      <div style="font-size:14px;font-weight:800;color:#67e8f9;">
+        ${cachedHallProposals.length} Hall Proposal${cachedHallProposals.length > 1 ? 's' : ''} Awaiting Venue Confirmation
+      </div>
+      <div style="font-size:12px;color:var(--text-3);margin-top:2px;">
+        These have been forwarded by the Faculty Coordinator — click to review.
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:#67e8f9;">View →</div>
+  `;
+  card.addEventListener("click", () => navigateTo("hall-proposals"));
+  heroStrip.insertAdjacentElement("afterend", card);
 }
 
 function renderDashboardCalendar() {
@@ -461,7 +590,7 @@ async function loadFacultyParticipants(eventId) {
   wrap.innerHTML = "Loading participants...";
 
   try {
-    const res = await apiFetch(`/events/${eventId}/participants`);
+    const res = await apiFetch(`/faculty/events/${eventId}/participants`);
     const data = Array.isArray(res) ? res : [];
 
     if (!data.length) {
@@ -564,45 +693,26 @@ function renderClubsQuick() {
 
 // ── PROPOSALS ─────────────────────────────────────────────────────────────
 async function renderProposals(filter = "all", search = "", category = "all") {
+  // Show Faculty Coordinator info banner if applicable
+  const fcBanner = document.getElementById("fcCoordinatorBanner");
+  if (fcBanner) fcBanner.style.display = isFacultyCoordinator() ? "" : "none";
+
   const tbody = document.getElementById("proposalsBody");
   if (!tbody) return;
 
   tbody.innerHTML = `<tr><td colspan="7" class="td-empty">Loading proposals…</td></tr>`;
 
-  const [freshProposals, freshEvents] = await Promise.all([
-    apiFetch("/faculty/proposals"),
-    apiFetch("/events"),
-  ]);
-
+  // /faculty/proposals is already scoped to this faculty's clubs and filtered
+  // by status (Pending only for Faculty Coordinators). It is the single source
+  // of truth — no merge with /events/all needed, which avoids duplicates.
+  const freshProposals = await apiFetch("/faculty/proposals");
   if (Array.isArray(freshProposals)) cachedProposals = freshProposals;
-  if (Array.isArray(freshEvents))    cachedEvents    = freshEvents;
 
-  const proposalItems = (Array.isArray(cachedProposals) ? cachedProposals : []).map(p => ({
+  let list = (Array.isArray(cachedProposals) ? cachedProposals : []).map(p => ({
     ...p,
     _src: "proposal",
     _key: `proposal-${p.id}`,
   }));
-
-  const pendingEventItems = (Array.isArray(cachedEvents) ? cachedEvents : [])
-    .filter(e => isPendingStatus(e.status))
-    .map(e => ({
-      ...e,
-      _src: "event",
-      _key: `event-${e.id}`,
-      organizer: e.organizer || e.created_by || "—",
-    }));
-
-  console.log("👉 ALL EVENTS:", cachedEvents.map(e => ({ id: e.id, title: e.title, status: e.status })));
-
-  const seen = new Set();
-  const merged = [];
-  [...proposalItems, ...pendingEventItems].forEach(item => {
-    if (seen.has(item._key)) return;
-    seen.add(item._key);
-    merged.push(item);
-  });
-
-  let list = merged.filter(p => isPendingStatus(p.status));
 
   if (selectedClubId !== "all") list = list.filter(matchesSelectedClub);
 
@@ -620,8 +730,7 @@ async function renderProposals(filter = "all", search = "", category = "all") {
 
   window.currentProposalList = list;
 
-  console.log("📋 cachedProposals raw statuses:", cachedProposals.map(p => p.status));
-  console.log("📋 pendingEventItems:", pendingEventItems.length);
+  console.log("[renderProposals] proposals loaded:", list.length, list.map(p => ({ id: p.id, title: p.title, status: p.status })));
   console.log("📋 final list after filter:", list.length, list.map(p => ({ id: p.id, title: p.title, status: p.status })));
 
   if (!list.length) {
@@ -645,7 +754,9 @@ async function renderProposals(filter = "all", search = "", category = "all") {
       </td>
       <td>
         <div style="display:flex;gap:5px;flex-wrap:wrap;">
-          <button class="mini-btn approve" onclick="approveProposal(${p.id}, '${p._src}')">✅</button>
+          <button class="mini-btn approve" onclick="approveProposal(${p.id}, '${p._src}')" title="${isFacultyCoordinator() ? 'Forward to Hall Coordinator' : 'Approve'}">
+            ${isFacultyCoordinator() ? '📨' : '✅'}
+          </button>
           <button class="mini-btn reject"  onclick="rejectProposal(${p.id}, '${p._src}')">❌</button>
           <button class="mini-btn"         onclick="showProposalDetail('${p._key}')">👁</button>
         </div>
@@ -662,6 +773,13 @@ function showProposalDetail(key) {
   if (!p) { console.warn("Proposal not found for key:", key); return; }
 
   el("detailName")?.text(p.title || p.name || "Event Details");
+
+  // Make the detail panel visible
+  const panel = document.getElementById("proposalDetail");
+  if (panel) {
+    panel.style.display = "";
+    setTimeout(() => panel.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
 
   const isPending = isPendingStatus(p.status);
 
@@ -697,8 +815,10 @@ function showProposalDetail(key) {
                 style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-family:var(--font);resize:vertical;outline:none;margin-bottom:10px;box-sizing:border-box;"
               >${p.remark || ""}</textarea>
               <div style="display:flex;gap:8px;">
-                <button class="mini-btn approve" style="flex:1;justify-content:center;" onclick="approveProposalWithRemark(${p.id}, '${p._src}')">✅ Approve</button>
-                <button class="mini-btn reject"  style="flex:1;justify-content:center;" onclick="rejectProposalWithRemark(${p.id}, '${p._src}')">❌ Reject</button>
+                <button class="mini-btn approve" style="flex:1;justify-content:center;" onclick="approveProposalWithRemark(${p.id}, '${p._src}')">
+                  ${isFacultyCoordinator() ? '📨 Forward to Hall' : '✅ Approve'}
+                </button>
+                <button class="mini-btn reject" style="flex:1;justify-content:center;" onclick="rejectProposalWithRemark(${p.id}, '${p._src}')">❌ Reject</button>
               </div>
             ` : `
               <div style="padding:10px 12px;border-radius:10px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;line-height:1.6;">
@@ -741,10 +861,12 @@ function formatTime(t) {
 
 // ── APPROVE / REJECT ──────────────────────────────────────────────────────
 function resolveApproveEndpoint(id, src) {
-  return src === "event" ? `/events/${id}/approve` : `/faculty/proposals/${id}/approve`;
+  // Always use the faculty proposals endpoint — /events/:id/approve does not exist.
+  // Both proposal-sourced and event-sourced items are approved via the same route.
+  return `/faculty/proposals/${id}/approve`;
 }
 function resolveRejectEndpoint(id, src) {
-  return src === "event" ? `/events/${id}/reject` : `/faculty/proposals/${id}/reject`;
+  return `/faculty/proposals/${id}/reject`;
 }
 
 async function approveProposal(id, src = "proposal") {
@@ -817,7 +939,7 @@ async function quickReject(id, src)  { await rejectProposal(id, src);  renderDas
 
 // ── EVENT LIST ────────────────────────────────────────────────────────────
 async function renderEventList(search = "", status = "all") {
-  const fresh = await apiFetch("/events");
+  const fresh = await apiFetch("/events/all");
   cachedEvents = Array.isArray(fresh) ? fresh : [];
 
   const tbody = document.getElementById("eventListBody");
@@ -859,7 +981,6 @@ async function renderEventList(search = "", status = "all") {
         <td><span class="tag">${e.category || e.type || "General"}</span></td>
         <td>${e.capacity || "—"}</td>
         <td>${e.registration_fee > 0 ? "₹" + e.registration_fee : "Free"}</td>
-        <td><span class="badge ${(e.status || "approved").toLowerCase()}">${cap(e.status || "approved")}</span></td>
         <td>
           <button
             type="button"
@@ -869,7 +990,7 @@ async function renderEventList(search = "", status = "all") {
         </td>
       </tr>
     `).join("")
-    : `<tr><td colspan="9" class="td-empty">No events found.</td></tr>`;
+    : `<tr><td colspan="8" class="td-empty">No events found.</td></tr>`;
 }
 async function openFacultyEventDetailPage(eventId) {
   navigateTo("event-detail");
@@ -881,7 +1002,7 @@ async function openFacultyEventDetailPage(eventId) {
 
   try {
     if (!Array.isArray(cachedEvents) || !cachedEvents.length) {
-      const evs = await apiFetch("/events");
+      const evs = await apiFetch("/events/all");
       cachedEvents = Array.isArray(evs) ? evs : [];
     }
 
@@ -913,7 +1034,7 @@ async function openFacultyEventDetailPage(eventId) {
     // registration count fallback
     let registered = Number(data.registered_count || data.registered || 0);
     try {
-      const countRes = await apiFetch(`/registrations/count/${eventId}`);
+      const countRes = await apiFetch(`/faculty/registrations/count/${eventId}`);
       if (countRes && typeof countRes.count !== "undefined") {
         registered = Number(countRes.count || 0);
       }
@@ -1242,7 +1363,7 @@ async function edLoadParticipants(eventId) {
   if (!wrap) return;
   wrap.innerHTML = `<p class="ed-desc" style="color:var(--text-3);">Loading…</p>`;
   try {
-    const res  = await apiFetch(`/events/${eventId}/participants`);
+    const res  = await apiFetch(`/faculty/events/${eventId}/participants`);
     const data = Array.isArray(res) ? res : [];
     if (!data.length) {
       wrap.innerHTML = `<p class="ed-desc" style="color:var(--text-3);">No registrations yet.</p>`;
@@ -1280,7 +1401,7 @@ async function edLoadParticipants(eventId) {
 // ── DOWNLOAD PARTICIPANTS FROM DRAWER ─────────────────────────────────────
 async function edDownloadParticipants(eventId, eventTitle) {
   try {
-    const res  = await apiFetch(`/events/${eventId}/participants`);
+    const res  = await apiFetch(`/faculty/events/${eventId}/participants`);
     const data = Array.isArray(res) ? res : [];
     if (!data.length) { showToast("No participants found.", "error"); return; }
     const headers = ["#", "Name", "Email", "Department", "Class", "Phone"];
@@ -2190,7 +2311,7 @@ function openProfileDrawer() {
       </div>
     `).join("")) || `<div class="list-empty">No clubs assigned.</div>`}
     <div style="margin-top:16px;">
-      <button class="btn primary" onclick="window.location.href='account-settings.html'">⚙️ Edit Profile</button>
+      <button class="btn primary" onclick="closeProfileDrawer(); navigateTo('account-settings')">⚙️ Edit Profile</button>
     </div>
   `;
 }
@@ -2266,8 +2387,14 @@ async function loadVenueBookings() {
     );
     venueBookings[currentVenue] = {};
     if (Array.isArray(data)) {
+      const PRIORITY = { booked: 3, "faculty-approved": 2, pending: 1, available: 0 };
       data.forEach(item => {
-        venueBookings[currentVenue][item.day] = (item.status || "available").toLowerCase();
+        const s = (item.status || "available").toLowerCase();
+        const existing = venueBookings[currentVenue][item.day];
+        // Keep whichever status has higher priority (booked beats pending, etc.)
+        if (!existing || (PRIORITY[s] ?? 0) > (PRIORITY[existing] ?? 0)) {
+          venueBookings[currentVenue][item.day] = s;
+        }
       });
     }
   } catch (err) {
@@ -2328,11 +2455,8 @@ function initSearchFilters() {
   ));
 
   document.getElementById("eventListSearch")?.addEventListener("input", debounce(e =>
-    renderEventList(e.target.value.toLowerCase(), document.getElementById("eventListStatus")?.value || "all")
+    renderEventList(e.target.value.toLowerCase())
   ));
-  document.getElementById("eventListStatus")?.addEventListener("change", e =>
-    renderEventList((document.getElementById("eventListSearch")?.value || "").toLowerCase(), e.target.value || "all")
-  );
 
   document.getElementById("feedbackSearch")?.addEventListener("input", debounce(e =>
     renderFeedback(e.target.value.toLowerCase())
@@ -2393,7 +2517,7 @@ function logout() {
       <div style="font-size:12px;color:var(--text-3);margin-bottom:24px;">Are you sure you want to sign out of your faculty account?</div>
       <div style="display:flex;gap:10px;justify-content:center;">
         <button onclick="this.closest('div[style*=fixed]').parentElement.remove()" style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Cancel</button>
-        <button onclick="localStorage.removeItem('authToken');window.location.href='faculty-signin.html';" style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
+        <button onclick="localStorage.removeItem('faculty_auth_token');window.location.href='faculty-signin.html';" style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
       </div>
     </div>
   `;
@@ -2403,8 +2527,9 @@ function logout() {
 
 // ── BADGES ────────────────────────────────────────────────────────────────
 function updateBadges() {
-  updateBadge("badge-proposals", cachedProposals.filter(p => isPendingStatus(p.status)).length);
-  updateBadge("badge-pending",   cachedProposals.filter(p => isPendingStatus(p.status)).length);
+  updateBadge("badge-proposals",      cachedProposals.filter(p => isPendingStatus(p.status)).length);
+  updateBadge("badge-pending",        cachedProposals.filter(p => isPendingStatus(p.status)).length);
+  updateBadge("badge-hall-proposals", cachedHallProposals.length);
 }
 function updateBadge(id, count) {
   const el2 = document.getElementById(id);
@@ -2422,11 +2547,26 @@ function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : "—"; }
 
 function parseEventDate(value) {
   if (!value) return null;
-  if (value instanceof Date) return value;
+
+  // mysql2 returns DATE columns as JS Date objects already converted to UTC midnight.
+  // In IST (UTC+5:30) that shifts the date one day back when using getDate()/getMonth().
+  // Re-extract via UTC methods and build a local-timezone date to keep the correct day.
+  if (value instanceof Date) {
+    return new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
+  }
+
+  // Plain date string "YYYY-MM-DD" — construct in local time (no UTC shift)
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const [y, m, d] = value.split("-").map(Number);
     return new Date(y, m - 1, d);
   }
+
+  // ISO datetime string — strip to date part and build locally to avoid UTC shift
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    const [y, m, d] = value.slice(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
   const dt = new Date(value);
   return isNaN(dt.getTime()) ? null : dt;
 }
@@ -2492,7 +2632,7 @@ function matchesSelectedClub(item) {
 // ── PARTICIPANT DOWNLOAD (event list table button) ────────────────────────
 async function downloadParticipants(eventId) {
   try {
-    const data = await apiFetch(`/events/${eventId}/participants`);
+    const data = await apiFetch(`/faculty/events/${eventId}/participants`);
     if (!data || !data.length) { showToast("No participants found.", "error"); return; }
 
     const headers = ["Name", "Email", "Department", "Phone"];
@@ -2511,5 +2651,588 @@ async function downloadParticipants(eventId) {
     showToast("Download failed.", "error");
   }
 }
+
+// ── ACCOUNT SETTINGS (merged from account-settings.js) ───────────────────
+
+function asSetMsg(text, isError = false) {
+  const el = document.getElementById("asFormMsg");
+  if (!el) return;
+  el.textContent = text;
+  el.className = isError ? "as-msg error" : "as-msg";
+}
+
+function asGetInitials(name) {
+  return (name || "FA")
+    .split(" ")
+    .filter(Boolean)
+    .map(w => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function asUpdatePreviewName() {
+  const nameInput = document.getElementById("asName");
+  const avatar    = document.getElementById("asProfileAvatar");
+  const preview   = document.getElementById("asProfileNamePreview");
+  if (!nameInput || !avatar || !preview) return;
+  const name = nameInput.value.trim() || "Faculty Name";
+  preview.textContent = name;
+  avatar.textContent  = asGetInitials(name);
+}
+
+function asLoadProfile() {
+  // Re-use already-cached profile from the dashboard boot
+  const p = cachedProfile;
+  if (!p) { asSetMsg("Failed to load profile.", true); return; }
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ""; };
+  set("asFacultyNo",  p.faculty_no);
+  set("asDepartment", p.department);
+  set("asName",       p.name);
+  set("asEmail",      p.email);
+  set("asPhone",      p.phone_no || p.phone);
+
+  const avatar  = document.getElementById("asProfileAvatar");
+  const preview = document.getElementById("asProfileNamePreview");
+  if (avatar)  avatar.textContent  = asGetInitials(p.name);
+  if (preview) preview.textContent = p.name || "Faculty Name";
+}
+
+async function asSaveProfile(e) {
+  e.preventDefault();
+
+  const g = id => document.getElementById(id)?.value.trim() || "";
+  const name            = g("asName");
+  const email           = g("asEmail");
+  const department      = g("asDepartment");
+  const phone           = g("asPhone");
+  const currentPassword = g("asCurrentPassword");
+  const newPassword     = g("asNewPassword");
+  const confirmPassword = g("asConfirmPassword");
+
+  if (!name || !email || !department || !phone) {
+    asSetMsg("Please fill all required fields.", true); return;
+  }
+
+  const wantsPwChange = currentPassword || newPassword || confirmPassword;
+  if (wantsPwChange) {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      asSetMsg("Fill all password fields to change password.", true); return;
+    }
+    if (newPassword !== confirmPassword) {
+      asSetMsg("New password and confirm password do not match.", true); return;
+    }
+    if (newPassword.length < 6) {
+      asSetMsg("New password must be at least 6 characters.", true); return;
+    }
+  }
+
+  const payload = { name, email, department, phone_no: phone };
+  if (wantsPwChange) {
+    payload.current_password = currentPassword;
+    payload.new_password     = newPassword;
+  }
+
+  const submitBtn = document.querySelector("#asAccountForm button[type='submit']");
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Saving…"; }
+  asSetMsg("");
+
+  const res = await apiFetch("/faculty/me", { method: "PUT", body: JSON.stringify(payload) });
+
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Save Changes"; }
+
+  if (!res) { asSetMsg("Failed to update profile.", true); return; }
+
+  // Clear password fields
+  ["asCurrentPassword", "asNewPassword", "asConfirmPassword"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "";
+  });
+
+  // Update cached profile and topbar/sidebar UI
+  cachedProfile = { ...cachedProfile, name, email, department, phone_no: phone };
+  const initials = asGetInitials(name);
+  document.getElementById("miniName")?.replaceChildren
+    ? (document.getElementById("miniName").textContent  = name) : null;
+  document.getElementById("topAvatar") && (document.getElementById("topAvatar").textContent = initials);
+  document.getElementById("miniAvatar") && (document.getElementById("miniAvatar").textContent = initials);
+
+  asUpdatePreviewName();
+  asSetMsg("Profile updated successfully.");
+  showToast("✅ Profile updated!", "success");
+}
+
+function initAccountSettings() {
+  const form = document.getElementById("asAccountForm");
+  if (!form) return;
+  // Guard: only bind once
+  if (form.dataset.asBound) return;
+  form.dataset.asBound = "1";
+  form.addEventListener("submit", asSaveProfile);
+  document.getElementById("asName")?.addEventListener("input", asUpdatePreviewName);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  HALL COORDINATOR — render functions
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── HALL PROPOSALS ────────────────────────────────────────────────────────────
+async function renderHallProposals() {
+  // Inject page section if it doesn't exist yet
+  ensureHallPages();
+
+  const tbody = document.getElementById("hallProposalsBody");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="8" class="td-empty">Loading…</td></tr>`;
+
+  const fresh = await apiFetch("/faculty/hall/proposals");
+  cachedHallProposals = Array.isArray(fresh) ? fresh : [];
+  updateBadges();
+
+  if (!cachedHallProposals.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="td-empty">No proposals awaiting venue confirmation.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = cachedHallProposals.map(p => `
+    <tr>
+      <td><span class="ev-name" onclick="showHallProposalDetail(${p.id})">${p.title || "Untitled"}</span></td>
+      <td>${p.club || p.organizer || "—"}</td>
+      <td>${p.organizer || "—"}</td>
+      <td>${fmtDate(p.event_date)}</td>
+      <td><strong>${p.venue || "—"}</strong></td>
+      <td>${p.capacity || "—"}</td>
+      <td>
+        <span class="badge faculty_approved" style="background:rgba(6,182,212,.18);color:#67e8f9;border:1px solid rgba(6,182,212,.35);">
+          🔵 Forwarded
+        </span>
+      </td>
+      <td>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          <button class="mini-btn approve" onclick="approveHallProposal(${p.id})">✅ Confirm</button>
+          <button class="mini-btn reject"  onclick="rejectHallProposalPrompt(${p.id})">❌ Reject</button>
+          <button class="mini-btn"         onclick="showHallProposalDetail(${p.id})">👁</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function showHallProposalDetail(id) {
+  const p = cachedHallProposals.find(x => x.id === id);
+  if (!p) return;
+
+  // Remove any existing modal
+  document.getElementById("hallDetailModal")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "hallDetailModal";
+  modal.innerHTML = `
+    <div onclick="document.getElementById('hallDetailModal').remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;backdrop-filter:blur(4px);"></div>
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      z-index:3001;background:var(--surface,#1a1a2e);border:1px solid rgba(6,182,212,.35);
+      border-radius:20px;width:min(580px,94vw);max-height:88vh;overflow-y:auto;
+      padding:28px 24px;box-shadow:0 24px 60px rgba(0,0,0,.6);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+        <div>
+          <div style="font-size:17px;font-weight:800;color:var(--text);">${p.title || "Event Details"}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:3px;">${p.club || "—"} · Forwarded by Faculty Coordinator</div>
+        </div>
+        <button onclick="document.getElementById('hallDetailModal').remove()"
+          style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;padding:0;">✕</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+        ${[
+          ["📍 Venue",       p.venue       || "—"],
+          ["📅 Date",        fmtDate(p.event_date)],
+          ["🕐 Time",        formatTime(p.event_time)],
+          ["👥 Capacity",    p.capacity    || "—"],
+          ["🏷️ Category",   p.category    || "—"],
+          ["💰 Fee",         p.registration_fee > 0 ? "₹" + p.registration_fee : "Free"],
+          ["🎪 Organizer",   p.organizer   || "—"],
+          ["🏛️ Club",       p.club        || "—"],
+        ].map(([l, v]) => `
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
+            <div style="font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;">${l}</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);">${v}</div>
+          </div>
+        `).join("")}
+      </div>
+
+      ${p.description ? `
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:18px;">
+        <div style="font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">📝 Description</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.6;">${p.description}</div>
+      </div>` : ""}
+
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Venue Confirmation</div>
+      <textarea id="hallDetailRemark" rows="3" placeholder="Add a remark (required when rejecting)…"
+        style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border-2);
+          background:var(--surface-2);color:var(--text);font-size:13px;
+          font-family:var(--font,inherit);resize:vertical;outline:none;
+          margin-bottom:12px;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:10px;">
+        <button onclick="approveHallProposalFromModal(${p.id})"
+          style="flex:1;padding:11px;border-radius:11px;border:none;
+            background:linear-gradient(135deg,#10b981,#059669);color:#fff;
+            font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font,inherit);">
+          ✅ Confirm Venue
+        </button>
+        <button onclick="rejectHallProposalFromModal(${p.id})"
+          style="flex:1;padding:11px;border-radius:11px;border:none;
+            background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;
+            font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font,inherit);">
+          ❌ Reject Proposal
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function approveHallProposal(id) {
+  const res = await apiFetch(`/faculty/hall/proposals/${id}/approve`, { method: "PATCH" });
+  if (res !== null) {
+    addLocalNotif("event", "✅", "Venue Confirmed", `Hall approval granted for event #${id}.`);
+    showToast("✅ Venue confirmed — event approved!", "success");
+    renderHallProposals();
+    renderDashboard();
+  } else {
+    showToast("Failed to confirm venue.", "error");
+  }
+}
+
+async function approveHallProposalFromModal(id) {
+  const remark = document.getElementById("hallDetailRemark")?.value.trim() || "";
+  const res = await apiFetch(`/faculty/hall/proposals/${id}/approve`, {
+    method: "PATCH",
+    body: JSON.stringify({ remark }),
+  });
+  if (res !== null) {
+    document.getElementById("hallDetailModal")?.remove();
+    addLocalNotif("event", "✅", "Venue Confirmed", `Hall approval granted for event #${id}.`);
+    showToast("✅ Venue confirmed — event approved!", "success");
+    renderHallProposals();
+  } else {
+    showToast("Failed to confirm venue.", "error");
+  }
+}
+
+function rejectHallProposalPrompt(id) {
+  const p = cachedHallProposals.find(x => x.id === id);
+  if (!p) return;
+
+  document.getElementById("hallRejectModal")?.remove();
+  const modal = document.createElement("div");
+  modal.id = "hallRejectModal";
+  modal.innerHTML = `
+    <div onclick="document.getElementById('hallRejectModal').remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3100;backdrop-filter:blur(4px);"></div>
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      z-index:3101;background:var(--surface,#1a1a2e);border:1px solid rgba(239,68,68,.35);
+      border-radius:20px;width:min(440px,92vw);padding:28px 24px;
+      box-shadow:0 24px 60px rgba(0,0,0,.6);">
+      <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px;">❌ Reject Venue Request</div>
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:18px;">${p.title || "Event"} — ${p.venue || "—"}</div>
+      <label style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;">
+        Reason for Rejection <span style="color:#f87171;">*</span>
+      </label>
+      <textarea id="hallRejectRemark" rows="4" placeholder="e.g. Venue already booked for this date…"
+        style="width:100%;margin:6px 0 18px;padding:10px 12px;border-radius:10px;
+          border:1px solid rgba(239,68,68,.35);background:var(--surface-2,#0d0d1a);
+          color:var(--text);font-size:13px;font-family:var(--font,inherit);
+          resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:10px;">
+        <button onclick="document.getElementById('hallRejectModal').remove()"
+          style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);
+            background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">
+          Cancel
+        </button>
+        <button onclick="submitHallReject(${p.id})"
+          style="flex:1;padding:10px;border-radius:11px;border:none;
+            background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;
+            font-size:13px;font-weight:700;cursor:pointer;">
+          Confirm Rejection
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById("hallRejectRemark")?.focus();
+}
+
+async function submitHallReject(id) {
+  const remark = document.getElementById("hallRejectRemark")?.value.trim();
+  if (!remark) {
+    showToast("Please enter a reason for rejection.", "error");
+    return;
+  }
+  const res = await apiFetch(`/faculty/hall/proposals/${id}/reject`, {
+    method: "PATCH",
+    body: JSON.stringify({ remark }),
+  });
+  if (res !== null) {
+    document.getElementById("hallRejectModal")?.remove();
+    showToast("❌ Proposal rejected.", "error");
+    renderHallProposals();
+  } else {
+    showToast("Failed to reject proposal.", "error");
+  }
+}
+
+async function rejectHallProposalFromModal(id) {
+  const remark = document.getElementById("hallDetailRemark")?.value.trim();
+  if (!remark) {
+    showToast("Please add a remark before rejecting.", "error");
+    document.getElementById("hallDetailRemark")?.focus();
+    return;
+  }
+  const res = await apiFetch(`/faculty/hall/proposals/${id}/reject`, {
+    method: "PATCH",
+    body: JSON.stringify({ remark }),
+  });
+  if (res !== null) {
+    document.getElementById("hallDetailModal")?.remove();
+    showToast("❌ Proposal rejected.", "error");
+    renderHallProposals();
+  } else {
+    showToast("Failed to reject.", "error");
+  }
+}
+
+// ── HALL VENUES ───────────────────────────────────────────────────────────────
+async function renderHallVenues() {
+  ensureHallPages();
+
+  const container = document.getElementById("hallVenuesContainer");
+  if (!container) return;
+  container.innerHTML = `<div class="list-empty" style="padding:20px;">Loading venues…</div>`;
+
+  const fresh = await apiFetch("/faculty/hall/venues");
+  cachedHallVenues = Array.isArray(fresh) ? fresh : [];
+
+  if (!cachedHallVenues.length) {
+    container.innerHTML = `<div class="list-empty" style="padding:20px;">No venues assigned to you.</div>`;
+    return;
+  }
+
+  const STATUS_COLOR = {
+    available:    "rgba(16,185,129,.18);color:#34d399;border:1px solid rgba(16,185,129,.35)",
+    unavailable:  "rgba(239,68,68,.18);color:#f87171;border:1px solid rgba(239,68,68,.35)",
+    maintenance:  "rgba(245,158,11,.18);color:#fcd34d;border:1px solid rgba(245,158,11,.35)",
+  };
+
+  container.innerHTML = cachedHallVenues.map(v => {
+    const st = (v.status || "available").toLowerCase();
+    const styleStr = STATUS_COLOR[st] || STATUS_COLOR.available;
+    return `
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">🏟️ ${v.name || "Venue"}</div>
+            <div class="panel-sub">Capacity: ${v.capacity || "—"} · ${v.description || "Hall Venue"}</div>
+          </div>
+          <span class="badge" style="background:${styleStr};">${cap(st)}</span>
+        </div>
+        <div class="panel-body">
+
+          ${v.coordinator_note ? `
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+            padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--text-3);">
+            📝 Note: ${v.coordinator_note}
+          </div>` : ""}
+
+          <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;
+            letter-spacing:.6px;margin-bottom:10px;">Update Availability</div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px;">Status</label>
+              <select id="venueStatus_${v.id}" class="filter-select" style="min-width:140px;">
+                <option value="available"   ${st === 'available'   ? 'selected' : ''}>✅ Available</option>
+                <option value="unavailable" ${st === 'unavailable' ? 'selected' : ''}>🚫 Unavailable</option>
+                <option value="maintenance" ${st === 'maintenance' ? 'selected' : ''}>🔧 Maintenance</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px;">
+                Specific Date <span style="font-weight:400;">(optional — leave blank for general)</span>
+              </label>
+              <input type="date" id="venueDate_${v.id}"
+                style="padding:8px 12px;border-radius:10px;border:1px solid var(--border-2);
+                  background:var(--surface-2);color:var(--text);font-size:13px;font-family:var(--font,inherit);
+                  outline:none;" />
+            </div>
+            <div style="flex:1;min-width:160px;">
+              <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px;">Note</label>
+              <input type="text" id="venueNote_${v.id}" placeholder="Optional note…"
+                value="${(v.coordinator_note || "").replace(/"/g, "&quot;")}"
+                style="width:100%;padding:8px 12px;border-radius:10px;border:1px solid var(--border-2);
+                  background:var(--surface-2);color:var(--text);font-size:13px;
+                  font-family:var(--font,inherit);outline:none;box-sizing:border-box;" />
+            </div>
+            <button class="btn primary" onclick="saveVenueAvailability(${v.id})"
+              style="white-space:nowrap;padding:9px 18px;">
+              💾 Save
+            </button>
+          </div>
+
+          <!-- Upcoming bookings for this venue -->
+          <div style="margin-top:18px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;
+              letter-spacing:.6px;margin-bottom:10px;">Upcoming Bookings</div>
+            <div id="hallVenueBookings_${v.id}">
+              ${renderVenueUpcomingBookings(v.name)}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderVenueUpcomingBookings(venueName) {
+  const now = new Date();
+  const upcoming = cachedEvents.filter(e => {
+    const d = parseEventDate(e.date || e.event_date || e.start_date);
+    return d && d >= now && (e.venue || "").toLowerCase().trim() === (venueName || "").toLowerCase().trim();
+  }).sort((a, b) => {
+    const da = parseEventDate(a.date || a.event_date || a.start_date);
+    const db = parseEventDate(b.date || b.event_date || b.start_date);
+    return (da || 0) - (db || 0);
+  });
+
+  if (!upcoming.length) {
+    return `<div style="font-size:13px;color:var(--text-3);padding:8px 0;">No upcoming bookings.</div>`;
+  }
+
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Club</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Capacity</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${upcoming.slice(0, 5).map(e => `
+            <tr>
+              <td><span class="ev-name">${e.title || "Untitled"}</span></td>
+              <td>${e.club || e.organizer || "—"}</td>
+              <td>${fmtDate(e.date || e.event_date || e.start_date)}</td>
+              <td>${formatTime(e.time || e.start_time)}</td>
+              <td>${e.capacity || "—"}</td>
+              <td><span class="badge ${(e.status || "approved").toLowerCase()}">${cap(e.status || "Approved")}</span></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function saveVenueAvailability(venueId) {
+  const status = document.getElementById(`venueStatus_${venueId}`)?.value;
+  const date   = document.getElementById(`venueDate_${venueId}`)?.value || null;
+  const note   = document.getElementById(`venueNote_${venueId}`)?.value.trim() || null;
+
+  if (!status) { showToast("Please select a status.", "error"); return; }
+
+  const res = await apiFetch(`/faculty/hall/venues/${venueId}/availability`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, note, date }),
+  });
+
+  if (res !== null) {
+    showToast("💾 Venue availability updated!", "success");
+    renderHallVenues();
+  } else {
+    showToast("Failed to update venue.", "error");
+  }
+}
+
+// ── ENSURE HALL PAGES EXIST IN DOM ───────────────────────────────────────────
+// Creates pg-hall-proposals and pg-hall-venues if not already present.
+function ensureHallPages() {
+  const content = document.getElementById("content");
+  if (!content) return;
+
+  if (!document.getElementById("pg-hall-proposals")) {
+    const pg = document.createElement("div");
+    pg.id = "pg-hall-proposals";
+    pg.className = "page-section";
+    pg.style.display = "none";
+    pg.innerHTML = `
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">🏛️ Hall Proposals — Awaiting Venue Confirmation</div>
+            <div class="panel-sub">These proposals have been reviewed by the Faculty Coordinator and are pending your venue confirmation.</div>
+          </div>
+          <button class="btn ghost sm" onclick="renderHallProposals()">🔄 Refresh</button>
+        </div>
+
+        <div style="padding:10px 16px 0;">
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;
+            border-radius:10px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25);
+            font-size:12px;color:#67e8f9;margin-bottom:14px;">
+            ℹ️ <span>As Hall Coordinator, you confirm or reject venue availability for the events listed below.
+            Approval here sets the event status to <strong>Approved</strong>.</span>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Club</th>
+                <th>Organizer</th>
+                <th>Date</th>
+                <th>Venue</th>
+                <th>Capacity</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="hallProposalsBody">
+              <tr><td colspan="8" class="td-empty">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    content.appendChild(pg);
+  }
+
+  if (!document.getElementById("pg-hall-venues")) {
+    const pg = document.createElement("div");
+    pg.id = "pg-hall-venues";
+    pg.className = "page-section";
+    pg.style.display = "none";
+    pg.innerHTML = `
+      <div style="margin-bottom:20px;">
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;
+          border-radius:12px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);
+          font-size:12px;color:#c4b5fd;">
+          🏟️ <span>Manage venue availability for halls under your coordination. 
+          Changes take effect immediately and are visible to all organizers.</span>
+        </div>
+      </div>
+      <div id="hallVenuesContainer">
+        <div class="list-empty" style="padding:20px;">Loading venues…</div>
+      </div>
+    `;
+    content.appendChild(pg);
+  }
+}
+
 
 boot();

@@ -74,10 +74,20 @@
 
   <!-- Notification Bell -->
   <div class="notif-wrap">
-    <button class="icon-btn notif-btn" id="notifBtn" title="Notifications" onclick="openNotifPage()">
+    <button class="icon-btn notif-bell" id="notifBtn" title="Notifications">
       🔔
-      <span class="notif-dot" id="notifDot"></span>
+      <span class="notif-count" id="notifCount" style="display:none">0</span>
     </button>
+    <div class="notif-dropdown" id="notifDropdown">
+      <div class="notif-drop-head">
+        <span class="notif-drop-title">🔔 Notifications</span>
+        <button class="notif-clear-btn" id="notifClearAll" onclick="clearAllNotifs()">Clear all</button>
+      </div>
+      <div class="notif-drop-list" id="notifDropList"></div>
+      <div class="notif-drop-footer">
+        <button class="notif-view-all-btn" onclick="openNotifHistoryPage()">View all notifications →</button>
+      </div>
+    </div>
   </div>
 
   <button class="top-link" id="clubsBtn" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
@@ -89,7 +99,24 @@
 
       <!-- Content -->
       <section class="content">
-        
+
+        <!-- ══════════ NOTIFICATION HISTORY PAGE ══════════ -->
+        <div id="pg-notif-history" class="page-section" style="display:none">
+          <div class="notif-hist-bar">
+            <button class="btn ghost sm" onclick="closeNotifHistoryPage()">← Back to Dashboard</button>
+          </div>
+
+          <!-- List card -->
+          <div class="nh-card">
+            <div class="notif-hist-list" id="notifHistoryList">
+              <div class="list-empty" style="padding:24px;">Loading…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════════ DASHBOARD CONTENT ══════════ -->
+        <div id="pg-dashboard-content">
+
         <!-- ── My Progress Card ─────────────────────────────────────── -->
         <div class="progress-section">
           <div class="progress-card">
@@ -144,7 +171,7 @@
           <div class="student-name" id="studentName"></div>
           <div class="student-tags" style="margin-top:10px;"></div>
           <div class="actions" style="margin-top:14px;">
-            <button class="btn primary" type="button" onclick="window.location.href='account-setting.html'">Profile</button>
+            <button class="btn primary" type="button" onclick="openProfileDrawer()">Profile</button>
           </div>
         </div>
       </div>
@@ -170,6 +197,8 @@
   </div>
 
 </div>
+
+      </div><!-- /pg-dashboard-content -->
 
       </section>
 
@@ -251,68 +280,6 @@
   </div>
 </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       NOTIFICATIONS PAGE OVERLAY
-       ══════════════════════════════════════════════════════════ -->
-  <div class="notif-page-overlay" id="notifPageOverlay" onclick="closeNotifPage()"></div>
-
-  <div class="notif-page" id="notifPage" aria-hidden="true">
-    <div class="notif-page-inner">
-
-      <!-- ── Header ── -->
-      <div class="notif-page-header">
-        <div class="notif-page-header-left">
-          <button class="notif-page-back" onclick="closeNotifPage()" aria-label="Back">←</button>
-          <div>
-            <div class="notif-page-title">🔔 Notifications</div>
-            <div class="notif-page-sub" id="notifPageSub">All caught up</div>
-          </div>
-        </div>
-        <div class="notif-page-header-actions">
-          <button class="notif-mark-all-btn" id="notifMarkAllBtn" onclick="markAllNotifsRead()" title="Mark all as read">✓ Mark all read</button>
-          <button class="notif-page-clear" id="notifPageClear" onclick="clearAllNotifs()" title="Clear all notifications">🗑 Clear all</button>
-        </div>
-      </div>
-
-      <!-- ── Summary strip ── -->
-      <div class="notif-summary-strip" id="notifSummaryStrip">
-        <div class="notif-summary-pill" id="nsPillAll">
-          <span class="ns-icon">🔔</span>
-          <span class="ns-label">All</span>
-          <span class="ns-badge" id="nsBadgeAll">0</span>
-        </div>
-        <div class="notif-summary-pill" id="nsPillEvent">
-          <span class="ns-icon">📅</span>
-          <span class="ns-label">Events</span>
-          <span class="ns-badge ns-badge--blue" id="nsBadgeEvent">0</span>
-        </div>
-        <div class="notif-summary-pill" id="nsPillAnn">
-          <span class="ns-icon">📢</span>
-          <span class="ns-label">Announcements</span>
-          <span class="ns-badge ns-badge--amber" id="nsBadgeAnn">0</span>
-        </div>
-      </div>
-
-      <!-- ── Filter tabs ── -->
-      <div class="notif-page-tabs">
-        <button class="notif-ptab active" data-tab="all"          onclick="switchNotifTab(this,'all')">All</button>
-        <button class="notif-ptab"        data-tab="event"        onclick="switchNotifTab(this,'event')">📅 Events</button>
-        <button class="notif-ptab"        data-tab="announcement" onclick="switchNotifTab(this,'announcement')">📢 Announcements</button>
-      </div>
-
-      <!-- ── Notification list ── -->
-      <div class="notif-page-list" id="notifPageList">
-        <div class="notif-pg-empty">
-          <div class="notif-pg-empty-icon">🔕</div>
-          <div class="notif-pg-empty-text">You're all caught up!</div>
-          <div class="notif-pg-empty-sub">No notifications yet.</div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <script src="theme.js"></script>
   <script src="student-dashboard.js"></script>
 </body>
 </html>

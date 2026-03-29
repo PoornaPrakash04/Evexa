@@ -59,7 +59,7 @@ async function loadClubs() {
     allClubs = clubs;
 
     // Fetch joined clubs if logged in
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("student_auth_token");
     if (token) {
       try {
         const myRes = await fetch(`${API_BASE}/clubs/my-clubs`, {

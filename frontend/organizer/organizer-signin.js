@@ -59,7 +59,6 @@ form.addEventListener("submit", async function (e) {
 
     if (response.ok && data.token) {
       localStorage.setItem("organizer_authToken", data.token);
-      localStorage.setItem("userRole",  "organizer");
 
       window.location.href = "http://127.0.0.1:5501/frontend/organizer/orgfront.html";
     } else {

@@ -60,7 +60,7 @@ router.post("/generate", authorize(), async (req, res) => {
       errorCorrectionLevel: "H",
       width: 300,
       margin: 2,
-      color: { dark: "#6d5efc", light: "#ffffff" },
+      color: { dark: "#000000", light: "#ffffff" },
     });
 
     res.json({ qr, ticket_id, student, event });
@@ -78,7 +78,7 @@ router.post("/verify", authorize(), async (req, res) => {
     if (!qr_token) return res.status(400).json({ message: "qr_token required" });
 
     const [rows] = await db.promise().query(
-      `SELECT r.id AS registration_id, r.checked_in, r.checked_in_at, r.ticket_id,
+      `SELECT r.id AS registration_id, r.student_id, r.checked_in, r.checked_in_at, r.ticket_id,
               s.name, s.roll_no, s.department, s.class,
               e.id AS event_id, e.title AS event_title, e.organizer_id
        FROM registrations r
@@ -108,9 +108,20 @@ router.post("/verify", authorize(), async (req, res) => {
       });
     }
 
+    const checkedInAt = new Date();
+
+    // Mark as checked-in on the registration
     await db.promise().query(
-      "UPDATE registrations SET checked_in=1, checked_in_at=NOW() WHERE id=?",
-      [t.registration_id]
+      "UPDATE registrations SET checked_in=1, checked_in_at=? WHERE id=?",
+      [checkedInAt, t.registration_id]
+    );
+
+    // Insert into attendance table
+    await db.promise().query(
+      `INSERT INTO attendance (student_id, event_id, registration_id, ticket_id, checked_in_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE checked_in_at = VALUES(checked_in_at)`,
+      [t.student_id, t.event_id, t.registration_id, t.ticket_id, checkedInAt]
     );
 
     return res.json({

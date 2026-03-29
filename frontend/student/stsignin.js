@@ -58,8 +58,7 @@ form.addEventListener("submit", async function (e) {
     const data = await res.json();
 
     if (res.ok && data.token) {
-      localStorage.setItem("authToken", data.token);
-      localStorage.setItem("userRole",  "STUDENT");
+      localStorage.setItem("student_auth_token", data.token); // ← was "authToken"
       window.location.href = "student-dashboard.html";
     } else {
       showError(data.message || "Login failed. Please try again.");
@@ -74,6 +73,7 @@ form.addEventListener("submit", async function (e) {
     btn.disabled    = false;
   }
 });
+
 // Password toggle
 const togglePassword = document.getElementById("togglePassword");
 const passwordInput  = document.getElementById("password");

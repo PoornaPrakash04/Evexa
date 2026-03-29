@@ -33,7 +33,7 @@ async function loadEvent() {
 
 // ── Check if student already registered ──────────────
 async function checkRegistration(eventId) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) return false;
 
   const res = await fetch(`${API_BASE}/attendance/my-registrations`, {
@@ -47,7 +47,7 @@ async function checkRegistration(eventId) {
 
 // ── Check certificate status ──────────────────────────
 async function checkCertificateStatus(eventId) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) return { available: false };
 
   try {
@@ -352,7 +352,7 @@ async function loadCertificateSection(eventId, eventTitle) {
 
 // ── Download Certificate ──────────────────────────────
 async function downloadCertificate(eventId) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) { alert("Please login."); return; }
 
   const btn = document.getElementById("certDownloadBtn");
@@ -405,7 +405,7 @@ async function downloadCertificate(eventId) {
 
 // ── Preview Certificate (inline PDF) ─────────────────
 async function previewCertificate(eventId) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) return;
 
   try {
@@ -432,7 +432,7 @@ async function previewCertificate(eventId) {
 // ─────────────────────────────────────────────────────
 
 async function registerForEvent(eventId) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) {
     alert("Please login to register.");
     window.location.href = "stsignin.html";
@@ -571,7 +571,7 @@ async function downloadTicket() {
 }
 
 async function fetchAndShowTicket(eventId) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) return;
   try {
     const res = await fetch(`${API_BASE}/tickets/generate`, {
@@ -597,7 +597,7 @@ function toggleIssueModal() {
 }
 
 async function submitIssue(eventId) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) { alert("Please login."); return; }
   const text = document.getElementById("issueText")?.value.trim();
   if (!text) { alert("Please describe your issue."); return; }

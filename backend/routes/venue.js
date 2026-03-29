@@ -62,7 +62,7 @@ router.get("/slots", auth(["ORGANIZER"]), (req, res) => {
   );
 });
 // GET all venues from venues table
-router.get("/", auth(["ORGANIZER", "STUDENT"]), (req, res) => {
+router.get("/", auth(["ORGANIZER", "STUDENT", "FACULTY"]), (req, res) => {
 
   db.query("SELECT id, name, capacity, location FROM venues", (err, results) => {
     if (err) return res.status(500).json(err);
@@ -99,26 +99,32 @@ router.post("/bookings", auth(["ORGANIZER"]), upload.single("support_doc"), (req
 );
   });
 });
-router.get("/calendar", auth(["ORGANIZER", "STUDENT"]), (req, res) => {
+router.get("/calendar", auth(["ORGANIZER", "STUDENT", "FACULTY"]), (req, res) => {
   const { venue_name, year, month } = req.query;
   
   console.log("Calendar request:", venue_name, year, month); // DEBUG
   
   const paddedMonth = month.toString().padStart(2, "0");
   const startDate = `${year}-${paddedMonth}-01`;
-  const endDate = `${year}-${paddedMonth}-31`;
+  // Compute the real last day of the month instead of hardcoding 31
+  const lastDay = new Date(Number(year), Number(month), 0).getDate();
+  const endDate = `${year}-${paddedMonth}-${lastDay.toString().padStart(2, "0")}`;
 
   db.query(
     `SELECT DAY(vb.date) as day,
-     CASE 
-       WHEN vb.status = 'Approved' THEN 'booked'
-       WHEN vb.status = 'Pending' THEN 'pending'
-     END as status
+     DAY(vb.date) AS day,
+     MAX(CASE
+       WHEN vb.status = 'Approved'         THEN 3
+       WHEN vb.status = 'Faculty Approved' THEN 2
+       WHEN vb.status = 'Pending'          THEN 1
+       ELSE 0
+     END) AS priority
      FROM venue_bookings vb
      JOIN venues v ON vb.venue_id = v.id
      WHERE v.name = ?
      AND vb.date BETWEEN ? AND ?
-     AND vb.status IN ('Approved', 'Pending')`,
+     AND vb.status IN ('Approved', 'Faculty Approved', 'Pending')
+     GROUP BY DAY(vb.date)`,
     [venue_name, startDate, endDate],
     (err, results) => {
       if (err) {
@@ -126,15 +132,22 @@ router.get("/calendar", auth(["ORGANIZER", "STUDENT"]), (req, res) => {
         return res.status(500).json({ message: err.message });
       }
       console.log("Calendar results:", results); // DEBUG
-      res.json(results);
+      // Map priority back to a human-readable status string
+      const mapped = results.map(r => ({
+        day: r.day,
+        status: r.priority >= 3 ? "booked"
+              : r.priority === 2 ? "faculty-approved"
+              : "pending"
+      }));
+      res.json(mapped);
     }
   );
 });
 // GET organizer's own bookings
 router.get("/bookings/mine", auth(["ORGANIZER"]), (req, res) => {
   db.query(
-    `SELECT vb.id, v.name AS venue_name, vb.date, vb.time AS slot_start, vb.status,
-            e.title AS event_title
+    `SELECT vb.id, v.name AS venue_name, vb.date, vb.time AS slot_start, vb.slot_end, vb.status,
+       e.title AS event_title
      FROM venue_bookings vb
      JOIN venues v ON v.id = vb.venue_id
      LEFT JOIN events e ON e.id = vb.event_id

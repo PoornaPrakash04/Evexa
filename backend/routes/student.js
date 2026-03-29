@@ -11,7 +11,7 @@ const fs       = require("fs");
 // ── Multer — avatar uploads ───────────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = path.join(__dirname, "../uploads/avatars");
+    const dir = path.join(__dirname, "uploads/avatars");
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },

@@ -7,9 +7,14 @@ const db      = require("../db");
 const authorize = require("../middleware/authMiddleware");
 const multer  = require("multer");
 const path    = require("path");
+const fs      = require("fs");
 
 const storage = multer.diskStorage({
-  destination: "uploads/avatars/",
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, "uploads/avatars");
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
   filename: (req, file, cb) => {
     cb(null, `student_${req.user.id}${path.extname(file.originalname)}`);
   }

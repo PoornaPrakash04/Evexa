@@ -11,7 +11,7 @@ function showToast(msg, type) {
 
 // ── Load user profile from /api/auth/me ───────────────────────────────────
 async function loadUserProfile() {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) {
     window.location.href = "stsignin.html";
     return;
@@ -103,7 +103,7 @@ if (nameEl) nameEl.value = user.name || "";
 
   form.addEventListener("submit", async function(e) {
     e.preventDefault();
-    const token     = localStorage.getItem("authToken");
+    const token     = localStorage.getItem("student_auth_token");
     const fullName = (document.getElementById("fullName")?.value || "").trim();
 
     try {
@@ -168,7 +168,7 @@ if (nameEl) nameEl.value = user.name || "";
       // Upload to server
       const formData = new FormData();
       formData.append("avatar", file);
-      const token = localStorage.getItem("authToken");
+      const token = localStorage.getItem("student_auth_token");
 
       try {
         const res = await fetch(`${API_BASE}/student/avatar`, {
@@ -177,6 +177,10 @@ if (nameEl) nameEl.value = user.name || "";
           body: formData
         });
         if (res.ok) {
+          const data = await res.json();
+          // Update img.src from server path so it survives refresh
+          const img = document.getElementById("avatarImg");
+          if (img && data.avatar) img.src = `http://localhost:5000${data.avatar}`;
           showToast("📸 Photo saved!", "success");
         } else {
           showToast("❌ Failed to upload photo.", "error");
@@ -223,7 +227,7 @@ if (nameEl) nameEl.value = user.name || "";
   if (secForm) {
     secForm.addEventListener("submit", async function(e) {
       e.preventDefault();
-      const token = localStorage.getItem("authToken");
+      const token = localStorage.getItem("student_auth_token");
       const cur   = document.getElementById("currentPwd")?.value || "";
       const nw    = document.getElementById("newPwd")?.value     || "";
       const conf  = document.getElementById("confirmPwd")?.value || "";
@@ -266,8 +270,8 @@ if (nameEl) nameEl.value = user.name || "";
   if (signOutBtn) {
     signOutBtn.addEventListener("click", function() {
       if (confirm("Sign out from all devices?")) {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userRole");
+        localStorage.removeItem("student_auth_token");
+        ;
         showToast("👋 Signed out from all devices.");
         setTimeout(() => { window.location.href = "stsignin.html"; }, 1500);
       }
@@ -322,7 +326,7 @@ if (nameEl) nameEl.value = user.name || "";
 
 // ── Progress / Level ──────────────────────────────────────────────────────
 async function loadProgressTab() {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) return;
 
   try {

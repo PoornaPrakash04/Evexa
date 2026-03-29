@@ -140,10 +140,14 @@ router.get("/my", authorize(), (req, res) => {
 // appear in the owning organizer's /events/my list.
 // Admins may pass ?admin=1 to bypass the filter and see all.
 router.get("/all", authorize(), (req, res) => {
-  const isAdminReq = req.user?.role === "admin" && req.query.admin === "1";
-  const statusClause = isAdminReq
-    ? ""
-    : "WHERE e.status IN ('Approved', 'Published', 'Completed')";
+  // Admins see everything. Faculty see all except Pending/Rejected (proposals page
+  // handles those via /faculty/proposals). Everyone else sees only published events.
+  const statusClause =
+    req.user?.role === "admin"
+      ? ""
+      : req.user?.role === "FACULTY"
+      ? "WHERE e.status IN ('Approved', 'faculty_approved', 'Published', 'Completed')"
+      : "WHERE e.status IN ('Approved', 'Published', 'Completed')";
 
   db.query(
     `SELECT
@@ -219,7 +223,7 @@ router.get("/", (req, res) => {
     `SELECT e.*, c.club_name AS club, c.club_logo
      FROM events e
      LEFT JOIN clubs c ON e.club_id = c.club_id
-     WHERE e.status IN ('Published', 'Completed')
+     WHERE e.status IN ('Approved', 'Published', 'Completed')
      ORDER BY e.date DESC`,
     (err, result) => {
       if (err) return res.status(500).json({ message: "Server error" });

@@ -3,7 +3,7 @@
    ============================================================ */
 
 const API = "http://localhost:5000/api";
-const LOGIN_URL = "http://127.0.0.1:5501/frontend/organizer/ogsignin.html";
+const LOGIN_URL = "/organizer/ogsignin.html";
 let execomMembersCache = [];
 
 if (window.__EVEXA_INITIALIZED__) {
@@ -48,7 +48,11 @@ if (window.__EVEXA_INITIALIZED__) {
 
     // Wire Add Member button (merged from orgexecom.js)
     document.getElementById("addExecomBtn")?.addEventListener("click", openAddExecomModal);
-    document.getElementById("execomEditForm")?.addEventListener("submit", submitExecomEdit);
+    const execomForm = document.getElementById("execomEditForm");
+    if (execomForm && !execomForm.dataset.listenerAttached) {
+      execomForm.dataset.listenerAttached = "1";
+      execomForm.addEventListener("submit", submitExecomEdit);
+    }
 
     console.log("✅ Dashboard ready");
   });
@@ -65,7 +69,6 @@ function apiFetch(path, opts = {}) {
 }
 
 function redirectToLogin() {
-  if (window.location.href.includes("ogsignin")) return; // already on login — stop loop
   localStorage.removeItem("organizer_authToken");
   window.location.href = LOGIN_URL;
 }
@@ -2079,24 +2082,117 @@ let html5Qr; let lastToken = null; let scanning = false;
 function setScanResult(html) { const el = document.getElementById("scanResult"); if (el) el.innerHTML = html; }
 
 function extractTokenFromQR(decodedText) {
-  try { const obj = JSON.parse(decodedText); if (obj && obj.t) return obj.t; } catch (_) {}
-  if (decodedText && decodedText.length > 20) return decodedText;
+  console.log("📷 Raw QR decoded:", decodedText);
+  if (!decodedText) return null;
+  try {
+    const obj = JSON.parse(decodedText);
+    if (obj && obj.t) { console.log("✅ Extracted token:", obj.t); return obj.t; }
+  } catch (_) {}
+  // Accept any non-empty string as a raw token (remove old >20 char restriction)
+  if (decodedText.trim().length > 0) return decodedText.trim();
   return null;
 }
 
 async function verifyTicketToken(token) {
-  if (!token) { setScanResult(`<b>❌ Invalid QR</b><br/>Token not found.`); return; }
+  if (!token) { setScanResult(`<b>❌ Invalid QR</b><br/>Could not read token from this QR code.`); return; }
+  // FIX: only skip if the LAST SUCCESSFUL verification was this token.
+  // Reset lastToken on any failure so the user can retry.
   if (token === lastToken) return;
-  lastToken = token;
   setScanResult(`⏳ Verifying ticket...`);
   try {
-    const res  = await fetch(`${API}/tickets/verify`, { method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+localStorage.getItem("organizer_authToken")}, body:JSON.stringify({ qr_token:token }) });
+    const res  = await fetch(`${API}/tickets/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("organizer_authToken") },
+      body: JSON.stringify({ qr_token: token })
+    });
     const data = await res.json();
-    if (!res.ok) { setScanResult(`<b>❌ ${data.message || "Verification failed"}</b>`); return; }
-    if (data.status === "VALID") { setScanResult(`<div style="padding:10px;border-radius:12px;background:#ecfdf5;border:1px solid #10b9811f;"><b style="color:#059669;">✅ VALID ENTRY</b><br/><div style="margin-top:8px;"><b>Name:</b> ${data.name}<br/><b>Roll:</b> ${data.roll_no}<br/><b>Dept:</b> ${data.department}<br/><b>Class:</b> ${data.class}<br/><b>Event:</b> ${data.event_title}<br/><b>Ticket:</b> ${data.ticket_id}</div></div>`); return; }
-    if (data.status === "ALREADY_USED") { setScanResult(`<div style="padding:10px;border-radius:12px;background:#fff7ed;border:1px solid #fb923c33;"><b style="color:#c2410c;">⚠️ ALREADY USED</b><br/><div style="margin-top:8px;"><b>Name:</b> ${data.name}<br/><b>Roll:</b> ${data.roll_no}<br/><b>Ticket:</b> ${data.ticket_id}<br/><b>Checked-in at:</b> ${data.checked_in_at || "—"}</div></div>`); return; }
+    if (!res.ok) {
+      // FIX: do NOT set lastToken on failure — allow the same QR to be retried
+      setScanResult(`<b>❌ ${data.message || "Verification failed"}</b>`);
+      return;
+    }
+    // Only lock-out the token on a definitive server response
+    lastToken = token;
+    if (data.status === "VALID") {
+      setScanResult(`<div style="padding:10px;border-radius:12px;background:#ecfdf5;border:1px solid #10b9811f;">
+        <b style="color:#059669;">✅ VALID ENTRY</b>
+        <div style="margin-top:8px;">
+          <b>Name:</b> ${data.name}<br/>
+          <b>Roll:</b> ${data.roll_no}<br/>
+          <b>Dept:</b> ${data.department}<br/>
+          <b>Class:</b> ${data.class}<br/>
+          <b>Event:</b> ${data.event_title}<br/>
+          <b>Ticket:</b> ${data.ticket_id}
+        </div>
+      </div>`);
+      return;
+    }
+    if (data.status === "ALREADY_USED") {
+      setScanResult(`<div style="padding:10px;border-radius:12px;background:#fff7ed;border:1px solid #fb923c33;">
+        <b style="color:#c2410c;">⚠️ ALREADY USED</b>
+        <div style="margin-top:8px;">
+          <b>Name:</b> ${data.name}<br/>
+          <b>Roll:</b> ${data.roll_no}<br/>
+          <b>Ticket:</b> ${data.ticket_id}<br/>
+          <b>Checked-in at:</b> ${data.checked_in_at || "—"}
+        </div>
+      </div>`);
+      return;
+    }
     setScanResult(`<b>ℹ️ ${data.status}</b>`);
-  } catch (err) { console.error(err); setScanResult(`<b>❌ Network / Server error</b>`); }
+  } catch (err) {
+    console.error("verifyTicketToken error:", err);
+    // FIX: reset lastToken on network error so the scan can be retried
+    lastToken = null;
+    setScanResult(`<b>❌ Network / Server error</b>`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// TICKET SCANNER  (robust: contrast boost + small qrbox + dual strategy)
+// ─────────────────────────────────────────────────────────────
+
+let html5QrScanInterval = null;   // manual scan loop handle
+
+/**
+ * Grab the current video frame, apply contrast enhancement,
+ * and hand it to Html5Qrcode.scanFileV2 for decoding.
+ * Returns the decoded text or null.
+ */
+async function _scanFrameWithBoost(html5QrInstance, videoEl, canvasEl) {
+  const W = canvasEl.width  = videoEl.videoWidth  || 640;
+  const H = canvasEl.height = videoEl.videoHeight || 480;
+  const ctx = canvasEl.getContext("2d", { willReadFrequently: true });
+
+  // Draw current video frame
+  ctx.drawImage(videoEl, 0, 0, W, H);
+
+  // ── Contrast + brightness boost (helps purple-on-white screen QRs) ──
+  const imgData = ctx.getImageData(0, 0, W, H);
+  const d = imgData.data;
+  const contrast   = 2.2;   // >1 = more contrast
+  const brightness = 10;    // pixel offset
+  const factor     = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]   = Math.min(255, Math.max(0, factor * (d[i]   - 128) + 128 + brightness));
+    d[i+1] = Math.min(255, Math.max(0, factor * (d[i+1] - 128) + 128 + brightness));
+    d[i+2] = Math.min(255, Math.max(0, factor * (d[i+2] - 128) + 128 + brightness));
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // Convert to blob then scan
+  return new Promise((resolve) => {
+    canvasEl.toBlob(async (blob) => {
+      if (!blob) { resolve(null); return; }
+      const file = new File([blob], "frame.jpg", { type: "image/jpeg" });
+      try {
+        const result = await html5QrInstance.scanFileV2(file, false);
+        resolve(result?.decodedText || null);
+      } catch (_) {
+        resolve(null);
+      }
+    }, "image/jpeg", 0.92);
+  });
 }
 
 function initTicketScanner() {
@@ -2107,29 +2203,108 @@ function initTicketScanner() {
   if (startBtn.dataset.bound === "1") return;
   startBtn.dataset.bound = "1"; stopBtn.dataset.bound = "1";
 
+  // Off-screen canvas for frame processing
+  const offCanvas = document.createElement("canvas");
+
   startBtn.onclick = async () => {
     if (scanning) return;
     scanning = true; lastToken = null;
-    setScanResult("📷 Starting camera...");
+    setScanResult("📷 Starting camera…");
+    startBtn.disabled = true; stopBtn.disabled = false;
+
     try {
-      if (html5Qr) { try { await html5Qr.stop(); } catch (_) {} try { await html5Qr.clear(); } catch (_) {} }
-      html5Qr = new Html5Qrcode("qr-reader");
-      const cameras = await Html5Qrcode.getCameras();
-      if (!cameras || !cameras.length) { scanning = false; setScanResult("<b>❌ No camera found</b>"); return; }
-      startBtn.disabled = true; stopBtn.disabled = false;
-      await html5Qr.start({ facingMode:"environment" }, { fps:10, qrbox:{ width:250, height:250 } }, (decodedText) => verifyTicketToken(extractTokenFromQR(decodedText)), () => {});
-      setScanResult("✅ Camera started. Scan a ticket.");
-    } catch (e) { console.error(e); scanning = false; startBtn.disabled = false; stopBtn.disabled = true; setScanResult("<b>❌ Camera permission denied / not supported</b>"); }
+      // Clean up previous instance
+      if (html5QrScanInterval) { clearInterval(html5QrScanInterval); html5QrScanInterval = null; }
+      if (html5Qr) {
+        try { await html5Qr.stop(); } catch (_) {}
+        try { await html5Qr.clear(); } catch (_) {}
+        html5Qr = null;
+      }
+
+      html5Qr = new Html5Qrcode("qr-reader", { verbose: false });
+
+      await new Promise(r => setTimeout(r, 80));
+      const rawWidth = document.getElementById("qr-reader")?.offsetWidth || 0;
+      // Small box = user must aim precisely, but decoder is faster & more accurate
+      const boxSize = Math.max(Math.floor(rawWidth * 0.55), 180);
+      console.log("qr-reader offsetWidth:", rawWidth, "\u2192 boxSize:", boxSize);
+
+      const scanConfig = {
+        fps: 10,
+        qrbox: { width: boxSize, height: boxSize },
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [0],   // QR_CODE only
+      };
+
+      const onDecodeSuccess = (decodedText) => {
+        verifyTicketToken(extractTokenFromQR(decodedText));
+      };
+      const onDecodeError = (_) => {};
+
+      // ── Strategy 1: native html5-qrcode scanning (facingMode) ──
+      let nativeStarted = false;
+      try {
+        await html5Qr.start({ facingMode: "environment" }, scanConfig, onDecodeSuccess, onDecodeError);
+        nativeStarted = true;
+      } catch (e1) {
+        console.warn("facingMode=environment failed:", e1.message);
+        try { await html5Qr.stop(); } catch (_) {}
+        try { await html5Qr.clear(); } catch (_) {}
+        html5Qr = new Html5Qrcode("qr-reader", { verbose: false });
+      }
+
+      if (!nativeStarted) {
+        const cameras = await Html5Qrcode.getCameras();
+        console.log("Cameras found:", cameras);
+        if (!cameras || !cameras.length) throw new Error("No cameras found. Grant camera permission.");
+        const cam = cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[cameras.length - 1];
+        console.log("Using camera:", cam.label || cam.id);
+        await html5Qr.start(cam.id, scanConfig, onDecodeSuccess, onDecodeError);
+      }
+
+      setScanResult("✅ Camera ready — centre the QR inside the box.");
+
+      // ── Strategy 2: overlay a contrast-boosted manual scan loop ──
+      // Runs in parallel. If native ZXing misses it, this will catch it.
+      const videoEl = document.querySelector("#qr-reader video");
+      if (videoEl && typeof html5Qr.scanFileV2 === "function") {
+        console.log("\uD83D\uDD0D Contrast-boost scan loop active");
+        html5QrScanInterval = setInterval(async () => {
+          if (!scanning) { clearInterval(html5QrScanInterval); return; }
+          try {
+            const text = await _scanFrameWithBoost(html5Qr, videoEl, offCanvas);
+            if (text) {
+              console.log("\uD83D\uDCF7 Boost-scan decoded:", text);
+              verifyTicketToken(extractTokenFromQR(text));
+            }
+          } catch (_) {}
+        }, 350);   // check ~3×/sec independent of native fps
+      } else {
+        console.log("scanFileV2 not available — relying on native ZXing only");
+      }
+
+    } catch (e) {
+      console.error("\u274C Camera start failed:", e);
+      scanning = false; startBtn.disabled = false; stopBtn.disabled = true;
+      setScanResult(
+        `<b>\u274C Could not start camera</b><br/>` +
+        `<small style="color:#888;">${e.message || e}</small><br/>` +
+        `<small>Make sure camera access is allowed in your browser.</small>`
+      );
+      if (html5Qr) { try { await html5Qr.clear(); } catch (_) {} html5Qr = null; }
+    }
   };
 
   stopBtn.onclick = async () => {
+    if (html5QrScanInterval) { clearInterval(html5QrScanInterval); html5QrScanInterval = null; }
     if (!html5Qr || !scanning) return;
     try { await html5Qr.stop(); } catch (_) {}
     try { await html5Qr.clear(); } catch (_) {}
-    html5Qr = null; scanning = false; startBtn.disabled = false; stopBtn.disabled = true; lastToken = null;
-    const readerEl = document.getElementById("qr-reader");
-    if (readerEl) readerEl.innerHTML = "";
-    setScanResult("🛑 Scanner stopped.");
+    html5Qr = null; scanning = false;
+    startBtn.disabled = false; stopBtn.disabled = true; lastToken = null;
+    const el = document.getElementById("qr-reader");
+    if (el) el.innerHTML = "";
+    setScanResult("\uD83D\uDED1 Scanner stopped.");
   };
 }
 

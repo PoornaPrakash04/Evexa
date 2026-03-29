@@ -305,6 +305,16 @@
       <!-- ══════════ EVENT PROPOSALS ══════════ -->
       <div id="pg-proposals" class="page-section" style="display:none">
 
+        <!-- Role-aware info banner — shown for Faculty Coordinators -->
+        <div id="fcCoordinatorBanner" style="display:none;margin-bottom:14px;">
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;
+            border-radius:12px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.28);
+            font-size:12px;color:#c4b5fd;">
+            📋 <span>You are the <strong>Faculty Coordinator</strong>. Approving a proposal here
+            forwards it to the relevant <strong>Hall Coordinator</strong> for venue confirmation.</span>
+          </div>
+        </div>
+
         <div class="filter-bar">
           <input class="search-input" id="proposalSearch" placeholder="🔍  Search proposals…"/>
         </div>
@@ -346,12 +356,6 @@
       <div id="pg-event-list" class="page-section" style="display:none">
         <div class="filter-bar">
           <input class="search-input" id="eventListSearch" placeholder="🔍  Search events…"/>
-          <select class="filter-select" id="eventListStatus">
-            <option value="all">All Status</option>
-            <option value="approved">Approved</option>
-            <option value="pending">Pending</option>
-            <option value="rejected">Rejected</option>
-          </select>
         </div>
         <div class="panel">
           <div class="table-wrap">
@@ -365,11 +369,10 @@
                   <th>Category</th>
                   <th>Capacity</th>
                   <th>Fee</th>
-                  <th>Status</th>
                   <th>Participants</th>
                 </tr>
               </thead>
-              <tbody id="eventListBody"><tr><td colspan="9" class="td-loading">Loading events…</td></tr></tbody>
+              <tbody id="eventListBody"><tr><td colspan="8" class="td-loading">Loading events…</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -522,6 +525,68 @@
           </div>
         </div>
       </div><!-- /pg-announcements -->
+
+      <!-- ══════════ ACCOUNT SETTINGS ══════════ -->
+      <div id="pg-account-settings" class="page-section" style="display:none">
+        <div class="as-card">
+          <div class="as-avatar-box">
+            <div class="as-avatar" id="asProfileAvatar">FA</div>
+            <div>
+              <div class="as-avatar-name" id="asProfileNamePreview">Faculty Name</div>
+              <div class="as-avatar-sub">Faculty Account</div>
+            </div>
+          </div>
+
+          <form id="asAccountForm">
+            <div class="form-grid">
+              <div class="as-form-group">
+                <label for="asFacultyNo">Faculty No</label>
+                <input type="text" id="asFacultyNo" disabled />
+              </div>
+              <div class="as-form-group">
+                <label for="asDepartment">Department</label>
+                <input type="text" id="asDepartment" />
+              </div>
+              <div class="as-form-group">
+                <label for="asName">Full Name</label>
+                <input type="text" id="asName" />
+              </div>
+              <div class="as-form-group">
+                <label for="asEmail">Email</label>
+                <input type="email" id="asEmail" />
+              </div>
+              <div class="as-form-group">
+                <label for="asPhone">Phone</label>
+                <input type="text" id="asPhone" />
+              </div>
+            </div>
+
+            <div class="as-section-title">Change Password</div>
+
+            <div class="form-grid">
+              <div class="as-form-group">
+                <label for="asCurrentPassword">Current Password</label>
+                <input type="password" id="asCurrentPassword" placeholder="Enter current password" />
+              </div>
+              <div class="as-form-group">
+                <label for="asNewPassword">New Password</label>
+                <input type="password" id="asNewPassword" placeholder="Enter new password" />
+              </div>
+              <div class="as-form-group">
+                <label for="asConfirmPassword">Confirm New Password</label>
+                <input type="password" id="asConfirmPassword" placeholder="Confirm new password" />
+              </div>
+            </div>
+
+            <div class="as-actions">
+              <button type="button" class="btn ghost" onclick="navigateTo('dashboard')">Cancel</button>
+              <button type="submit" class="btn primary">Save Changes</button>
+            </div>
+
+            <div class="as-msg" id="asFormMsg"></div>
+          </form>
+        </div>
+      </div><!-- /pg-account-settings -->
 
       <!-- ══════════ NOTIFICATION HISTORY ══════════ -->
       <div id="pg-notif-history" class="page-section" style="display:none">

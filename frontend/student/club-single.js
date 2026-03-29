@@ -33,7 +33,7 @@ async function loadClubDetail() {
   if (!content) { console.error("pageContent not found"); return; }
 
   try {
-    const token   = localStorage.getItem("authToken");
+    const token   = localStorage.getItem("student_auth_token");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     const res = await fetch(`${API_BASE}/clubs/${selectedId}`, { headers });
@@ -123,7 +123,9 @@ function renderClub(club, memberCount, isJoined, events = [], execom = [], conte
   function formatDate(raw) {
     if (!raw) return "TBD";
     try {
-      const d = new Date(raw);
+      const dateStr = String(raw).split("T")[0];
+      const [yyyy, mm, dd] = dateStr.split("-").map(Number);
+      const d = (yyyy && mm && dd) ? new Date(yyyy, mm - 1, dd) : new Date(raw);
       if (isNaN(d)) return raw;
       return d.toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
     } catch (_) { return raw; }
@@ -141,8 +143,13 @@ function renderClub(club, memberCount, isJoined, events = [], execom = [], conte
   }
 
   let eventsHtml = "";
-  if (events.length > 0) {
-    const eventCards = events.map(ev => {
+  const visibleEvents = events.filter(ev => {
+  const status = (ev.status || "").toLowerCase();
+  return status !== "pending";
+});
+
+if (visibleEvents.length > 0) {
+    const eventCards = visibleEvents.map(ev => {
       const total  = ev.total_seats  ?? ev.seats?.total  ?? 0;
       const filled = ev.filled_seats ?? ev.seats?.filled ?? 0;
       const left   = total - filled;
@@ -295,7 +302,7 @@ function renderClub(club, memberCount, isJoined, events = [], execom = [], conte
   // ── Join / Leave button logic ─────────────────────────
   let joined  = isJoined;
   let count   = typeof memberCount === "number" ? memberCount : parseInt(memberCount) || 0;
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
 
   document.getElementById("joinBtn")?.addEventListener("click", async function () {
     const btn = document.getElementById("joinBtn");

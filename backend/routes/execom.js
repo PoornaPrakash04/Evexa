@@ -41,46 +41,56 @@ router.get("/club/:club", authorize(), (req, res) => {
    ADD MEMBER
 ================================= */
 router.post("/", authorize(), (req, res) => {
-  const organizerClub = req.user?.club;
   const { name, position, class: className, email, phone } = req.body;
-
-  if (!organizerClub) return res.status(403).json({ message: "Organizer club not found" });
   if (!name || !position) return res.status(400).json({ message: "Name and position are required" });
 
-  db.query(
-    "INSERT INTO execom (name, position, class, club, email, phone) VALUES (?, ?, ?, ?, ?, ?)",
-    [name, position, className || null, organizerClub, email || null, phone || null],
-    (err, result) => {
-      if (err) return res.status(500).json({ message: "Server error" });
-      res.json({ message: "Execom member added", id: result.insertId });
+  db.query("SELECT club FROM organizers WHERE id = ?", [req.user.id], (err, orgResult) => {
+    if (err) {
+      console.error("POST /execom club lookup error:", err);
+      return res.status(500).json({ message: "Server error" });
     }
-  );
+    if (!orgResult.length) return res.status(403).json({ message: "Organizer not found" });
+    const organizerClub = orgResult[0].club;
+
+    db.query(
+      "INSERT INTO execom (name, position, class, club, email, phone) VALUES (?, ?, ?, ?, ?, ?)",
+      [name, position, className || "", organizerClub, email || null, phone || null],
+      (err2, result) => {
+        if (err2) {
+          console.error("POST /execom INSERT error:", err2.message);
+          return res.status(500).json({ message: "Server error", detail: err2.message });
+        }
+        res.json({ message: "Execom member added", id: result.insertId });
+      }
+    );
+  });
 });
 /* ===============================
-   UPDATE MEMBER  ✅ FIX
+   UPDATE MEMBER
 ================================= */
 router.put("/:id", authorize(), (req, res) => {
   const id = Number(req.params.id);
-  const organizerClub = req.user?.club; // ✅ from token
   const { name, position, class: className, email, phone } = req.body;
 
   if (!id) return res.status(400).json({ message: "Invalid ID" });
-  if (!organizerClub) return res.status(403).json({ message: "Organizer club not found" });
   if (!name || !position) return res.status(400).json({ message: "Name and position are required" });
 
-  db.query(
-    `UPDATE execom
-     SET name=?, position=?, class=?, email=?, phone=?
-     WHERE id=? AND club=?`,
-    [name, position, className || null, email || null, phone || null, id, organizerClub],
-    (err, result) => {
-      if (err) return res.status(500).json({ message: "Server error" });
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: "Member not found in your club" });
+  db.query("SELECT club FROM organizers WHERE id = ?", [req.user.id], (err, orgResult) => {
+    if (err) return res.status(500).json({ message: "Server error" });
+    if (!orgResult.length) return res.status(403).json({ message: "Organizer not found" });
+    const organizerClub = orgResult[0].club;
+
+    db.query(
+      `UPDATE execom SET name=?, position=?, class=?, email=?, phone=? WHERE id=? AND club=?`,
+      [name, position, className || "", email || null, phone || null, id, organizerClub],
+      (err2, result) => {
+        if (err2) return res.status(500).json({ message: "Server error" });
+        if (result.affectedRows === 0)
+          return res.status(404).json({ message: "Member not found in your club" });
+        res.json({ message: "Execom member updated" });
       }
-      res.json({ message: "Execom member updated" });
-    }
-  );
+    );
+  });
 });
 
 /* ===============================
@@ -88,22 +98,24 @@ router.put("/:id", authorize(), (req, res) => {
 ================================= */
 router.delete("/:id", authorize(), (req, res) => {
   const id = Number(req.params.id);
-  const organizerClub = req.user?.club;
-
   if (!id) return res.status(400).json({ message: "Invalid ID" });
-  if (!organizerClub) return res.status(403).json({ message: "Organizer club not found" });
 
-  db.query(
-    "DELETE FROM execom WHERE id=? AND club=?",
-    [id, organizerClub],
-    (err, result) => {
-      if (err) return res.status(500).json({ message: "Server error" });
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: "Member not found in your club" });
+  db.query("SELECT club FROM organizers WHERE id = ?", [req.user.id], (err, orgResult) => {
+    if (err) return res.status(500).json({ message: "Server error" });
+    if (!orgResult.length) return res.status(403).json({ message: "Organizer not found" });
+    const organizerClub = orgResult[0].club;
+
+    db.query(
+      "DELETE FROM execom WHERE id=? AND club=?",
+      [id, organizerClub],
+      (err2, result) => {
+        if (err2) return res.status(500).json({ message: "Server error" });
+        if (result.affectedRows === 0)
+          return res.status(404).json({ message: "Member not found in your club" });
+        res.json({ message: "Execom member deleted" });
       }
-      res.json({ message: "Execom member deleted" });
-    }
-  );
+    );
+  });
 });
 
 module.exports = router;

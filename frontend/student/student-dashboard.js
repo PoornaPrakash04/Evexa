@@ -1,7 +1,7 @@
 const API_BASE = "http://localhost:5000/api";
 
 async function apiFetch(endpoint) {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) { window.location.href = "stsignin.html"; return null; }
 
   const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -9,7 +9,7 @@ async function apiFetch(endpoint) {
   });
 
   if (res.status === 401) {
-    localStorage.removeItem("authToken");
+    localStorage.removeItem("student_auth_token");
     window.location.href = "stsignin.html";
     return null;
   }
@@ -22,18 +22,21 @@ async function apiFetch(endpoint) {
   return res.json();
 }
 
-/* ============================================================
-   SIDEBAR FIX — matches faculty-dashboard.js pattern exactly
-   
-   In your student-dashboard.js, find and REPLACE the entire
-   DOMContentLoaded block with this one.
-   ============================================================ */
+// ── IST-safe date helpers ─────────────────────────────────────
+function toISTDate(raw) {
+  // Returns a Date object interpreted in IST (Asia/Kolkata)
+  return new Date(new Date(raw).toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+}
+
+function formatDateIST(raw, opts) {
+  return new Date(raw).toLocaleDateString("en-IN", { ...opts, timeZone: "Asia/Kolkata" });
+}
 
 document.getElementById("sidebarToggle").addEventListener("click", () => {
-    const s = document.getElementById("sidebar");
-    if (window.innerWidth <= 768) s.classList.toggle("mobile-open");
-    else s.classList.toggle("collapsed");
-  });
+  const s = document.getElementById("sidebar");
+  if (window.innerWidth <= 768) s.classList.toggle("mobile-open");
+  else s.classList.toggle("collapsed");
+});
 
 /* ============================================================
    DASHBOARD LOAD
@@ -65,7 +68,7 @@ async function loadDashboard() {
   if (miniAvatar)  miniAvatar.textContent  = initials;
 
   const reg = profile.roll_no || "—";
-  const profileReg = document.getElementById("profileReg"); 
+  const profileReg = document.getElementById("profileReg");
   if (profileReg) profileReg.textContent = reg;
 
   const profileEmail = document.getElementById("profileEmail");
@@ -102,11 +105,12 @@ document.querySelector(".mini-user").addEventListener("click", () => {
 
 async function loadStats() {
   try {
-    const res = await fetch(`${API_BASE}/events`);
-    const events = await res.json();
-    const upcoming = events.filter(e => new Date(e.date) > new Date());
-    const upcomingEl = document.getElementById("upcomingEvents");
-    if (upcomingEl) upcomingEl.textContent = upcoming.length;
+    const events = await apiFetch("/events");
+    if (events && Array.isArray(events)) {
+      const upcoming = events.filter(e => toISTDate(e.date) > new Date());
+      const upcomingEl = document.getElementById("upcomingEvents");
+      if (upcomingEl) upcomingEl.textContent = upcoming.length;
+    }
   } catch (err) {
     console.error("Upcoming events error:", err);
   }
@@ -149,7 +153,7 @@ async function loadActivity() {
         <div class="li-title">Registered for "${reg.event_title}"</div>
         <div class="li-sub">
           ${reg.registered_at
-            ? new Date(reg.registered_at).toLocaleDateString("en-IN")
+            ? formatDateIST(reg.registered_at, { day: "numeric", month: "short", year: "numeric" })
             : "—"} • Event Registration
         </div>
       </div>
@@ -163,7 +167,8 @@ async function loadExplore() {
     const res = await fetch(`${API_BASE}/events`);
     const events = await res.json();
 
-    const today    = new Date();
+    const now      = new Date();
+    const today    = toISTDate(now.toISOString());
     today.setHours(0, 0, 0, 0);
     const todayEnd = new Date(today);
     todayEnd.setHours(23, 59, 59, 999);
@@ -171,11 +176,11 @@ async function loadExplore() {
     next30.setDate(today.getDate() + 30);
 
     const todayEvents    = events.filter(e => {
-      const d = new Date(e.date);
+      const d = toISTDate(e.date);
       return d >= today && d <= todayEnd;
     });
     const upcomingEvents = events.filter(e => {
-      const d = new Date(e.date);
+      const d = toISTDate(e.date);
       return d > todayEnd && d <= next30;
     });
 
@@ -199,9 +204,7 @@ async function loadExplore() {
 }
 
 function renderExploreCard(e) {
-  const eventDate = new Date(e.date).toLocaleDateString("en-IN", {
-    day: "numeric", month: "short", year: "numeric"
-  });
+  const eventDate = formatDateIST(e.date, { day: "numeric", month: "short", year: "numeric" });
   const fee = e.registration_fee > 0 ? `₹${e.registration_fee}` : "Free";
   return `
     <div class="explore-event-item" onclick="window.location.href='event-single.html?id=${e.id}'">
@@ -222,18 +225,16 @@ async function loadProgress() {
 
     const now = new Date();
 
-    // Split into past and upcoming
-    const pastEvents     = registered.filter(r => new Date(r.date) < now);
-    const upcomingEvents = registered.filter(r => new Date(r.date) >= now);
+    const pastEvents     = registered.filter(r => toISTDate(r.date) < now);
+    const upcomingEvents = registered.filter(r => toISTDate(r.date) >= now);
 
     const attended = pastEvents.length;
     const total    = registered.length;
-    const points   = attended * 10;  
+    const points   = attended * 10;
     const pct      = total > 0 ? Math.min(Math.round((attended / total) * 100), 100) : 0;
 
-    // Streak based on past events only
     const dates = pastEvents
-      .map(r => r.date ? new Date(r.date).toDateString() : null)
+      .map(r => r.date ? toISTDate(r.date).toDateString() : null)
       .filter(Boolean);
     const uniqueDates = [...new Set(dates)].sort((a, b) => new Date(b) - new Date(a));
     let streak = 0;
@@ -245,23 +246,22 @@ async function loadProgress() {
       } else break;
     }
 
-    // Level based on past attended events
     let levelLabel, levelPct, levelSub;
-    if (attended === 0)      { levelLabel = "Newcomer → Beginner";  levelPct = 0;                    levelSub = "Register for your first event!"; }
-    else if (attended < 5)   { levelLabel = "Beginner → Explorer";  levelPct = (attended/5)*100;     levelSub = `${5-attended} more events to reach Explorer`; }
+    if (attended === 0)      { levelLabel = "Newcomer → Beginner";  levelPct = 0;                      levelSub = "Register for your first event!"; }
+    else if (attended < 5)   { levelLabel = "Beginner → Explorer";  levelPct = (attended/5)*100;       levelSub = `${5-attended} more events to reach Explorer`; }
     else if (attended < 15)  { levelLabel = "Explorer → Achiever";  levelPct = ((attended-5)/10)*100;  levelSub = `${15-attended} more events to reach Achiever`; }
     else if (attended < 30)  { levelLabel = "Achiever → Champion";  levelPct = ((attended-15)/15)*100; levelSub = `${30-attended} more events to reach Champion`; }
-    else                     { levelLabel = "🏆 Champion";           levelPct = 100;                  levelSub = "You've reached the highest level!"; }
+    else                     { levelLabel = "🏆 Champion";           levelPct = 100;                    levelSub = "You've reached the highest level!"; }
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    set("attendedCount",          attended);
-    set("pointsCount",            points);
-    set("attendancePct",          pct + "%");
-    set("currentStreak",          streak);
-    set("streakCount",            streak);
-    set("levelLabel",             levelLabel);
-    set("levelSub",               levelSub);
-    set("upcomingRegisteredCount", upcomingEvents.length);  // ✅ now populates the card
+    set("attendedCount",           attended);
+    set("pointsCount",             points);
+    set("attendancePct",           pct + "%");
+    set("currentStreak",           streak);
+    set("streakCount",             streak);
+    set("levelLabel",              levelLabel);
+    set("levelSub",                levelSub);
+    set("upcomingRegisteredCount", upcomingEvents.length);
 
     const bar = document.getElementById("levelBar");
     if (bar) setTimeout(() => { bar.style.width = Math.min(levelPct, 100) + "%"; }, 300);
@@ -270,6 +270,7 @@ async function loadProgress() {
     console.error("Progress load error:", err);
   }
 }
+
 /* ── MINI CALENDAR ─────────────────────────────────────────── */
 let calendarEvents = [];
 let calYear  = new Date().getFullYear();
@@ -277,8 +278,8 @@ let calMonth = new Date().getMonth();
 
 async function loadCalendar() {
   try {
-    const res = await fetch(`${API_BASE}/events`);
-    calendarEvents = await res.json();
+    const events = await apiFetch("/events");
+    calendarEvents = events && Array.isArray(events) ? events : [];
     renderCalendar();
 
     document.getElementById("calPrev")?.addEventListener("click", () => {
@@ -309,14 +310,17 @@ function renderCalendar() {
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
   const eventMap = {};
-  calendarEvents.forEach(e => {
-    const d = new Date(e.date);
-    if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
-      const key = `${calYear}-${calMonth}-${d.getDate()}`;
-      if (!eventMap[key]) eventMap[key] = [];
-      eventMap[key].push(e);
-    }
-  });
+  calendarEvents
+    .filter(e => e.status && e.status.toLowerCase() !== "pending")
+    .forEach(e => {
+      // Use IST to get the correct local date
+      const d = toISTDate(e.date);
+      if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
+        const key = `${calYear}-${calMonth}-${d.getDate()}`;
+        if (!eventMap[key]) eventMap[key] = [];
+        eventMap[key].push(e);
+      }
+    });
 
   const weekdays = ["Su","Mo","Tu","We","Th","Fr","Sa"];
   let html = `<div class="cal-weekdays">${weekdays.map(d => `<div class="cal-weekday">${d}</div>`).join("")}</div>`;
@@ -345,7 +349,6 @@ function calDayClick(el) {
 
   const detail = document.getElementById("calEventDetail");
 
-  // ✅ If clicking the already-selected day, deselect and hide
   if (el.classList.contains("selected")) {
     el.classList.remove("selected");
     if (detail) detail.style.display = "none";
@@ -363,7 +366,8 @@ function calDayClick(el) {
 
   if (!detail || !titleEl || !metaEl || !linkEl) return;
 
-  const date = new Date(e.date).toLocaleDateString("en-IN", { dateStyle: "medium" });
+  // IST-safe date display
+  const date = formatDateIST(e.date, { dateStyle: "medium" });
   const fee  = e.registration_fee > 0 ? `₹${e.registration_fee}` : "Free";
 
   titleEl.textContent = e.title;
@@ -373,11 +377,12 @@ function calDayClick(el) {
 
   detail.style.display = "block";
 }
+
 /* ── RECOMMENDED EVENTS ────────────────────────────────────── */
 async function loadRecommended() {
   try {
     const [eventsRes, profile, registered] = await Promise.all([
-      fetch(`${API_BASE}/events`).then(r => r.json()),
+      apiFetch("/events"),
       apiFetch("/auth/me"),
       apiFetch("/attendance/my-registrations")
     ]);
@@ -389,7 +394,7 @@ async function loadRecommended() {
     const now           = new Date();
 
     const scored = eventsRes
-      .filter(e => !registeredIds.has(String(e.id)) && new Date(e.date) > now)
+      .filter(e => !registeredIds.has(String(e.id)) && toISTDate(e.date) > now)
       .map(e => {
         let score  = 0;
         let reason = "Popular event";
@@ -425,7 +430,7 @@ async function loadRecommended() {
 
     const icons = ["🎯", "⚡", "🚀", "💡"];
     list.innerHTML = scored.map((e, i) => {
-      const date = new Date(e.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+      const date = formatDateIST(e.date, { day: "numeric", month: "short" });
       const fee  = e.registration_fee > 0 ? `₹${e.registration_fee}` : "Free";
       return `
         <div class="rec-event-item" onclick="window.location.href='event-single.html?id=${e.id}'">
@@ -466,7 +471,7 @@ function logout() {
                        font-size:14px;font-weight:600;cursor:pointer;">
           Cancel
         </button>
-        <button onclick="localStorage.removeItem('authToken');window.location.href='stsignin.html';"
+        <button onclick="localStorage.removeItem('student_auth_token');window.location.href='stsignin.html';"
                 style="flex:1;padding:11px 0;border-radius:10px;border:none;
                        background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;
                        font-size:14px;font-weight:600;cursor:pointer;">
@@ -477,19 +482,126 @@ function logout() {
   `;
   document.body.appendChild(modal);
 
-  // Close on Escape
   const onKey = e => { if (e.key === "Escape") { modal.remove(); document.removeEventListener("keydown", onKey); } };
   document.addEventListener("keydown", onKey);
 }
 
-// ── Notification Bell — Full Page ────────────────────────────
-let _notifCurrentTab = "all";
+/* ── NOTIFICATIONS  (faculty-parity: dropdown + inline history page) ─── */
+const NOTIF_KEY    = "evexa_notifs";
+let localNotifs    = JSON.parse(localStorage.getItem(NOTIF_KEY) || "[]");
 
-function _getNotifs()      { return JSON.parse(localStorage.getItem("evexa_notifs") || "[]"); }
-function _saveNotifs(arr)  { localStorage.setItem("evexa_notifs", JSON.stringify(arr)); }
+function saveNotifs() {
+  localStorage.setItem(NOTIF_KEY, JSON.stringify(localNotifs.slice(0, 50)));
+}
 
-function _timeAgo(isoString) {
-  const diff  = Date.now() - new Date(isoString).getTime();
+// ── addLocalNotif — mirrors faculty exactly ───────────────────
+function addLocalNotif(type, icon, title, sub, sourceId = null) {
+  localNotifs.unshift({
+    id:        `${Date.now()}-${Math.random()}`,
+    sourceId,
+    type,
+    icon,
+    title,
+    sub,
+    time:      new Date().toISOString(),
+    read:      false,
+  });
+  saveNotifs();
+  updateNotifBadge();
+  renderNotifDropdown();
+}
+
+function addNotification(icon, title, message) {
+  addLocalNotif("general", icon, title, message, null);
+}
+
+// ── Badge count (faculty-style numbered badge) ────────────────
+function updateNotifBadge() {
+  const unread = localNotifs.filter(n => !n.read).length;
+  const cnt    = document.getElementById("notifCount");
+  if (cnt) {
+    cnt.textContent    = unread > 9 ? "9+" : unread;
+    cnt.style.display  = unread > 0 ? "flex" : "none";
+  }
+}
+
+// ── Sync from API (mirrors faculty syncNotifs) ────────────────
+async function syncNotifs() {
+  try {
+    const [ann, registered] = await Promise.all([
+      apiFetch("/announcements/student"),
+      apiFetch("/attendance/my-registrations"),
+    ]);
+
+    const existIds = new Set(localNotifs.map(n => n.sourceId).filter(Boolean));
+    const ICONS    = { Urgent: "🚨", Event: "📅", Info: "ℹ️", General: "📣" };
+    let added      = 0;
+
+    // Announcements
+    (Array.isArray(ann) ? ann : []).forEach(a => {
+      const sid     = `announcement-${a.id}`;
+      const existing = localNotifs.find(n => n.sourceId === sid);
+      if (existing) {
+        existing.title = a.title;
+        existing.sub   = a.message || "";
+        existing.time  = a.created_at || existing.time;
+        return;
+      }
+      localNotifs.unshift({
+        id:       `${Date.now()}-${Math.random()}`,
+        sourceId: sid,
+        type:     "announcement",
+        icon:     ICONS[a.type] || "📢",
+        title:    a.title,
+        sub:      a.message || "",
+        time:     a.created_at || new Date().toISOString(),
+        read:     false,
+      });
+      added++;
+    });
+
+    // Upcoming event reminders
+    const now = new Date();
+    (Array.isArray(registered) ? registered : []).forEach(r => {
+      if (!r.date) return;
+      const eventDate = toISTDate(r.date);
+      const diffDays  = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+
+      [{ key: "1day", days: 1, icon: "⏰", title: "Event Tomorrow!",
+         sub: `"${r.event_title}" is happening tomorrow. Don't miss it!` },
+       { key: "3day", days: 3, icon: "📅", title: "Upcoming Event",
+         sub: `"${r.event_title}" is in 3 days. Get ready!` }
+      ].forEach(({ key, days, icon, title, sub }) => {
+        if (diffDays !== days) return;
+        const sid = `upcoming-${r.event_id}-${key}`;
+        if (existIds.has(sid)) return;
+        localNotifs.unshift({
+          id: `${Date.now()}-${Math.random()}`,
+          sourceId: sid, type: "event",
+          icon, title, sub,
+          time: new Date().toISOString(), read: false,
+        });
+        added++;
+      });
+    });
+
+    if (added) saveNotifs();
+    updateNotifBadge();
+    renderNotifDropdown();
+
+    if (added) {
+      const btn = document.getElementById("notifBtn");
+      if (btn) { btn.classList.add("ring"); setTimeout(() => btn.classList.remove("ring"), 600); }
+    }
+  } catch (err) {
+    console.error("syncNotifs error:", err);
+  }
+}
+
+// ── timeAgo helper ────────────────────────────────────────────
+function timeAgo(iso) {
+  if (!iso) return "";
+  const diff  = Date.now() - new Date(iso).getTime();
   const mins  = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days  = Math.floor(diff / 86400000);
@@ -499,216 +611,83 @@ function _timeAgo(isoString) {
   return `${days}d ago`;
 }
 
-function _notifCategory(n) {
-  if (!n.sourceId) return "other";
-  if (n.sourceId.startsWith("announcement-")) return "announcement";
-  if (n.sourceId.startsWith("upcoming-"))     return "event";
-  return "other";
-}
-
-function _updateBellDot() {
-  const dot    = document.getElementById("notifDot");
-  const notifs = _getNotifs();
-  const unread = notifs.filter(n => !n.read).length;
-  if (!dot) return;
-  dot.classList.toggle("show", unread > 0);
-  dot.textContent = unread > 9 ? "9+" : (unread > 0 ? String(unread) : "");
-}
-
-function _catMeta(cat) {
-  if (cat === "announcement") return { color: "#f59e0b", chipClass: "notif-cat-chip--announcement", label: "Announcement" };
-  if (cat === "event")        return { color: "#6d5efc", chipClass: "notif-cat-chip--event",        label: "Event" };
-  return                               { color: "#10b981", chipClass: "notif-cat-chip--other",        label: "General" };
-}
-
-function _isToday(isoString) {
-  const d = new Date(isoString);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() &&
-         d.getMonth()    === now.getMonth()    &&
-         d.getDate()     === now.getDate();
-}
-
-function _updateSummaryStrip() {
-  const all   = _getNotifs();
-  const event = all.filter(n => _notifCategory(n) === "event");
-  const ann   = all.filter(n => _notifCategory(n) === "announcement");
-  const setBadge = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  setBadge("nsBadgeAll",   all.length);
-  setBadge("nsBadgeEvent", event.length);
-  setBadge("nsBadgeAnn",   ann.length);
-}
-
-function _renderNotifPage(tab) {
-  const list  = document.getElementById("notifPageList");
-  const subEl = document.getElementById("notifPageSub");
+// ── Render dropdown (mirrors faculty renderNotifDropdown) ─────
+function renderNotifDropdown() {
+  const list = document.getElementById("notifDropList");
   if (!list) return;
-
-  _updateSummaryStrip();
-
-  let notifs = _getNotifs();
-  if (tab !== "all") notifs = notifs.filter(n => _notifCategory(n) === tab);
-
-  // Sort: newest first
-  notifs = [...notifs].sort((a, b) => new Date(b.timestamp || b.time) - new Date(a.timestamp || a.time));
-
-  const unread = _getNotifs().filter(n => !n.read).length;
-  if (subEl) {
-    subEl.textContent = unread > 0
-      ? `${unread} unread notification${unread > 1 ? "s" : ""}`
-      : "All caught up ✓";
-  }
-
-  if (!notifs.length) {
-    const emptyLabels = {
-      all:          ["🔕", "You're all caught up!", "No notifications yet."],
-      event:        ["📅", "No event notifications", "Event reminders will appear here."],
-      announcement: ["📢", "No announcements", "Club announcements will appear here."],
-    };
-    const [icon, title, sub] = emptyLabels[tab] || emptyLabels.all;
-    list.innerHTML = `
-      <div class="notif-pg-empty">
-        <div class="notif-pg-empty-icon">${icon}</div>
-        <div class="notif-pg-empty-text">${title}</div>
-        <div class="notif-pg-empty-sub">${sub}</div>
-      </div>`;
+  if (!localNotifs.length) {
+    list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px;">🔔<br>No notifications yet.</div>`;
     return;
   }
-
-  // Group into Today / Earlier
-  const todayItems   = notifs.filter(n => _isToday(n.timestamp || n.time));
-  const earlierItems = notifs.filter(n => !_isToday(n.timestamp || n.time));
-
-  const renderItem = n => {
-    const cat  = _notifCategory(n);
-    const meta = _catMeta(cat);
-    return `
-      <div class="notif-pg-item ${n.read ? "" : "unread"}" data-id="${n.id}">
-        <div class="notif-pg-icon" style="background:${meta.color}22;color:${meta.color};">
-          ${n.icon || (cat === "announcement" ? "📢" : cat === "event" ? "📅" : "🔔")}
-        </div>
-        <div class="notif-pg-body">
-          <div class="notif-pg-item-top">
-            <div class="notif-pg-item-title">${n.title}</div>
-            <span class="notif-cat-chip ${meta.chipClass}">${meta.label}</span>
-          </div>
-          <div class="notif-pg-item-msg">${n.message}</div>
-          <div class="notif-pg-item-time">${_timeAgo(n.timestamp || n.time)}</div>
-        </div>
-        ${!n.read ? `<div class="notif-pg-unread-dot"></div>` : ""}
-        <button class="notif-pg-dismiss" onclick="dismissNotif('${n.id}', this)" title="Dismiss">✕</button>
-      </div>`;
-  };
-
-  const renderGroup = (label, items) => {
-    if (!items.length) return "";
-    return `
-      <div class="notif-group-header">
-        <span class="notif-group-label">${label}</span>
-        <span class="notif-group-line"></span>
-        <span class="notif-group-count">${items.length}</span>
+  list.innerHTML = localNotifs.slice(0, 8).map(n => `
+    <div class="notif-item ${n.read ? "" : "unread"}">
+      <div class="notif-icon">${n.icon || "🔔"}</div>
+      <div class="notif-body">
+        <div class="notif-ntitle">${n.title}</div>
+        <div class="notif-nsub">${n.sub || ""}</div>
+        <div class="notif-time">${timeAgo(n.time)}</div>
       </div>
-      ${items.map(renderItem).join("")}`;
-  };
-
-  list.innerHTML = renderGroup("Today", todayItems) + renderGroup("Earlier", earlierItems);
-
-  // Mark all visible as read after a short delay
-  setTimeout(() => {
-    const visibleIds = new Set(notifs.map(n => n.id));
-    const updated    = _getNotifs().map(n => visibleIds.has(n.id) ? { ...n, read: true } : n);
-    _saveNotifs(updated);
-    _updateBellDot();
-    _updateSummaryStrip();
-    document.querySelectorAll(".notif-pg-item.unread").forEach(el => el.classList.remove("unread"));
-    document.querySelectorAll(".notif-pg-unread-dot").forEach(el => el.remove());
-    if (subEl) subEl.textContent = "All caught up ✓";
-  }, 900);
+      ${!n.read ? `<div class="notif-unread-dot"></div>` : ""}
+    </div>
+  `).join("");
 }
 
-function openNotifPage() {
-  const page    = document.getElementById("notifPage");
-  const overlay = document.getElementById("notifPageOverlay");
-  if (!page) return;
-  _notifCurrentTab = "all";
-  // Reset tabs
-  document.querySelectorAll(".notif-ptab").forEach(t => t.classList.remove("active"));
-  const allTab = document.querySelector(".notif-ptab[data-tab='all']");
-  if (allTab) allTab.classList.add("active");
+// ── Open/close dropdown (bell click) ─────────────────────────
+function openNotifHistoryPage() {
+  // mark all read (like faculty does on open)
+  localNotifs = localNotifs.map(n => ({ ...n, read: true }));
+  saveNotifs();
+  updateNotifBadge();
 
-  page.classList.add("open");
-  overlay?.classList.add("open");
-  document.body.style.overflow = "hidden";
+  // hide dropdown, show history page, hide dashboard content
+  document.getElementById("notifDropdown")?.classList.remove("open");
+  document.getElementById("pg-notif-history").style.display  = "";
+  document.getElementById("pg-dashboard-content").style.display = "none";
 
-  _updateSummaryStrip();
-  _renderNotifPage("all");
+  renderNotifHistory();
 }
 
-function closeNotifPage() {
-  const page    = document.getElementById("notifPage");
-  const overlay = document.getElementById("notifPageOverlay");
-  page?.classList.remove("open");
-  overlay?.classList.remove("open");
-  document.body.style.overflow = "";
+function closeNotifHistoryPage() {
+  document.getElementById("pg-notif-history").style.display     = "none";
+  document.getElementById("pg-dashboard-content").style.display = "";
 }
 
-function switchNotifTab(btn, tab) {
-  document.querySelectorAll(".notif-ptab").forEach(t => t.classList.remove("active"));
-  btn.classList.add("active");
-  _notifCurrentTab = tab;
-  _renderNotifPage(tab);
+// ── Render history page ──
+function renderNotifHistory() {
+  const filter  = document.getElementById("notifTypeFilter")?.value || "all";
+  const list    = document.getElementById("notifHistoryList");
+  const subEl   = document.getElementById("notifHistorySub");
+  if (!list) return;
+
+  let notifs = localNotifs;
+  if (filter !== "all") notifs = notifs.filter(n => n.type === filter);
+
+  if (subEl) subEl.textContent = notifs.length
+    ? `${notifs.length} notification${notifs.length !== 1 ? "s" : ""}`
+    : "All caught up";
+
+  list.innerHTML = notifs.length
+    ? notifs.map(n => `
+      <div class="nh-item ${n.read ? "" : "unread"}">
+        <div class="nh-item-icon">${n.icon || "🔔"}</div>
+        <div class="nh-item-body">
+          <div class="nh-item-title">${n.title}${!n.read ? `<span class="nh-unread-dot"></span>` : ""}</div>
+          <div class="nh-item-sub">${n.sub || ""}</div>
+          <div class="nh-item-time">${timeAgo(n.time)}</div>
+        </div>
+      </div>
+    `).join("")
+    : `<div class="nh-empty"><div style="font-size:36px;opacity:.4;">🔕</div><div style="margin-top:10px;font-size:14px;font-weight:600;">No notifications yet.</div></div>`;
 }
 
-function dismissNotif(id, btn) {
-  // Animate the single item out
-  const item = btn.closest(".notif-pg-item");
-  if (item) {
-    item.style.transition  = "opacity .22s ease, transform .22s ease, max-height .28s ease, padding .28s ease";
-    item.style.opacity     = "0";
-    item.style.transform   = "translateX(28px)";
-    item.style.maxHeight   = item.offsetHeight + "px";
-    // collapse after fade
-    setTimeout(() => {
-      item.style.maxHeight = "0";
-      item.style.padding   = "0";
-      item.style.overflow  = "hidden";
-    }, 220);
-    setTimeout(() => {
-      item.remove();
-      // remove group header if it's now empty
-      document.querySelectorAll(".notif-group-header").forEach(gh => {
-        let next = gh.nextElementSibling;
-        if (!next || next.classList.contains("notif-group-header")) gh.remove();
-      });
-    }, 480);
-  }
-  // Remove from storage
-  const updated = _getNotifs().filter(n => n.id !== id);
-  _saveNotifs(updated);
-  _updateBellDot();
-  _updateSummaryStrip();
-  // Update sub-text
-  const unread = updated.filter(n => !n.read).length;
-  const subEl  = document.getElementById("notifPageSub");
-  if (subEl) subEl.textContent = unread > 0 ? `${unread} unread` : "All caught up ✓";
-  // If list is now empty, show empty state after animation
-  setTimeout(() => {
-    const list = document.getElementById("notifPageList");
-    if (list && !list.querySelector(".notif-pg-item")) _renderNotifPage(_notifCurrentTab);
-  }, 500);
-}
-
+// ── Mark all read ─────────────────────────────────────────────
 function markAllNotifsRead() {
-  const updated = _getNotifs().map(n => ({ ...n, read: true }));
-  _saveNotifs(updated);
-  _updateBellDot();
-  _updateSummaryStrip();
-  document.querySelectorAll(".notif-pg-item.unread").forEach(el => el.classList.remove("unread"));
-  document.querySelectorAll(".notif-pg-unread-dot").forEach(el => el.remove());
-  const subEl = document.getElementById("notifPageSub");
-  if (subEl) subEl.textContent = "All caught up ✓";
-  // Flash the mark-all button green briefly
-  const btn = document.getElementById("notifMarkAllBtn");
+  localNotifs = localNotifs.map(n => ({ ...n, read: true }));
+  saveNotifs();
+  updateNotifBadge();
+  renderNotifDropdown();
+  renderNotifHistory();
+  const btn = document.getElementById("markAllReadBtn");
   if (btn) {
     const orig = btn.textContent;
     btn.textContent = "✓ Done!";
@@ -717,148 +696,36 @@ function markAllNotifsRead() {
   }
 }
 
+// ── Clear all (mirrors faculty clearAllNotifs) ────────────────
 function clearAllNotifs() {
-  const items = document.querySelectorAll(".notif-pg-item");
-  items.forEach((el, i) => {
-    setTimeout(() => {
-      el.style.opacity    = "0";
-      el.style.transform  = "translateX(24px)";
-      el.style.transition = ".22s ease";
-    }, i * 45);
-  });
-  setTimeout(() => {
-    _saveNotifs([]);
-    _updateBellDot();
-    _updateSummaryStrip();
-    _renderNotifPage(_notifCurrentTab);
-  }, items.length * 45 + 250);
+  localNotifs = [];
+  saveNotifs();
+  updateNotifBadge();
+  renderNotifDropdown();
+  renderNotifHistory();
 }
 
+// ── Init notifications ────────────────────────────────────────
 function initNotifications() {
+  updateNotifBadge();
+
+  // Bell opens the full notification page directly
   const btn = document.getElementById("notifBtn");
   if (btn) {
-    btn.classList.remove("ring");
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      openNotifHistoryPage();
+    });
   }
-  _updateBellDot();
 
-  // Close on Escape
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape") closeNotifPage();
+    if (e.key === "Escape") closeNotifHistoryPage();
   });
 
-  // Check for upcoming events and auto-generate notifications
-  autoGenerateNotifs();
-}
-
-// ── ⚡ ONLY THIS FUNCTION WAS CHANGED — announcement notifications added ──
-async function autoGenerateNotifs() {
-  try {
-    // Fetch registrations AND announcements in parallel
-    const [registered, announcements] = await Promise.all([
-      apiFetch("/attendance/my-registrations"),
-      apiFetch("/announcements/student"),
-    ]);
-
-    const existing    = JSON.parse(localStorage.getItem("evexa_notifs") || "[]");
-    const existingIds = new Set(existing.map(n => n.sourceId).filter(Boolean));
-    const now         = new Date();
-    const newNotifs   = [];
-
-    // ── Announcement notifications (newest first) ──────────
-    const TYPE_ICON = { Urgent: "🚨", Event: "📢", Info: "ℹ️", General: "📣" };
-    (announcements || []).forEach(a => {
-      const sourceId = `announcement-${a.id}`;
-      if (existingIds.has(sourceId)) return; // already stored, skip
-      newNotifs.push({
-        id:        Date.now() + Math.random(),
-        sourceId,
-        icon:      TYPE_ICON[a.type] || "📢",
-        title:     a.title,
-        message:   `${a.club}: ${a.message}`,
-        timestamp: a.created_at || new Date().toISOString(),
-        time:      new Date(a.created_at).toLocaleString("en-IN"),
-        read:      false,
-      });
-    });
-
-    // ── Event reminder notifications (unchanged) ───────────
-    (registered || []).forEach(r => {
-      if (!r.date) return;
-      const eventDate = new Date(r.date);
-      const diffDays  = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
-
-      // Notify if event is tomorrow
-      const notifId = `upcoming-${r.event_id}-1day`;
-      if (diffDays === 1 && !existingIds.has(notifId)) {
-        newNotifs.push({
-          id:        Date.now() + Math.random(),
-          sourceId:  notifId,
-          icon:      "⏰",
-          title:     "Event Tomorrow!",
-          message:   `"${r.event_title}" is happening tomorrow. Don't miss it!`,
-          timestamp: new Date().toISOString(),
-          time:      new Date().toLocaleString("en-IN"),
-          read:      false
-        });
-      }
-
-      // Notify if event is in 3 days
-      const notifId3 = `upcoming-${r.event_id}-3day`;
-      if (diffDays === 3 && !existingIds.has(notifId3)) {
-        newNotifs.push({
-          id:        Date.now() + Math.random(),
-          sourceId:  notifId3,
-          icon:      "📅",
-          title:     "Upcoming Event",
-          message:   `"${r.event_title}" is in 3 days. Get ready!`,
-          timestamp: new Date().toISOString(),
-          time:      new Date().toLocaleString("en-IN"),
-          read:      false
-        });
-      }
-    });
-
-    if (newNotifs.length) {
-      const updated = [...newNotifs, ...existing].slice(0, 20);
-      localStorage.setItem("evexa_notifs", JSON.stringify(updated));
-      // Ring bell for new ones
-      const btn = document.getElementById("notifBtn");
-      if (btn) { btn.classList.add("ring"); setTimeout(() => btn.classList.remove("ring"), 600); }
-      // Re-render dot
-      _updateBellDot();
-    }
-  } catch (err) {
-    console.error("Auto-notif error:", err);
-  }
-}
-
-function addNotification(icon, title, message) {
-  const notifs = JSON.parse(localStorage.getItem("evexa_notifs") || "[]");
-  notifs.unshift({
-    id:        Date.now(),
-    icon,
-    title,
-    message,
-    timestamp: new Date().toISOString(),
-    time:      new Date().toLocaleString("en-IN"),
-    read:      false
-  });
-  localStorage.setItem("evexa_notifs", JSON.stringify(notifs.slice(0, 20)));
-  _updateBellDot();
-
-  const btn = document.getElementById("notifBtn");
-  if (btn) {
-    btn.classList.add("ring");
-    setTimeout(() => btn.classList.remove("ring"), 600);
-  }
+  syncNotifs();
 }
 
 /* ── UPCOMING REGISTERED MODAL ──────────────────────────────── */
-/* ── UPCOMING REGISTERED MODAL ──────────────────────────────── 
-   Replace the existing openUpcomingModal / closeUpcomingModal
-   functions in student-dashboard.js with these
-   ──────────────────────────────────────────────────────────── */
-
 const ACCENT_CLASSES = ["accent-v", "accent-p", "accent-c", "accent-l"];
 const BADGE_ICONS    = ["🛡️", "🤖", "🎨", "💡", "🚀", "⚡", "🎯", "📡"];
 
@@ -881,7 +748,6 @@ async function openUpcomingModal() {
   const list    = document.getElementById("upcomingModalList");
   if (!overlay || !modal || !list) return;
 
-  // Show immediately with loading state
   overlay.style.display = "block";
   modal.style.display   = "flex";
   list.innerHTML = `<p class="modal-empty">Loading...</p>`;
@@ -896,8 +762,8 @@ async function openUpcomingModal() {
 
     const now      = new Date();
     const upcoming = registered
-      .filter(r => r.date && new Date(r.date) >= now)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
+      .filter(r => r.date && toISTDate(r.date) >= now)
+      .sort((a, b) => toISTDate(a.date) - toISTDate(b.date));
 
     if (!upcoming.length) {
       list.innerHTML = `<p class="modal-empty">No upcoming registered events.</p>`;
@@ -905,12 +771,12 @@ async function openUpcomingModal() {
     }
 
     list.innerHTML = upcoming.map((r, i) => {
-      const eventDate    = new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-      const diffDays     = Math.ceil((new Date(r.date) - now) / (1000 * 60 * 60 * 24));
-      const accentClass  = ACCENT_CLASSES[i % ACCENT_CLASSES.length];
-      const icon         = BADGE_ICONS[i % BADGE_ICONS.length];
-      const cdClass      = getCountdownClass(diffDays);
-      const cdLabel      = getCountdownLabel(diffDays);
+      const eventDate   = formatDateIST(r.date, { day: "numeric", month: "short", year: "numeric" });
+      const diffDays    = Math.ceil((toISTDate(r.date) - now) / (1000 * 60 * 60 * 24));
+      const accentClass = ACCENT_CLASSES[i % ACCENT_CLASSES.length];
+      const icon        = BADGE_ICONS[i % BADGE_ICONS.length];
+      const cdClass     = getCountdownClass(diffDays);
+      const cdLabel     = getCountdownLabel(diffDays);
 
       return `
         <div class="modal-event-item ${accentClass}"
@@ -940,22 +806,50 @@ function closeUpcomingModal() {
   if (overlay) overlay.style.display = "none";
   if (modal)   modal.style.display   = "none";
 }
-async function loadNotifications() {
-  const data = await apiFetch("/student/notifications");
 
-  if (!data) return;
-
-  notificationsData.history = data.history || [];
-  notificationsData.schedule = data.schedule || [];
-  notificationsData.requests = data.requests || [];
-
-  renderNotifications("history");
-  updateNotifDot();
-}
-// Close on Escape key (keep this in place of the existing one)
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") closeUpcomingModal();
 });
 
 /* ── Boot ───────────────────────────────────────────────────── */
 loadDashboard();
+
+/* ── Theme toggle (inlined from theme.js) ───────────────────── */
+(function initTheme() {
+  if (localStorage.getItem("evexa_theme") === "light") document.body.classList.add("light");
+  const btn = document.getElementById("themeToggle");
+  if (btn) {
+    const isLight = document.body.classList.contains("light");
+    btn.textContent = isLight ? "☀️" : "🌙";
+    btn.title = isLight ? "Switch to Dark Mode" : "Switch to Light Mode";
+  }
+})();
+
+function toggleTheme() {
+  document.body.classList.toggle("light");
+  const isLight = document.body.classList.contains("light");
+  localStorage.setItem("evexa_theme", isLight ? "light" : "dark");
+  const btn = document.getElementById("themeToggle");
+  if (btn) { btn.textContent = isLight ? "☀️" : "🌙"; btn.title = isLight ? "Switch to Dark Mode" : "Switch to Light Mode"; }
+}
+
+/* ── Profile Drawer ─────────────────────────────────────────── */
+function openProfileDrawer() {
+  document.getElementById("profileDrawer")?.classList.add("open");
+  document.getElementById("profileDrawer")?.setAttribute("aria-hidden", "false");
+  document.getElementById("overlay")?.classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+
+function closeProfileDrawer() {
+  document.getElementById("profileDrawer")?.classList.remove("open");
+  document.getElementById("profileDrawer")?.setAttribute("aria-hidden", "true");
+  document.getElementById("overlay")?.classList.remove("show");
+  document.body.style.overflow = "";
+}
+
+document.getElementById("closeProfileBtn")?.addEventListener("click", closeProfileDrawer);
+document.getElementById("overlay")?.addEventListener("click", closeProfileDrawer);
+document.getElementById("editProfileBtn")?.addEventListener("click", () => { closeProfileDrawer(); window.location.href = "account-setting.html"; });
+document.getElementById("downloadCertBtn")?.addEventListener("click", () => { window.location.href = "certificates.html"; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeProfileDrawer(); });

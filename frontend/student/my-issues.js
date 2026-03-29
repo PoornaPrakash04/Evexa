@@ -1,7 +1,5 @@
-
-
 async function loadMyIssues() {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("student_auth_token");
   if (!token) {
     window.location.href = "stsignin.html";
     return;
