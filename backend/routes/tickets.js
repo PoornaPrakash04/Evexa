@@ -13,7 +13,7 @@ router.post("/generate", authorize(), async (req, res) => {
 
     if (!event_id) return res.status(400).json({ message: "event_id required" });
 
-    // ✅ Check student
+    
     const [students] = await db.promise().query(
       "SELECT id, name, email, roll_no, department, class FROM students WHERE id=?",
       [student_id]
@@ -21,7 +21,7 @@ router.post("/generate", authorize(), async (req, res) => {
     if (!students.length) return res.status(404).json({ message: "Student not found" });
     const student = students[0];
 
-    // ✅ Check event
+    
     const [events] = await db.promise().query(
       `SELECT e.id, e.title, e.date, e.time, e.venue, e.type,
               c.club_name AS club
@@ -33,7 +33,7 @@ router.post("/generate", authorize(), async (req, res) => {
     if (!events.length) return res.status(404).json({ message: "Event not found" });
     const event = events[0];
 
-    // ✅ Must be registered first (since you already have registrations table)
+    
     const [regs] = await db.promise().query(
       "SELECT id, ticket_id, qr_token FROM registrations WHERE student_id=? AND event_id=?",
       [student_id, event_id]
@@ -44,7 +44,7 @@ router.post("/generate", authorize(), async (req, res) => {
 
     const reg = regs[0];
 
-    // ✅ Generate once, reuse later
+    
     const ticket_id = reg.ticket_id || `EVX-${student_id}-${event_id}-${Date.now()}`;
     const qr_token  = reg.qr_token  || crypto.randomBytes(32).toString("hex");
 
@@ -53,7 +53,7 @@ router.post("/generate", authorize(), async (req, res) => {
       [ticket_id, qr_token, reg.id]
     );
 
-    // ✅ QR payload (no PII)
+    
     const payload = JSON.stringify({ t: qr_token });
 
     const qr = await QRCode.toDataURL(payload, {
@@ -92,7 +92,7 @@ router.post("/verify", authorize(), async (req, res) => {
 
     const t = rows[0];
 
-    // ✅ Only the organizer of that event can verify
+    
     if (t.organizer_id !== organizerId) {
       return res.status(403).json({ message: "Not allowed to verify this event" });
     }
@@ -110,13 +110,13 @@ router.post("/verify", authorize(), async (req, res) => {
 
     const checkedInAt = new Date();
 
-    // Mark as checked-in on the registration
+    
     await db.promise().query(
       "UPDATE registrations SET checked_in=1, checked_in_at=? WHERE id=?",
       [checkedInAt, t.registration_id]
     );
 
-    // Insert into attendance table
+    
     await db.promise().query(
       `INSERT INTO attendance (student_id, event_id, registration_id, ticket_id, checked_in_at)
        VALUES (?, ?, ?, ?, ?)

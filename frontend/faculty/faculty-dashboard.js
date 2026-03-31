@@ -1,23 +1,63 @@
-// ============================================================
-//  faculty-dashboard.js  —  EVEXA Faculty Portal
-//  Full real-time API integration · Club-wise filtering enabled
-//  FIXED: proposal page empty, auth on events fetch, dedup logic,
-//         status casing, robust fallback rendering
-// ============================================================
 
 var API = "http://localhost:5000/api";
 window.API = API;
 
-// ── PENDING STATUS HELPER ─────────────────────────────────────────────────
+const STATUS = {
+  DRAFT:             "draft",
+  SUBMITTED:         "submitted",
+  FACULTY_APPROVED:  "faculty_approved",
+  HALL_APPROVED:     "hall_approved",
+  REJECTED:          "rejected",
+};
+const STATUS_LABEL = {
+  draft:            "Draft",
+  submitted:        "Pending Faculty",
+  faculty_approved: "Pending Hall",
+  hall_approved:    "Approved",
+  rejected:         "Rejected",
+};
+
+
 function isPendingStatus(status) {
   return ["pending", "review", "submitted", "awaiting", "under review", "new"]
     .includes((status || "").toLowerCase().trim());
 }
 
+
+function isActionableForMe(status) {
+  const s = (status || "").toLowerCase().trim();
+  if (isFacultyCoordinator()) return s === STATUS.SUBMITTED;
+  if (isHallCoordinator)      return s === STATUS.FACULTY_APPROVED;
+  return s === STATUS.SUBMITTED;
+}
+
+
+function statusClass(status) {
+  const s = (status || "").toLowerCase().trim();
+  const map = {
+    submitted:        "submitted",
+    faculty_approved: "faculty-approved",
+    hall_approved:    "approved",
+    rejected:         "rejected",
+    draft:            "draft",
+    // legacy fallbacks
+    pending:   "submitted",
+    approved:  "approved",
+    review:    "submitted",
+  };
+  return map[s] || s;
+}
+
+// Display label for status badge
+function statusLabel(status) {
+  const s = (status || "").toLowerCase().trim();
+  return STATUS_LABEL[s] || cap(status) || "—";
+}
+
 // ── AUTH ──────────────────────────────────────────────────────────────────
 async function apiFetch(endpoint, opts = {}) {
   const token = localStorage.getItem("faculty_auth_token");
-  if (!token) { window.location.href = "faculty-signin.html"; return null; }
+  if (!token) { window.location.href = "fcsignin.html"; return null; }
 
   try {
     const base = (typeof API !== "undefined" ? API : window.API) || "http://localhost:5000/api";
@@ -32,7 +72,7 @@ async function apiFetch(endpoint, opts = {}) {
 
     if (res.status === 401) {
       localStorage.removeItem("faculty_auth_token");
-      window.location.href = "faculty-signin.html";
+      window.location.href = "fcsignin.html";
       return null;
     }
 
@@ -84,6 +124,7 @@ const FACULTY_ROLE = {
   STAFF_ADVISOR:       3,
   FACULTY_COORDINATOR: 4,
   DEAN:                5,
+  HALL_COORDINATOR:    6,
 };
 
 function isFacultyCoordinator() { return myRoleId === FACULTY_ROLE.FACULTY_COORDINATOR; }
@@ -169,12 +210,19 @@ async function boot() {
   if (!profile.faculty_no && !profile.department && profile.roll_no) {
     localStorage.removeItem("faculty_auth_token");
     showToast("Please log in with your faculty account.", "error");
-    setTimeout(() => window.location.href = "faculty-signin.html", 1500);
+    setTimeout(() => window.location.href = "fcsignin.html", 1500);
     return;
   }
 
   cachedProfile = profile;
   myRoleId = profile.role_id ?? null;
+
+  // Primary source of truth for hall coordinator status comes directly from
+  // the /me endpoint (which applies role-exclusion rules server-side).
+  // The venue-list check in refreshAll() is kept as a secondary confirmation
+  // but this flag is set here, before nav injection, so the sidebar is correct
+  // from the very first render.
+  isHallCoordinator = profile.is_hall_coordinator === true;
 
   const name = profile.name || "Faculty";
   const initials = name.split(" ").filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2) || "FA";
@@ -211,7 +259,14 @@ async function boot() {
   }
   if (proposalDetail) proposalDetail.style.display = "none";
 
-  const savedPage = localStorage.getItem("facultyCurrentPage") || "dashboard";
+  // Restore last visited page, but never land a non-hall-coordinator on a
+  // hall-management page (e.g. from a previous session as a different role).
+  const HALL_PAGES_BOOT = ["hall-proposals", "hall-venues"];
+  let savedPage = localStorage.getItem("facultyCurrentPage") || "dashboard";
+  if (HALL_PAGES_BOOT.includes(savedPage) && !isHallCoordinator) {
+    savedPage = "dashboard";
+    localStorage.setItem("facultyCurrentPage", "dashboard");
+  }
   currentPage = savedPage;
   navigateTo(savedPage);
 
@@ -271,14 +326,24 @@ function openNotifHistoryPage(e) {
 }
 
 async function refreshAll() {
+  // Only fetch hall routes if this faculty is a hall coordinator.
+  // For all other roles these endpoints return 403 — skip the calls entirely
+  // to avoid noisy console errors and unnecessary network requests.
+  const hallProposalsPromise = isHallCoordinator
+    ? apiFetch("/faculty/hall/proposals").catch(() => null)
+    : Promise.resolve(null);
+  const hallVenuesPromise = isHallCoordinator
+    ? apiFetch("/faculty/hall/venues").catch(() => null)
+    : Promise.resolve(null);
+
   const [proposals, events, clubs, feedback, registrations, hallProposals, hallVenues] = await Promise.all([
     apiFetch("/faculty/proposals"),
     apiFetch("/events/all"),
     apiFetch("/clubs/my-clubs"),
     apiFetch("/faculty/feedback"),
     apiFetch("/faculty/registrations").catch(() => null),
-    apiFetch("/faculty/hall/proposals").catch(() => null),
-    apiFetch("/faculty/hall/venues").catch(() => null),
+    hallProposalsPromise,
+    hallVenuesPromise,
   ]);
 
   cachedProposals     = Array.isArray(proposals)     ? proposals     : [];
@@ -289,7 +354,12 @@ async function refreshAll() {
   cachedHallProposals = Array.isArray(hallProposals) ? hallProposals : [];
   cachedHallVenues    = Array.isArray(hallVenues)    ? hallVenues    : [];
 
-  isHallCoordinator = cachedHallVenues.length > 0;
+  // isHallCoordinator is set authoritatively in boot() from profile.is_hall_coordinator.
+  // Here we only keep it true if it was already true AND venues are actually returned.
+  // This prevents a stale `true` from persisting if venue assignment is revoked.
+  if (isHallCoordinator && cachedHallVenues.length === 0) {
+    isHallCoordinator = false;
+  }
 
   console.log("[refreshAll] proposals:", cachedProposals.length);
   console.log("[refreshAll] hall proposals:", cachedHallProposals.length, "| hall venues:", cachedHallVenues.length);
@@ -372,7 +442,24 @@ const PAGE_META = {
   "hall-venues":      ["My Venues",                 "Manage availability for venues under your coordination."],
 };
 
-function navigateTo(page) {
+async function navigateTo(page) {
+  // ── Hall-Management access guard ──────────────────────────────────────────
+  // Only faculty who are assigned as a hall coordinator (i.e. they manage at
+  // least one venue) may visit the hall-proposals / hall-venues pages.
+  // Any other role that somehow reaches these pages is silently redirected to
+  // the dashboard so the restriction is enforced on the client side too.
+  const HALL_PAGES = ["hall-proposals", "hall-venues"];
+  if (HALL_PAGES.includes(page) && !isHallCoordinator) {
+    console.warn(`[navigateTo] Access denied to "${page}" — not a hall coordinator. Redirecting to dashboard.`);
+    page = "dashboard";
+  }
+
+  // Redirect unassigned faculty away from analytics (they have no data to see).
+  if (page === "analytics" && !cachedClubs.length) {
+    console.warn(`[navigateTo] Redirecting to dashboard — faculty has no club assignments.`);
+    page = "dashboard";
+  }
+
   localStorage.setItem("facultyCurrentPage", page);
 
   document.querySelectorAll("[id^='pg-']").forEach(e => e.style.display = "none");
@@ -430,12 +517,18 @@ if (backBtn) {
     },
   };
 
-  renders[page]?.();
+  // Await the render so async pages (proposals, events, hall pages, etc.)
+  // finish fetching before the browser paints — fixes blank-on-first-load.
+  await renders[page]?.();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────
 async function renderDashboard() {
-  const pending = cachedProposals.filter(p => isPendingStatus(p.status));
+  // If the cache is empty (first load before refreshAll resolves), fetch now.
+  if (!cachedEvents.length && !cachedProposals.length) await refreshAll();
+
+  // Faculty Coordinator sees submitted proposals; Hall Coordinator sees faculty_approved ones
+  const pending = cachedProposals.filter(p => isActionableForMe(p.status));
   const now = new Date();
 
   const activeEv = cachedEvents.filter(e => {
@@ -502,7 +595,13 @@ function renderDashboardCalendar() {
   const total = new Date(calYear, calMonth + 1, 0).getDate();
 
   const dayMap = {};
-  cachedEvents.forEach(e => {
+  // Combine all sources: approved/published events + submitted proposals + hall proposals
+  const allCalEvents = [...cachedEvents, ...cachedProposals, ...cachedHallProposals];
+  // Deduplicate by id so the same event in multiple lists shows only once
+  const seen = new Set();
+  allCalEvents.forEach(e => {
+    if (!e || seen.has(e.id)) return;
+    seen.add(e.id);
     const dt = parseEventDate(e.date || e.event_date || e.start_date);
     if (!dt) return;
     if (dt.getFullYear() === calYear && dt.getMonth() === calMonth) {
@@ -520,10 +619,13 @@ function renderDashboardCalendar() {
   for (let d = 1; d <= total; d++) {
     const isToday = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
     const evs = dayMap[d] || [];
-    const hasPend = evs.some(e => isPendingStatus(e.status));
-    const hasAppr = evs.some(e => (e.status || "approved").toLowerCase() === "approved");
+    const hasPend  = evs.some(e => (e.status || "").toLowerCase().trim() === STATUS.SUBMITTED);
+    const hasAppr  = evs.some(e => (e.status || "").toLowerCase().trim() === STATUS.HALL_APPROVED || (e.status || "").toLowerCase() === "approved");
+    const hasAny   = evs.length > 0;
 
-    const cls = ["cal-day", isToday ? "today" : "", hasPend ? "has-pending" : "", !hasPend && hasAppr ? "has-approved" : ""].filter(Boolean).join(" ");
+    // Priority: pending (orange) > approved (green) > any other status (muted dot)
+    const dayClass = hasPend ? "has-pending" : hasAppr ? "has-approved" : hasAny ? "has-event" : "";
+    const cls = ["cal-day", isToday ? "today" : "", dayClass].filter(Boolean).join(" ");
     const enc = evs.length ? encodeURIComponent(JSON.stringify(evs)) : "";
 
     html += `<div class="${cls}" onclick="dashCalDayClick(this, ${d})" data-events="${enc.replace(/"/g, "&quot;")}">${d}</div>`;
@@ -633,6 +735,11 @@ async function loadAnnouncementBoard() {
   const ab = document.getElementById("dashAnnouncements");
   if (!ab) return;
 
+  if (!cachedClubs.length) {
+    ab.innerHTML = `<div class="list-empty">No club assigned — announcements unavailable.</div>`;
+    return;
+  }
+
   const [ann, mine] = await Promise.all([
     apiFetch("/announcements/faculty"),
     apiFetch("/announcements/my-posts"),
@@ -702,17 +809,60 @@ async function renderProposals(filter = "all", search = "", category = "all") {
 
   tbody.innerHTML = `<tr><td colspan="7" class="td-empty">Loading proposals…</td></tr>`;
 
-  // /faculty/proposals is already scoped to this faculty's clubs and filtered
-  // by status (Pending only for Faculty Coordinators). It is the single source
-  // of truth — no merge with /events/all needed, which avoids duplicates.
-  const freshProposals = await apiFetch("/faculty/proposals");
-  if (Array.isArray(freshProposals)) cachedProposals = freshProposals;
+  const [freshProposals, freshEvents] = await Promise.all([
+    apiFetch("/faculty/proposals"),
+    apiFetch("/events/all"),
+  ]);
 
-  let list = (Array.isArray(cachedProposals) ? cachedProposals : []).map(p => ({
+  if (Array.isArray(freshProposals)) cachedProposals = freshProposals;
+  if (Array.isArray(freshEvents))    cachedEvents    = freshEvents;
+
+  // ── STATE-BASED FILTERING ─────────────────────────────────────────────
+  // Faculty Coordinator: only sees `submitted` proposals
+  // Hall Coordinator:    only sees `faculty_approved` proposals (via hall page)
+  // Generic faculty:     sees `submitted`
+  // NOTE: Hall coordinators should use the dedicated "Hall Proposals" page.
+  //       This proposals page is for Faculty Coordinator / generic faculty only.
+  const targetStatus = STATUS.SUBMITTED; // Faculty page always shows submitted
+
+  const proposalItems = (Array.isArray(cachedProposals) ? cachedProposals : []).map(p => ({
     ...p,
     _src: "proposal",
     _key: `proposal-${p.id}`,
   }));
+
+  const myClubIds = new Set(cachedClubs.map(c => String(c.id ?? c.club_id ?? "")));
+
+  const submittedEventItems = (Array.isArray(cachedEvents) ? cachedEvents : [])
+    .filter(e => {
+      const s = (e.status || "").toLowerCase().trim();
+      if (s !== STATUS.SUBMITTED) return false;
+      const eid = String(e.club_id ?? e.clubId ?? "");
+      if (eid && myClubIds.has(eid)) return true;
+      return cachedClubs.some(c => eventMatchesClub(e, c));
+    })
+    .map(e => ({
+      ...e,
+      _src: "event",
+      _key: `event-${e.id}`,
+      organizer: e.organizer || e.created_by || "—",
+    }));
+
+  console.log("👉 ALL EVENTS:", cachedEvents.map(e => ({ id: e.id, title: e.title, status: e.status })));
+
+  const seen = new Set();
+  const merged = [];
+  [...proposalItems, ...submittedEventItems].forEach(item => {
+    if (seen.has(item._key)) return;
+    seen.add(item._key);
+    merged.push(item);
+  });
+
+  // Faculty coordinator / generic faculty: show only `submitted`
+  let list = merged.filter(p => {
+    const s = (p.status || "").toLowerCase().trim();
+    return s === STATUS.SUBMITTED;
+  });
 
   if (selectedClubId !== "all") list = list.filter(matchesSelectedClub);
 
@@ -730,12 +880,13 @@ async function renderProposals(filter = "all", search = "", category = "all") {
 
   window.currentProposalList = list;
 
-  console.log("[renderProposals] proposals loaded:", list.length, list.map(p => ({ id: p.id, title: p.title, status: p.status })));
+  console.log("📋 cachedProposals raw statuses:", cachedProposals.map(p => p.status));
+  console.log("📋 submittedEventItems:", submittedEventItems.length);
   console.log("📋 final list after filter:", list.length, list.map(p => ({ id: p.id, title: p.title, status: p.status })));
 
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="td-empty">No pending proposals found.
-      <br><small style="opacity:.6;">Check console for raw status values from your backend.</small>
+    tbody.innerHTML = `<tr><td colspan="7" class="td-empty">No proposals pending faculty review.
+      <br><small style="opacity:.6;">Only <strong>submitted</strong> proposals appear here.</small>
     </td></tr>`;
     updateBadges();
     return;
@@ -749,12 +900,12 @@ async function renderProposals(filter = "all", search = "", category = "all") {
       <td><span class="tag">${p.category || p.type || "General"}</span></td>
       <td>${p.capacity || p.expected_participants || "—"}</td>
       <td>
-        <span class="badge ${(p.status||"pending").toLowerCase()}" title="${p.remark || ""}">${cap(p.status)}</span>
+        <span class="badge ${statusClass(p.status)}" title="${p.remark || ""}">${statusLabel(p.status)}</span>
         ${p.remark ? `<div style="font-size:10px;color:var(--text-3);margin-top:3px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${p.remark}">💬 ${p.remark}</div>` : ""}
       </td>
       <td>
         <div style="display:flex;gap:5px;flex-wrap:wrap;">
-          <button class="mini-btn approve" onclick="approveProposal(${p.id}, '${p._src}')" title="${isFacultyCoordinator() ? 'Forward to Hall Coordinator' : 'Approve'}">
+          <button class="mini-btn approve" onclick="approveProposal(${p.id}, '${p._src}')" title="${isFacultyCoordinator() ? 'Forward to Hall Coordinator' : 'Approve as Faculty'}">
             ${isFacultyCoordinator() ? '📨' : '✅'}
           </button>
           <button class="mini-btn reject"  onclick="rejectProposal(${p.id}, '${p._src}')">❌</button>
@@ -781,11 +932,57 @@ function showProposalDetail(key) {
     setTimeout(() => panel.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
-  const isPending = isPendingStatus(p.status);
+  // Faculty coordinator sees `submitted` proposals → can approve (→ faculty_approved) or reject
+  // Guard: faculty coordinator cannot re-approve already faculty_approved proposals
+  const s = (p.status || "").toLowerCase().trim();
+  const canFacultyAct  = isFacultyCoordinator() && s === STATUS.SUBMITTED;
+  const canGenericAct  = !isFacultyCoordinator() && !isHallCoordinator && s === STATUS.SUBMITTED;
+  const isActionable   = canFacultyAct || canGenericAct;
+
+  // Timeline steps
+  const steps = [
+    { key: "submitted",        label: "Submitted",       icon: "📝" },
+    { key: "faculty_approved", label: "Faculty Review",  icon: "👩‍🏫" },
+    { key: "hall_approved",    label: "Hall Approved",   icon: "🏛️" },
+  ];
+  const statusOrder = ["submitted", "faculty_approved", "hall_approved"];
+  const currentIdx  = statusOrder.indexOf(s);
+  const isRejected  = s === STATUS.REJECTED;
+
+  const timelineHtml = `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:18px;flex-wrap:wrap;">
+      ${steps.map((step, i) => {
+        let state = "future";
+        if (isRejected) state = i <= currentIdx ? "done" : "future";
+        else if (i < currentIdx) state = "done";
+        else if (i === currentIdx) state = "active";
+
+        const colors = {
+          done:   { bg: "rgba(16,185,129,.18)", border: "rgba(16,185,129,.4)", text: "#34d399" },
+          active: { bg: "rgba(6,182,212,.18)",  border: "rgba(6,182,212,.5)",  text: "#67e8f9" },
+          future: { bg: "rgba(255,255,255,.05)", border: "rgba(255,255,255,.1)", text: "var(--text-3)" },
+        }[state];
+
+        return `
+          ${i > 0 ? `<div style="flex:1;height:2px;background:${i <= currentIdx && !isRejected ? "rgba(16,185,129,.4)" : "rgba(255,255,255,.1)"};min-width:20px;border-radius:2px;"></div>` : ""}
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="padding:6px 12px;border-radius:20px;border:1px solid ${colors.border};background:${colors.bg};
+              font-size:11px;font-weight:700;color:${colors.text};white-space:nowrap;">
+              ${step.icon} ${step.label}
+            </div>
+          </div>
+        `;
+      }).join("")}
+      ${isRejected ? `<div style="flex:1;height:2px;background:rgba(239,68,68,.4);min-width:20px;border-radius:2px;"></div>
+        <div style="padding:6px 12px;border-radius:20px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.1);
+          font-size:11px;font-weight:700;color:#f87171;white-space:nowrap;">❌ Rejected</div>` : ""}
+    </div>
+  `;
 
   const body = document.getElementById("detailBody");
   if (body) {
     body.innerHTML = `
+      ${timelineHtml}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
         <div>
           <div class="detail-section">
@@ -803,13 +1000,13 @@ function showProposalDetail(key) {
 
           <div class="detail-section">
             <div class="detail-section-title">Status</div>
-            <span class="badge ${(p.status||"pending").toLowerCase()}">${cap(p.status)}</span>
+            <span class="badge ${statusClass(p.status)}">${statusLabel(p.status)}</span>
             <span style="font-size:11px;color:var(--text-3);margin-left:8px;">(source: ${p._src})</span>
           </div>
 
           <div class="detail-section">
             <div class="detail-section-title">Remarks</div>
-            ${isPending ? `
+            ${isActionable ? `
               <textarea id="proposalRemark" rows="3"
                 placeholder="Add a remark before approving or rejecting (optional)…"
                 style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-family:var(--font);resize:vertical;outline:none;margin-bottom:10px;box-sizing:border-box;"
@@ -861,22 +1058,31 @@ function formatTime(t) {
 
 // ── APPROVE / REJECT ──────────────────────────────────────────────────────
 function resolveApproveEndpoint(id, src) {
-  // Always use the faculty proposals endpoint — /events/:id/approve does not exist.
-  // Both proposal-sourced and event-sourced items are approved via the same route.
-  return `/faculty/proposals/${id}/approve`;
+  return src === "event" ? `/events/${id}/approve` : `/faculty/proposals/${id}/approve`;
 }
 function resolveRejectEndpoint(id, src) {
-  return `/faculty/proposals/${id}/reject`;
+  return src === "event" ? `/events/${id}/reject` : `/faculty/proposals/${id}/reject`;
 }
 
 async function approveProposal(id, src = "proposal") {
+  // Guard: Faculty Coordinator can only approve `submitted` proposals
+  const p = (window.currentProposalList || []).find(x => x.id === id && x._src === src);
+  if (p && isFacultyCoordinator() && (p.status || "").toLowerCase() !== STATUS.SUBMITTED) {
+    showToast("⚠️ This proposal is not in a state you can approve.", "error");
+    return;
+  }
+
   const res = await apiFetch(resolveApproveEndpoint(id, src), { method: "PATCH" });
   if (res !== null) {
-    const p = (window.currentProposalList || []).find(x => x.id === id && x._src === src);
-    if (p) p.status = "approved";
-    addLocalNotif("event", "✅", "Proposal Approved", `${p?.title || "Event"} has been approved.`);
+    if (p) p.status = STATUS.FACULTY_APPROVED;
+    const title = p?.title || "Event";
+    if (isFacultyCoordinator()) {
+      addLocalNotif("event", "📨", "Forwarded to Hall Coordinator", `"${title}" has been sent for venue confirmation.`, id);
+    } else {
+      addLocalNotif("event", "✅", "Proposal Approved", `"${title}" has been approved.`, id);
+    }
     renderProposals();
-    showToast("✅ Proposal approved!", "success");
+    showToast(isFacultyCoordinator() ? "📨 Forwarded to Hall Coordinator!" : "✅ Proposal approved!", "success");
   } else {
     showToast("Failed to approve.", "error");
   }
@@ -886,7 +1092,8 @@ async function rejectProposal(id, src = "proposal") {
   const res = await apiFetch(resolveRejectEndpoint(id, src), { method: "PATCH" });
   if (res !== null) {
     const p = (window.currentProposalList || []).find(x => x.id === id && x._src === src);
-    if (p) p.status = "rejected";
+    if (p) p.status = STATUS.REJECTED;
+    addLocalNotif("event", "❌", "Proposal Rejected", `"${p?.title || "Event"}" has been rejected.`, id);
     renderProposals();
     showToast("❌ Proposal rejected.", "error");
   } else {
@@ -896,17 +1103,29 @@ async function rejectProposal(id, src = "proposal") {
 
 async function approveProposalWithRemark(id, src = "proposal") {
   const remark = document.getElementById("proposalRemark")?.value.trim() || "";
+  const p = (window.currentProposalList || []).find(x => x.id === id && x._src === src);
+
+  // Guard: must be `submitted` to be approved by faculty
+  if (p && isFacultyCoordinator() && (p.status || "").toLowerCase() !== STATUS.SUBMITTED) {
+    showToast("⚠️ This proposal cannot be approved at this stage.", "error");
+    return;
+  }
+
   const res = await apiFetch(resolveApproveEndpoint(id, src), {
     method: "PATCH",
     body: JSON.stringify({ remark }),
   });
   if (res !== null) {
-    const p = (window.currentProposalList || []).find(x => x.id === id && x._src === src);
-    if (p) { p.status = "approved"; p.remark = remark; }
-    addLocalNotif("event", "✅", "Proposal Approved", `${p?.title || "Event"} has been approved.`);
+    if (p) { p.status = STATUS.FACULTY_APPROVED; p.remark = remark; }
+    const title = p?.title || "Event";
+    if (isFacultyCoordinator()) {
+      addLocalNotif("event", "📨", "Forwarded to Hall Coordinator", `"${title}" sent for venue confirmation.`, id);
+    } else {
+      addLocalNotif("event", "✅", "Proposal Approved", `"${title}" has been approved.`, id);
+    }
     document.getElementById("proposalDetail").style.display = "none";
     renderProposals();
-    showToast("✅ Proposal approved!", "success");
+    showToast(isFacultyCoordinator() ? "📨 Forwarded to Hall Coordinator!" : "✅ Proposal approved!", "success");
   } else {
     showToast("Failed to approve.", "error");
   }
@@ -925,7 +1144,8 @@ async function rejectProposalWithRemark(id, src = "proposal") {
   });
   if (res !== null) {
     const p = (window.currentProposalList || []).find(x => x.id === id && x._src === src);
-    if (p) { p.status = "rejected"; p.remark = remark; }
+    if (p) { p.status = STATUS.REJECTED; p.remark = remark; }
+    addLocalNotif("event", "❌", "Proposal Rejected", `"${p?.title || "Event"}" has been rejected.`, id);
     document.getElementById("proposalDetail").style.display = "none";
     renderProposals();
     showToast("❌ Proposal rejected.", "error");
@@ -1310,13 +1530,13 @@ async function showEventDetail(eventId) {
           <div class="ed-detail-row"><b>Created by:</b> ${data.created_by || data.submitted_by || "—"}</div>
           <div class="ed-detail-row"><b>Submitted:</b> ${fmtDate(data.created_at || data.submitted_at)}</div>
 
-          ${isPendingStatus(data.status) ? `
+          ${isActionableForMe(data.status) ? `
           <div class="ed-hr"></div>
           <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Quick Actions</div>
           <div style="display:flex;gap:8px;">
             <button class="mini-btn approve" style="flex:1;justify-content:center;"
               onclick="approveProposal(${data.id}, '${data._src || "proposal"}');closeEventDetail();">
-              ✅ Approve
+              ${isFacultyCoordinator() ? '📨 Forward' : '✅ Approve'}
             </button>
             <button class="mini-btn reject" style="flex:1;justify-content:center;"
               onclick="rejectProposal(${data.id}, '${data._src || "proposal"}');closeEventDetail();">
@@ -1543,7 +1763,7 @@ function openClubDetail(clubId, idx) {
     const d = parseEventDate(e.date || e.event_date || e.start_date);
     return d && d >= new Date();
   }).length;
-  const pending = currentClubEvents.filter(e => isPendingStatus(e.status)).length;
+  const pending = currentClubEvents.filter(e => (e.status || "").toLowerCase().trim() === STATUS.SUBMITTED).length;
 
   el("clubDetailEmoji")?.text(club.logo || emojis[idx % emojis.length]);
   el("clubDetailName")?.text(clubName);
@@ -1570,13 +1790,13 @@ function openClubDetail(clubId, idx) {
       <div class="club-detail-info-grid">
         ${[
           ["Club Name",   clubName],
-          ["Category",    club.category || club.type || "—"],
+          ["Category",    club.club_category || club.category || club.type || "—"]
           ["Status",      club.status || "Active"],
           ["Members",     club.member_count || club.members || 0],
           ["Faculty",     club.faculty_name || club.incharge || "—"],
           ["Email",       club.email || "—"],
           ["Founded",     fmtDate(club.created_at || club.founded) || "—"],
-          ["Description", club.description || "—"],
+          ["Description", club.short_description || club.description || "—"],
         ].map(([l, v]) => `
           <div class="club-info-cell">
             <div class="club-info-label">${l}</div>
@@ -1662,20 +1882,22 @@ function initCalNav() {
 async function renderPendingPage() {
   await refreshAll();
   selectedClubId = "all";
-  const pending = cachedProposals.filter(p => matchesSelectedClub(p) && isPendingStatus(p.status));
+  // Show proposals actionable for this user's role
+  const pending = cachedProposals.filter(p => matchesSelectedClub(p) && isActionableForMe(p.status));
   el("pendProposalCount")?.text(`${pending.length} pending`);
 
   const pl = document.getElementById("pendingProposalList");
   if (pl) {
     pl.innerHTML = pending.length ? pending.map(p => `
       <div class="dash-item">
-        <div class="dot ${isPendingStatus(p.status) ? "dot-orange" : "dot-blue"}"></div>
+        <div class="dot ${isActionableForMe(p.status) ? "dot-orange" : "dot-blue"}"></div>
         <div class="di-text">
           <div class="di-title">${p.title || p.name || "Untitled"}</div>
           <div class="di-sub">${p.club || "—"} · ${fmtDate(p.date || p.event_date)}</div>
+          <div style="margin-top:3px;"><span class="badge ${statusClass(p.status)}" style="font-size:10px;">${statusLabel(p.status)}</span></div>
         </div>
         <div style="display:flex;gap:5px;">
-          <button class="mini-btn approve" onclick="approveProposal(${p.id}, 'proposal');renderPendingPage()">✅</button>
+          <button class="mini-btn approve" onclick="approveProposal(${p.id}, 'proposal');renderPendingPage()">${isFacultyCoordinator() ? '📨' : '✅'}</button>
           <button class="mini-btn reject"  onclick="rejectProposal(${p.id}, 'proposal');renderPendingPage()">❌</button>
         </div>
       </div>
@@ -1686,8 +1908,9 @@ async function renderPendingPage() {
 
 // ── CLUBS ─────────────────────────────────────────────────────────────────
 async function renderClubs() {
-  const fresh = await apiFetch("/clubs/my-clubs");
-  if (fresh) cachedClubs = fresh;
+  // Refresh all cached data together so member counts, events, and proposals
+  // are all current — not just the clubs list.
+  await refreshAll();
 
   const grid = document.getElementById("clubsGrid");
   if (!grid) return;
@@ -1718,7 +1941,7 @@ async function renderClubs() {
     const pendingCount = cachedProposals.filter(p =>
       (String(p.club_id ?? p.clubId ?? "") === String(clubId) ||
       String(p.club ?? p.club_name ?? "").trim().toLowerCase() === clubName.trim().toLowerCase()) &&
-      isPendingStatus(p.status)
+      (p.status || "").toLowerCase().trim() === STATUS.SUBMITTED
     ).length;
 
     return `
@@ -1785,6 +2008,38 @@ function eventMatchesClub(event, club) {
 
 async function initCharts() {
   chartsInited = true;
+
+  // ── No-clubs guard ────────────────────────────────────────────────────────
+  // Faculty not assigned to any club have nothing meaningful to show on the
+  // Analytics page. Replace the entire page content with a friendly empty
+  // state instead of rendering empty / zeroed-out charts.
+  const analyticsPg = document.getElementById("pg-analytics");
+  if (!cachedClubs.length) {
+    if (analyticsPg) {
+      analyticsPg.innerHTML = `
+        <div style="
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+          min-height:420px;gap:20px;text-align:center;padding:40px 20px;
+        ">
+          <div style="font-size:56px;line-height:1;">📊</div>
+          <div style="font-size:20px;font-weight:800;color:var(--text);">No Analytics Available</div>
+          <div style="font-size:14px;color:var(--text-3);max-width:380px;line-height:1.65;">
+            You are not currently assigned as an advisor for any club.<br>
+            Analytics will appear here once you are linked to at least one club.
+          </div>
+          <div style="
+            display:inline-flex;align-items:center;gap:8px;padding:10px 18px;
+            border-radius:12px;background:rgba(139,92,246,.1);
+            border:1px solid rgba(139,92,246,.25);
+            font-size:12px;color:#c4b5fd;
+          ">
+            🏛️ Contact your administrator to get assigned to a club.
+          </div>
+        </div>
+      `;
+    }
+    return;
+  }
 
   const filteredProposals = cachedProposals.filter(matchesSelectedClub);
   const filteredEvents    = cachedEvents.filter(matchesSelectedClub);
@@ -1977,6 +2232,11 @@ async function renderAnnouncements() {
   const al = document.getElementById("announceList");
   if (!al) return;
 
+  if (!cachedClubs.length) {
+    al.innerHTML = `<div class="list-empty">You are not assigned to any club. Announcements are unavailable.</div>`;
+    return;
+  }
+
   const mine = await apiFetch("/announcements/my-posts");
   const list = Array.isArray(mine) ? mine : [];
 
@@ -2010,12 +2270,18 @@ async function postAnnouncement() {
     return;
   }
 
+  const clubId = cachedClubs[0]?.id ?? cachedClubs[0]?.club_id ?? null;
+  if (!clubId) {
+    showToast("You are not assigned to any club. Cannot post announcements.", "error");
+    return;
+  }
+
   const res = await apiFetch("/announcements", {
     method: "POST",
-    body: JSON.stringify({ title, message, type })
+    body: JSON.stringify({ title, message, type, club_id: clubId })
   });
 
-  if (res) {
+  if (res !== null) {
     document.getElementById("announceTitle").value = "";
     document.getElementById("announceBody").value = "";
 
@@ -2143,6 +2409,7 @@ async function deleteAnnouncement(id) {
 }
 // ── NOTIFICATIONS ─────────────────────────────────────────────────────────
 async function syncNotifs() {
+  if (!cachedClubs.length) return; // skip if faculty has no club assigned
   const ann = await apiFetch("/announcements/faculty");
   if (!Array.isArray(ann)) return;
 
@@ -2340,18 +2607,23 @@ function initBulk() {
 }
 
 // ── VENUES ────────────────────────────────────────────────────────────────
+// venues[] now stores full objects: { id, name, capacity, location }
+// currentVenueId is the authoritative key used for API calls and cache lookups.
+// currentVenue (name string) is kept only for display / legacy helpers.
 let venues = [];
-let currentVenue = "";
-const venueBookings = {};
+let currentVenueId = null;
+let currentVenue   = "";          // display name — kept in sync with currentVenueId
+const venueBookings = {};         // keyed by venueId (number)
 let currentMonth = new Date().getMonth();
 let currentYear  = new Date().getFullYear();
 
 async function loadVenues() {
   try {
     const data = await apiFetch("/venues");
-    if (Array.isArray(data)) {
-      venues = data.map(v => v.name);
-      currentVenue = venues[0] || "";
+    if (Array.isArray(data) && data.length) {
+      venues        = data;                   // full objects
+      currentVenueId = data[0].id;
+      currentVenue   = data[0].name || "";
     }
   } catch (err) {
     console.error("Venue load error:", err);
@@ -2366,37 +2638,56 @@ function renderVenueSidebar() {
   const list = document.getElementById("venueList");
   if (!list) return;
   list.innerHTML = venues.map(v => `
-    <div class="venue-list-item ${v === currentVenue ? "active" : ""}" onclick="selectVenue('${v}')">
-      ${v}
+    <div class="venue-list-item ${v.id === currentVenueId ? "active" : ""}"
+         onclick="selectVenue(${v.id})">
+      ${v.name || "Venue"}
     </div>
   `).join("");
 }
 
-async function selectVenue(name) {
-  currentVenue = name;
+async function selectVenue(venueId) {
+  const v = venues.find(x => x.id === venueId);
+  if (!v) return;
+  currentVenueId = v.id;
+  currentVenue   = v.name || "";
   renderVenueSidebar();
   await loadVenueBookings();
   renderCalendar();
 }
 
 async function loadVenueBookings() {
-  if (!currentVenue) return;
+  if (!currentVenueId) return;
   try {
     const data = await apiFetch(
-      `/venues/calendar?venue_name=${encodeURIComponent(currentVenue)}&month=${currentMonth + 1}&year=${currentYear}`
+      `/venues/calendar?venue_id=${currentVenueId}&month=${currentMonth + 1}&year=${currentYear}`
     );
-    venueBookings[currentVenue] = {};
-    if (Array.isArray(data)) {
-      const PRIORITY = { booked: 3, "faculty-approved": 2, pending: 1, available: 0 };
-      data.forEach(item => {
-        const s = (item.status || "available").toLowerCase();
-        const existing = venueBookings[currentVenue][item.day];
-        // Keep whichever status has higher priority (booked beats pending, etc.)
-        if (!existing || (PRIORITY[s] ?? 0) > (PRIORITY[existing] ?? 0)) {
-          venueBookings[currentVenue][item.day] = s;
-        }
-      });
-    }
+
+    // Only overwrite the cache after a successful (array) response so a failed
+    // fetch doesn't wipe out previously loaded booking data.
+    if (!Array.isArray(data)) return;
+
+    venueBookings[currentVenueId] = {};
+    if (!venueSlotStatus[currentVenue]) venueSlotStatus[currentVenue] = {};
+
+    const PRIORITY = { booked: 3, "faculty-approved": 2, partial: 1.5, pending: 1, unavailable: 0.5, available: 0 };
+    data.forEach(item => {
+      const s        = (item.status || "available").toLowerCase();
+      const existing = venueBookings[currentVenueId][item.day];
+      if (!existing || (PRIORITY[s] ?? 0) > (PRIORITY[existing] ?? 0)) {
+        venueBookings[currentVenueId][item.day] = s;
+      }
+      // Populate per-slot unavailability if the API ever returns that detail
+      if (Array.isArray(item.unavail_slots) && item.unavail_slots.length) {
+        const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(item.day).padStart(2, "0")}`;
+        const idxSet  = new Set();
+        item.unavail_slots.forEach(startTime => {
+          const hr  = parseInt((startTime || "").split(":")[0], 10);
+          const idx = hr - 8;
+          if (idx >= 0 && idx < TIME_SLOTS.length) idxSet.add(idx);
+        });
+        venueSlotStatus[currentVenue][dateStr] = idxSet;
+      }
+    });
   } catch (err) {
     console.error("Booking load error:", err);
   }
@@ -2414,7 +2705,7 @@ function renderCalendar() {
   const firstDay    = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const today       = new Date();
-  const bookings    = venueBookings[currentVenue] || {};
+  const bookings    = venueBookings[currentVenueId] || {};
 
   for (let i = 0; i < firstDay; i++) {
     const empty = document.createElement("div");
@@ -2429,9 +2720,364 @@ function renderCalendar() {
     if (d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
       cell.classList.add("today");
     }
-    cell.innerHTML = `<span class="day-number">${d}</span><span class="day-dot"></span>`;
+    // Hall coordinators can click to manage slot availability
+    // Read-only statuses (booked = event approved) cannot be toggled manually
+    const isManageable = isHallCoordinator && status !== "booked" && status !== "faculty-approved";
+    if (isHallCoordinator) {
+      cell.style.cursor = "pointer";
+      cell.title = isManageable
+        ? (status === "unavailable" ? "Click to mark Available" : "Click to mark Unavailable")
+        : "This date has a booked/pending event — cannot change manually";
+      if (isManageable) {
+        cell.addEventListener("click", () => openSlotToggleModal(d, status));
+      } else {
+        cell.addEventListener("click", () => openSlotInfoModal(d, status, bookings[d + "_events"] || []));
+      }
+    }
+    cell.innerHTML = `<span class="day-number">${d}</span><span class="day-dot"></span>${isHallCoordinator && isManageable ? '<span class="slot-edit-hint">✎</span>' : ''}${(() => {
+      if (!isHallCoordinator || status !== "partial") return "";
+      const dateKey = `${currentYear}-${String(currentMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const unavailCount = ((venueSlotStatus[currentVenue] || {})[dateKey] || new Set()).size;
+      if (!unavailCount) return "";
+      return `<span style="font-size:9px;color:var(--text-3);display:block;line-height:1;margin-top:2px;">${unavailCount}/${TIME_SLOTS.length}</span>`;
+    })()}`;
     grid.appendChild(cell);
   }
+
+  // Update legend to show editable hint for hall coordinators
+  const legend = document.querySelector(".venue-match-legend");
+  if (legend && isHallCoordinator) {
+    const existingHint = legend.querySelector(".hc-edit-hint");
+    if (!existingHint) {
+      const hint = document.createElement("span");
+      hint.className = "hc-edit-hint";
+      hint.style.cssText = "font-size:11px;color:var(--text-3);margin-left:auto;";
+      hint.innerHTML = `✎ Click a date to toggle availability`;
+      legend.appendChild(hint);
+    }
+  }
+}
+
+// ── TIME SLOTS CONFIG ─────────────────────────────────────────────────────────
+// All 1-hour slots from 08:00 to 21:00
+const TIME_SLOTS = (() => {
+  const slots = [];
+  for (let h = 8; h < 21; h++) {
+    const pad = n => String(n).padStart(2, "0");
+    slots.push({ label: `${pad(h)}:00 – ${pad(h + 1)}:00`, start: `${pad(h)}:00`, end: `${pad(h + 1)}:00` });
+  }
+  return slots;
+})();
+
+// Per-date, per-slot unavailability: venueSlotStatus[venue][dateStr] = Set of unavailable slot indices
+const venueSlotStatus = {};
+
+// ── SLOT MANAGEMENT MODAL (Hall Coordinator) ──────────────────────────────────
+// Opens when clicking an available/unavailable date — shows all time slots
+// so the coordinator can mark individual hours unavailable or re-open them.
+function openSlotToggleModal(day, currentDayStatus) {
+  document.getElementById("slotToggleModal")?.remove();
+
+  const dateStr     = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const months      = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const displayDate = `${day} ${months[currentMonth]} ${currentYear}`;
+
+  // Get which slots are already marked unavailable for this date/venue
+  const unavailSet  = (venueSlotStatus[currentVenue] || {})[dateStr] || new Set();
+
+  // Find booked slots from cachedEvents / cachedHallProposals for this date
+  const bookedSlotIndices = new Set();
+  [...cachedEvents, ...cachedHallProposals].forEach(e => {
+    const d = parseEventDate(e.date || e.event_date || e.start_date);
+    if (!d) return;
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    if (ds !== dateStr) return;
+    if ((e.venue || "").toLowerCase().trim() !== (currentVenue || "").toLowerCase().trim()) return;
+    const startHr = parseInt((e.time || e.event_time || e.start_time || "").split(":")[0], 10);
+    if (!isNaN(startHr)) {
+      const idx = startHr - 8;
+      if (idx >= 0 && idx < TIME_SLOTS.length) bookedSlotIndices.add(idx);
+    }
+  });
+
+  const modal = document.createElement("div");
+  modal.id = "slotToggleModal";
+
+  const slotsHtml = TIME_SLOTS.map((slot, i) => {
+    const isBooked    = bookedSlotIndices.has(i);
+    const isUnavail   = unavailSet.has(i);
+    let cls = "slot-pill";
+    let title = "";
+    if (isBooked)  { cls += " slot-booked";    title = `title="Has a booked event"`; }
+    else if (isUnavail) { cls += " slot-unavail"; title = `title="Click to re-open"`; }
+    else               { cls += " slot-avail";   title = `title="Click to mark unavailable"`; }
+    const disabled = isBooked ? "disabled" : "";
+    return `<button class="${cls}" data-idx="${i}" ${title} ${disabled}>${slot.label}</button>`;
+  }).join("");
+
+  modal.innerHTML = `
+    <div onclick="document.getElementById('slotToggleModal').remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;backdrop-filter:blur(4px);"></div>
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      z-index:3001;background:var(--surface,#1a1a2e);border:1px solid rgba(139,92,246,.3);
+      border-radius:20px;width:min(560px,95vw);max-height:90vh;overflow-y:auto;
+      padding:28px 24px;box-shadow:0 24px 60px rgba(0,0,0,.6);">
+
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);">🕐 Manage Time Slots</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:3px;">📍 ${currentVenue} &nbsp;·&nbsp; 📅 ${displayDate}</div>
+        </div>
+        <button onclick="document.getElementById('slotToggleModal').remove()"
+          style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+      </div>
+
+      <!-- Legend -->
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 16px;font-size:11px;color:var(--text-3);">
+        <span style="display:flex;align-items:center;gap:5px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:#34d399;display:inline-block;"></span>Available
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:#f87171;display:inline-block;"></span>Unavailable
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:#ec4899;display:inline-block;"></span>Booked (event)
+        </span>
+      </div>
+
+      <!-- Slot grid -->
+      <div id="slotPillGrid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;">
+        ${slotsHtml}
+      </div>
+
+      <!-- Select-all helpers -->
+      <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+        <button onclick="slotSelectAll(true)"
+          style="padding:6px 14px;border-radius:10px;border:1px solid rgba(239,68,68,.4);
+            background:rgba(239,68,68,.1);color:#f87171;font-size:12px;font-weight:700;cursor:pointer;">
+          🚫 Block all slots
+        </button>
+        <button onclick="slotSelectAll(false)"
+          style="padding:6px 14px;border-radius:10px;border:1px solid rgba(16,185,129,.4);
+            background:rgba(16,185,129,.1);color:#34d399;font-size:12px;font-weight:700;cursor:pointer;">
+          ✅ Open all slots
+        </button>
+      </div>
+
+      <!-- Note -->
+      <div style="margin-bottom:18px;">
+        <label style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;
+          letter-spacing:.6px;display:block;margin-bottom:6px;">
+          Note <span style="font-weight:400;opacity:.7;">(optional)</span>
+        </label>
+        <input id="slotToggleNote" type="text" placeholder="e.g. Maintenance, Reserved for exam…"
+          style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border-2);
+            background:var(--surface-2);color:var(--text);font-size:13px;
+            font-family:var(--font,inherit);outline:none;box-sizing:border-box;" />
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button onclick="document.getElementById('slotToggleModal').remove()"
+          style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);
+            background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">
+          Cancel
+        </button>
+        <button onclick="confirmSlotToggle('${dateStr}')"
+          style="flex:1;padding:10px;border-radius:11px;border:none;
+            background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;
+            font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font,inherit);">
+          💾 Save Changes
+        </button>
+      </div>
+    </div>
+
+    <style>
+      .slot-pill {
+        padding: 7px 13px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid;
+        font-family: var(--font, inherit);
+        transition: opacity .15s, transform .1s;
+        white-space: nowrap;
+      }
+      .slot-pill:active { transform: scale(.96); }
+      .slot-pill.slot-avail {
+        background: rgba(16,185,129,.15);
+        border-color: rgba(16,185,129,.4);
+        color: #34d399;
+      }
+      .slot-pill.slot-avail:hover { background: rgba(16,185,129,.28); }
+      .slot-pill.slot-unavail {
+        background: rgba(239,68,68,.18);
+        border-color: rgba(239,68,68,.45);
+        color: #f87171;
+      }
+      .slot-pill.slot-unavail:hover { background: rgba(239,68,68,.32); }
+      .slot-pill.slot-booked {
+        background: rgba(236,72,153,.15);
+        border-color: rgba(236,72,153,.35);
+        color: #f472b6;
+        cursor: not-allowed;
+        opacity: .7;
+      }
+    </style>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Attach click handlers to slot pills
+  document.querySelectorAll(".slot-pill:not(.slot-booked)").forEach(btn => {
+    btn.addEventListener("click", () => {
+      btn.classList.toggle("slot-avail");
+      btn.classList.toggle("slot-unavail");
+    });
+  });
+}
+
+// Helper: block or open all non-booked slots
+function slotSelectAll(markUnavailable) {
+  document.querySelectorAll(".slot-pill:not(.slot-booked)").forEach(btn => {
+    btn.classList.toggle("slot-unavail", markUnavailable);
+    btn.classList.toggle("slot-avail",   !markUnavailable);
+  });
+}
+
+async function confirmSlotToggle(dateStr) {
+  const note = document.getElementById("slotToggleNote")?.value.trim() || null;
+
+  // Collect which slots are now marked unavailable
+  const unavailIndices = [];
+  const availIndices   = [];
+  document.querySelectorAll(".slot-pill:not(.slot-booked)").forEach(btn => {
+    const idx = parseInt(btn.dataset.idx, 10);
+    if (btn.classList.contains("slot-unavail")) unavailIndices.push(idx);
+    else availIndices.push(idx);
+  });
+
+  // Map indices → slot time strings
+  const unavailSlots = unavailIndices.map(i => TIME_SLOTS[i]);
+  const availSlots   = availIndices.map(i => TIME_SLOTS[i]);
+
+  // Determine overall day status for the calendar cell:
+  // all unavail → "unavailable", any unavail → "unavailable" (partial maps to unavailable
+  // because the backend only accepts: available | unavailable | maintenance), else → "available"
+  const totalManageable = unavailIndices.length + availIndices.length;
+  const newDayStatus = unavailIndices.length === 0 ? "available" : "unavailable";
+
+  // For the local calendar display we still use "partial" when only some slots are blocked
+  const localDayStatus = unavailIndices.length === 0
+    ? "available"
+    : unavailIndices.length === totalManageable
+      ? "unavailable"
+      : "partial";
+
+  // Find venue id from cached hall venues
+  const venueObj = cachedHallVenues.find(v =>
+    (v.name || "").toLowerCase().trim() === (currentVenue || "").toLowerCase().trim()
+  );
+  const venueId = venueObj?.id || null;
+
+  const day = parseInt(dateStr.split("-")[2], 10);
+
+  // Persist to server — use /availability directly (no /slots route exists on backend)
+  let success = false;
+  if (venueId) {
+    const res = await apiFetch(`/faculty/hall/venues/${venueId}/availability`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: newDayStatus, date: dateStr, note }),
+    });
+    success = res !== null;
+  }
+  // If no venueId, we can't persist (non-hall-coordinator venue), just update locally
+
+  document.getElementById("slotToggleModal")?.remove();
+
+  // Always update local cache so UI reflects changes immediately
+  // (use localDayStatus which can be "partial" for the calendar cell colour)
+  if (!venueBookings[currentVenueId]) venueBookings[currentVenueId] = {};
+  venueBookings[currentVenueId][day] = localDayStatus;
+
+  if (!venueSlotStatus[currentVenue]) venueSlotStatus[currentVenue] = {};
+  const newUnavailSet = new Set(unavailIndices);
+  venueSlotStatus[currentVenue][dateStr] = newUnavailSet;
+
+  renderCalendar();
+
+  if (success) {
+    const totalUnavail = unavailIndices.length;
+    showToast(
+      totalUnavail === 0
+        ? "✅ All slots opened for this date"
+        : `🚫 ${totalUnavail} slot${totalUnavail > 1 ? "s" : ""} marked unavailable`,
+      "success"
+    );
+  } else {
+    showToast("⚠️ Saved locally — server sync may have failed.", "info");
+  }
+}
+
+// Modal showing info for booked/pending slots (read-only for hall coordinator)
+function openSlotInfoModal(day, status, events) {
+  document.getElementById("slotInfoModal")?.remove();
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const displayDate = `${day} ${months[currentMonth]} ${currentYear}`;
+  const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+
+  // Find events for this date from cachedEvents and cachedHallProposals
+  const allBookedEvents = [...cachedEvents, ...cachedHallProposals].filter(e => {
+    const d = parseEventDate(e.date || e.event_date || e.start_date);
+    if (!d) return false;
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    return ds === dateStr && (e.venue || "").toLowerCase().trim() === (currentVenue || "").toLowerCase().trim();
+  });
+
+  const statusColor = status === "booked"
+    ? "rgba(239,68,68,.35)" : "rgba(6,182,212,.35)";
+  const statusLabel = status === "booked" ? "🔴 Booked" : "🔵 Pending Approval";
+
+  const modal = document.createElement("div");
+  modal.id = "slotInfoModal";
+  modal.innerHTML = `
+    <div onclick="document.getElementById('slotInfoModal').remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;backdrop-filter:blur(4px);"></div>
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      z-index:3001;background:var(--surface,#1a1a2e);
+      border:1px solid ${statusColor};
+      border-radius:20px;width:min(460px,92vw);max-height:80vh;overflow-y:auto;
+      padding:28px 24px;box-shadow:0 24px 60px rgba(0,0,0,.6);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);">📅 ${displayDate}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:3px;">
+            📍 ${currentVenue} · ${statusLabel}
+          </div>
+        </div>
+        <button onclick="document.getElementById('slotInfoModal').remove()"
+          style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:14px;">
+        This date cannot be manually changed as it has a ${status === "booked" ? "confirmed booking" : "pending approval"}.
+      </div>
+      ${allBookedEvents.length ? `
+        <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Events on this date</div>
+        ${allBookedEvents.map(e => `
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+            <div style="font-size:13px;font-weight:700;color:var(--text);">${e.title || "Untitled"}</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:3px;">${e.club || e.organizer || "—"} · ${formatTime(e.time || e.event_time || e.start_time)}</div>
+          </div>
+        `).join("")}
+      ` : `<div style="font-size:13px;color:var(--text-3);">No event details available.</div>`}
+      <button onclick="document.getElementById('slotInfoModal').remove()"
+        style="width:100%;margin-top:16px;padding:10px;border-radius:11px;border:1px solid var(--border-2);
+          background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">
+        Close
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
 }
 
 document.getElementById("prevMonth")?.addEventListener("click", async () => {
@@ -2517,7 +3163,7 @@ function logout() {
       <div style="font-size:12px;color:var(--text-3);margin-bottom:24px;">Are you sure you want to sign out of your faculty account?</div>
       <div style="display:flex;gap:10px;justify-content:center;">
         <button onclick="this.closest('div[style*=fixed]').parentElement.remove()" style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Cancel</button>
-        <button onclick="localStorage.removeItem('faculty_auth_token');window.location.href='faculty-signin.html';" style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
+        <button onclick="localStorage.removeItem('faculty_auth_token');window.location.href='fcsignin.html';" style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
       </div>
     </div>
   `;
@@ -2527,9 +3173,26 @@ function logout() {
 
 // ── BADGES ────────────────────────────────────────────────────────────────
 function updateBadges() {
-  updateBadge("badge-proposals",      cachedProposals.filter(p => isPendingStatus(p.status)).length);
-  updateBadge("badge-pending",        cachedProposals.filter(p => isPendingStatus(p.status)).length);
-  updateBadge("badge-hall-proposals", cachedHallProposals.length);
+  // Faculty Coordinator badge: proposals waiting for their review (status = submitted)
+  const facultyPending = cachedProposals.filter(p => {
+    const s = (p.status || "").toLowerCase().trim();
+    return s === STATUS.SUBMITTED;
+  }).length;
+
+  // Hall Coordinator badge: faculty_approved proposals waiting for venue confirm
+  const hallPending = cachedHallProposals.length;
+
+  updateBadge("badge-proposals", facultyPending);
+  updateBadge("badge-pending",   facultyPending);
+  updateBadge("badge-hall-proposals", hallPending);
+
+  // Hide Analytics nav item for faculty with no club assignments —
+  // they have no data to view so the page would just show an empty state.
+  // The item is restored automatically when clubs are assigned (on next refresh).
+  const analyticsNavItem = document.querySelector(".nav-item[data-page='analytics']");
+  if (analyticsNavItem) {
+    analyticsNavItem.style.display = cachedClubs.length ? "" : "none";
+  }
 }
 function updateBadge(id, count) {
   const el2 = document.getElementById(id);
@@ -2772,13 +3435,19 @@ function initAccountSettings() {
   document.getElementById("asName")?.addEventListener("input", asUpdatePreviewName);
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  HALL COORDINATOR — render functions
-// ══════════════════════════════════════════════════════════════════════════════
+// ── HALL COORDINATOR — render functions ══════════════════════════════════════════════════════════════════════════════
 
 // ── HALL PROPOSALS ────────────────────────────────────────────────────────────
 async function renderHallProposals() {
-  // Inject page section if it doesn't exist yet
+  // ── Role guard ─────────────────────────────────────────────────────────────
+  // Only faculty assigned to at least one venue (hall coordinators) may use this
+  // page. All other roles are silently bounced to the dashboard.
+  if (!isHallCoordinator) {
+    console.warn("[renderHallProposals] Access denied — not a hall coordinator.");
+    navigateTo("dashboard");
+    return;
+  }
+  // Guard: Hall coordinator should NOT see `submitted` proposals — only `faculty_approved`
   ensureHallPages();
 
   const tbody = document.getElementById("hallProposalsBody");
@@ -2786,11 +3455,18 @@ async function renderHallProposals() {
   tbody.innerHTML = `<tr><td colspan="8" class="td-empty">Loading…</td></tr>`;
 
   const fresh = await apiFetch("/faculty/hall/proposals");
-  cachedHallProposals = Array.isArray(fresh) ? fresh : [];
+  // Backend must return only `faculty_approved` proposals — enforce client-side guard too
+  cachedHallProposals = (Array.isArray(fresh) ? fresh : []).filter(p => {
+    const s = (p.status || "").toLowerCase().trim();
+    // Accept faculty_approved; also accept legacy "forwarded" from older backends
+    return s === STATUS.FACULTY_APPROVED || s === "forwarded";
+  });
   updateBadges();
 
   if (!cachedHallProposals.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="td-empty">No proposals awaiting venue confirmation.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="td-empty">No proposals awaiting venue confirmation.<br>
+      <small style="opacity:.6;">Only proposals approved by the Faculty Coordinator appear here.</small>
+    </td></tr>`;
     return;
   }
 
@@ -2803,8 +3479,8 @@ async function renderHallProposals() {
       <td><strong>${p.venue || "—"}</strong></td>
       <td>${p.capacity || "—"}</td>
       <td>
-        <span class="badge faculty_approved" style="background:rgba(6,182,212,.18);color:#67e8f9;border:1px solid rgba(6,182,212,.35);">
-          🔵 Forwarded
+        <span class="badge faculty-approved" style="background:rgba(6,182,212,.18);color:#67e8f9;border:1px solid rgba(6,182,212,.35);">
+          🔵 Pending Hall
         </span>
       </td>
       <td>
@@ -2895,10 +3571,15 @@ function showHallProposalDetail(id) {
 async function approveHallProposal(id) {
   const res = await apiFetch(`/faculty/hall/proposals/${id}/approve`, { method: "PATCH" });
   if (res !== null) {
-    addLocalNotif("event", "✅", "Venue Confirmed", `Hall approval granted for event #${id}.`);
-    showToast("✅ Venue confirmed — event approved!", "success");
+    // Update local cache to hall_approved
+    const p = cachedHallProposals.find(x => x.id === id);
+    if (p) p.status = STATUS.HALL_APPROVED;
+    addLocalNotif("event", "✅", "Venue Confirmed — Event Fully Approved", `Hall approval granted for "${p?.title || `event #${id}`}". Organizer has been notified.`, id);
+    showToast("✅ Venue confirmed — event fully approved!", "success");
     renderHallProposals();
     renderDashboard();
+    // Refresh venue calendar so the approved date shows as booked
+    await syncApprovedEventToVenueCalendar(p);
   } else {
     showToast("Failed to confirm venue.", "error");
   }
@@ -2911,10 +3592,14 @@ async function approveHallProposalFromModal(id) {
     body: JSON.stringify({ remark }),
   });
   if (res !== null) {
+    const p = cachedHallProposals.find(x => x.id === id);
+    if (p) p.status = STATUS.HALL_APPROVED;
     document.getElementById("hallDetailModal")?.remove();
-    addLocalNotif("event", "✅", "Venue Confirmed", `Hall approval granted for event #${id}.`);
-    showToast("✅ Venue confirmed — event approved!", "success");
+    addLocalNotif("event", "✅", "Venue Confirmed — Event Fully Approved", `Hall approval granted for "${p?.title || `event #${id}`}". Organizer has been notified.`, id);
+    showToast("✅ Venue confirmed — event fully approved!", "success");
     renderHallProposals();
+    // Refresh venue calendar so the approved date shows as booked
+    await syncApprovedEventToVenueCalendar(p);
   } else {
     showToast("Failed to confirm venue.", "error");
   }
@@ -2974,7 +3659,10 @@ async function submitHallReject(id) {
     body: JSON.stringify({ remark }),
   });
   if (res !== null) {
+    const p = cachedHallProposals.find(x => x.id === id);
+    if (p) p.status = STATUS.REJECTED;
     document.getElementById("hallRejectModal")?.remove();
+    addLocalNotif("event", "❌", "Hall Proposal Rejected", `"${p?.title || `Event #${id}`}" venue request rejected. Organizer has been notified.`, id);
     showToast("❌ Proposal rejected.", "error");
     renderHallProposals();
   } else {
@@ -2994,7 +3682,10 @@ async function rejectHallProposalFromModal(id) {
     body: JSON.stringify({ remark }),
   });
   if (res !== null) {
+    const p = cachedHallProposals.find(x => x.id === id);
+    if (p) p.status = STATUS.REJECTED;
     document.getElementById("hallDetailModal")?.remove();
+    addLocalNotif("event", "❌", "Hall Proposal Rejected", `"${p?.title || `Event #${id}`}" venue request rejected.`, id);
     showToast("❌ Proposal rejected.", "error");
     renderHallProposals();
   } else {
@@ -3002,8 +3693,66 @@ async function rejectHallProposalFromModal(id) {
   }
 }
 
+// ── SYNC APPROVED EVENT TO VENUE CALENDAR ─────────────────────────────────────
+// Called after a hall proposal is approved. Updates the in-memory venueBookings
+// cache for the event's venue+date so the Venue Management calendar immediately
+// reflects the new booking without requiring a manual refresh.
+async function syncApprovedEventToVenueCalendar(proposal) {
+  if (!proposal) return;
+
+  const eventDate = parseEventDate(proposal.event_date || proposal.date || proposal.start_date);
+  const venueName = (proposal.venue || "").trim();
+
+  if (!eventDate || !venueName) return;
+
+  const evYear  = eventDate.getFullYear();
+  const evMonth = eventDate.getMonth();
+  const evDay   = eventDate.getDate();
+
+  // Always update the venueBookings in-memory cache so the calendar
+  // shows "booked" if it happens to be the currently displayed month/venue.
+  const venueObj2 = venues.find(v => (v.name || "").toLowerCase().trim() === venueName.toLowerCase().trim());
+  const cacheKey  = venueObj2?.id ?? venueName;   // fall back to name if id not found
+  if (!venueBookings[cacheKey]) venueBookings[cacheKey] = {};
+  venueBookings[cacheKey][evDay] = "booked";
+
+  // Also add to cachedEvents so renderVenueUpcomingBookings picks it up
+  const alreadyCached = cachedEvents.find(e => e.id === proposal.id);
+  if (!alreadyCached) {
+    cachedEvents.push({ ...proposal, status: STATUS.HALL_APPROVED });
+  } else {
+    alreadyCached.status = STATUS.HALL_APPROVED;
+  }
+
+  // If the Venue Management page is currently open and showing the same venue/month,
+  // re-render the calendar live so the coordinator sees the update immediately.
+  if (currentPage === "venues") {
+    if (
+      currentVenue.toLowerCase().trim() === venueName.toLowerCase().trim() &&
+      currentMonth === evMonth &&
+      currentYear  === evYear
+    ) {
+      // Reload from server to get the authoritative state, then re-render
+      await loadVenueBookings();
+      renderCalendar();
+    }
+  }
+
+  // Also refresh the My Venues page (hall-venues) upcoming bookings table if open
+  if (currentPage === "hall-venues") {
+    renderHallVenues();
+  }
+}
+
 // ── HALL VENUES ───────────────────────────────────────────────────────────────
 async function renderHallVenues() {
+  // ── Role guard ─────────────────────────────────────────────────────────────
+  // Only hall coordinators (faculty with assigned venues) may manage venues.
+  if (!isHallCoordinator) {
+    console.warn("[renderHallVenues] Access denied — not a hall coordinator.");
+    navigateTo("dashboard");
+    return;
+  }
   ensureHallPages();
 
   const container = document.getElementById("hallVenuesContainer");
@@ -3025,7 +3774,10 @@ async function renderHallVenues() {
   };
 
   container.innerHTML = cachedHallVenues.map(v => {
-    const st = (v.status || "available").toLowerCase();
+    const ALLOWED_STATUSES = ["available", "unavailable", "maintenance"];
+    const st = ALLOWED_STATUSES.includes((v.status || "").toLowerCase())
+      ? (v.status || "available").toLowerCase()
+      : "available";
     const styleStr = STATUS_COLOR[st] || STATUS_COLOR.available;
     return `
       <div class="panel" style="margin-bottom:18px;">
@@ -3143,7 +3895,11 @@ async function saveVenueAvailability(venueId) {
   const date   = document.getElementById(`venueDate_${venueId}`)?.value || null;
   const note   = document.getElementById(`venueNote_${venueId}`)?.value.trim() || null;
 
-  if (!status) { showToast("Please select a status.", "error"); return; }
+  const ALLOWED_STATUSES = ["available", "unavailable", "maintenance"];
+  if (!status || !ALLOWED_STATUSES.includes(status)) {
+    showToast("Please select a valid status.", "error");
+    return;
+  }
 
   const res = await apiFetch(`/faculty/hall/venues/${venueId}/availability`, {
     method: "PATCH",

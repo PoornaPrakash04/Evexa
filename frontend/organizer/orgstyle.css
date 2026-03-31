@@ -1,19 +1,13 @@
-/* ============================================================
-   orgstyle.css — EVEXA Organizer Portal
-   Aesthetic: Dark glass · Vivid neon · Student-portal unified
-   ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
-/* ── Reset ── */
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 
-/* ══════════════════════════════════════════════════════════════
-   DESIGN TOKENS
-══════════════════════════════════════════════════════════════ */
+
 :root {
-  /* Dark palette (default) */
+ 
   --bg:           #080b14;
   --bg-2:         #0d1120;
   --surface:      rgba(255,255,255,.04);
@@ -22,14 +16,14 @@ html, body { height: 100%; }
   --border:       rgba(255,255,255,.08);
   --border-2:     rgba(255,255,255,.14);
 
-  /* Text */
+ 
   --ink:          #f0f2ff;
   --ink2:         rgba(240,242,255,.65);
   --muted:        rgba(240,242,255,.38);
   --line:         rgba(255,255,255,.08);
   --white:        rgba(255,255,255,.05);
 
-  /* Neon accents */
+ 
   --violet:       #8b5cf6;
   --violet-light: rgba(139,92,246,.18);
   --violet-mid:   #a78bfa;
@@ -42,19 +36,19 @@ html, body { height: 100%; }
   --sky:          #06b6d4;
   --sky-light:    rgba(6,182,212,.18);
 
-  /* Glassmorphism */
+ 
   --glass:        rgba(255,255,255,.04);
   --glass-2:      rgba(255,255,255,.07);
   --blur:         blur(20px);
   --blur-sm:      blur(10px);
 
-  /* Glows */
+ 
   --glow-v: 0 0 40px rgba(139,92,246,.35), 0 0 80px rgba(139,92,246,.15);
   --glow-p: 0 0 40px rgba(236,72,153,.30), 0 0 80px rgba(236,72,153,.12);
   --glow-c: 0 0 40px rgba(6,182,212,.30),  0 0 80px rgba(6,182,212,.12);
   --glow-e: 0 0 40px rgba(16,185,129,.25), 0 0 80px rgba(16,185,129,.10);
 
-  /* Gradients */
+ 
   --g-hero:   linear-gradient(135deg, #8b5cf6 0%, #ec4899 50%, #06b6d4 100%);
   --g-violet: linear-gradient(135deg, #8b5cf6, #a855f7);
   --g-pink:   linear-gradient(135deg, #ec4899, #f43f5e);
@@ -62,7 +56,7 @@ html, body { height: 100%; }
   --g-warm:   linear-gradient(135deg, #f59e0b, #ef4444);
   --g-lime:   linear-gradient(135deg, #84cc16, #22c55e);
 
-  /* Shadows */
+ 
   --shadow-sm: 0 4px 16px rgba(0,0,0,.4);
   --shadow-md: 0 8px 32px rgba(0,0,0,.5);
   --shadow-lg: 0 20px 60px rgba(0,0,0,.6);
@@ -76,7 +70,7 @@ html, body { height: 100%; }
   --font: 'Outfit', 'DM Sans', ui-sans-serif, sans-serif;
 }
 
-/* ── Light mode overrides ── */
+
 body.light {
   --bg:        #f4f6ff;
   --bg-2:      #eceffe;
@@ -101,9 +95,7 @@ body.light {
   --glow-e: 0 4px 20px rgba(16,185,129,.12);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   BASE
-══════════════════════════════════════════════════════════════ */
+
 body {
   font-family: var(--font);
   font-size: 14px;
@@ -116,7 +108,7 @@ body {
   position: relative;
 }
 
-/* Animated mesh background */
+
 body::before {
   content: '';
   position: fixed;
@@ -137,9 +129,7 @@ body.light::before {
     radial-gradient(ellipse 50vw 40vh at 60% 90%,  rgba(6,182,212,.06)  0%, transparent 50%);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SIDEBAR
-══════════════════════════════════════════════════════════════ */
+
 .sidebar {
   width: var(--sidebar-w);
   background: rgba(10,13,26,.97);
@@ -163,7 +153,7 @@ body.light .sidebar {
   box-shadow: 4px 0 24px rgba(109,92,246,.06);
 }
 
-/* Ambient orb */
+
 .sidebar::before {
   content: '';
   position: absolute;
@@ -186,7 +176,7 @@ body.light .sidebar::before {
 
 .sidebar > * { position: relative; z-index: 1; }
 
-/* Logo area */
+
 .logo-area {
   padding: 22px 20px 18px;
   display: flex;
@@ -220,7 +210,7 @@ body.light .logo-area { border-bottom-color: rgba(139,92,246,.12); }
 
 .logo-text span { font-size: 11px; color: var(--muted); font-weight: 400; }
 
-/* Nav sections */
+
 .nav-section { padding: 16px 12px 8px; }
 
 .nav-label {
@@ -279,7 +269,7 @@ body.light .nav-item.active {
   border-color: rgba(139,92,246,.30);
 }
 
-/* Glowing left bar */
+
 .nav-item.active::before {
   content: '';
   position: absolute;
@@ -317,7 +307,7 @@ body.light .nav-item.active {
   text-align: center;
 }
 
-/* Sidebar bottom user */
+
 .sidebar-user {
   margin-top: auto;
   padding: 12px 14px 16px;
@@ -342,20 +332,20 @@ body.light .sidebar-user {
 .user-info .name { font-size: 13px; font-weight: 600; color: var(--ink); }
 .user-info .role { font-size: 11px; color: var(--muted); }
 
-/* ── Collapsed state: icons only ── */
+
 .sidebar.collapsed {
   width: 72px;
-  overflow: visible; /* allow tooltips to escape */
+  overflow: visible;
 }
 
-/* Hide all text */
+
 .sidebar.collapsed .logo-text,
 .sidebar.collapsed .nav-label,
 .sidebar.collapsed .nav-text,
 .sidebar.collapsed .user-info,
 .sidebar.collapsed .nav-badge { display: none; }
 
-/* Centre each nav item around its icon */
+
 .sidebar.collapsed .nav-item {
   justify-content: center;
   padding: 10px 0;
@@ -364,7 +354,7 @@ body.light .sidebar-user {
   overflow: visible;
 }
 
-/* Bigger, rounder icon in collapsed mode */
+
 .sidebar.collapsed .nav-icon {
   width: 40px; height: 40px;
   border-radius: 12px;
@@ -381,19 +371,19 @@ body.light .sidebar-user {
   box-shadow: 0 0 18px rgba(139,92,246,.5);
 }
 
-/* Logo: just the mark */
+
 .sidebar.collapsed .logo-area {
   justify-content: center;
   padding: 22px 0 18px;
 }
 
-/* User avatar only */
+
 .sidebar.collapsed .sidebar-user {
   justify-content: center;
   padding: 12px 0;
 }
 
-/* Tooltip on hover */
+
 .sidebar.collapsed .nav-item::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -423,9 +413,7 @@ body.light .sidebar.collapsed .nav-item::after {
   box-shadow: 0 4px 16px rgba(0,0,0,.12);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   AVATAR
-══════════════════════════════════════════════════════════════ */
+
 .avatar, .profile-avatar {
   width: 34px; height: 34px;
   border-radius: 50%;
@@ -443,17 +431,13 @@ body.light .sidebar.collapsed .nav-item::after {
 .profile-name { font-size: 13px; font-weight: 600; color: var(--ink); }
 .profile-role { font-size: 11px; color: var(--muted); }
 
-/* ══════════════════════════════════════════════════════════════
-   OVERLAY & PAGE SYSTEM
-══════════════════════════════════════════════════════════════ */
+
 .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(6px); z-index: 90; }
 .overlay.active { display: block; }
 .page { display: none; }
 .page.active { display: block; }
 
-/* ══════════════════════════════════════════════════════════════
-   MAIN LAYOUT
-══════════════════════════════════════════════════════════════ */
+
 .main {
   margin-left: var(--sidebar-w);
   flex: 1;
@@ -466,9 +450,7 @@ body.light .sidebar.collapsed .nav-item::after {
 
 .main.expanded { margin-left: 72px; }
 
-/* ══════════════════════════════════════════════════════════════
-   TOPBAR
-══════════════════════════════════════════════════════════════ */
+
 .topbar {
   background: rgba(8,11,20,.75);
   backdrop-filter: var(--blur-sm);
@@ -496,10 +478,14 @@ body.light .topbar {
   font-weight: 800;
   letter-spacing: -.4px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--ink);
 }
 
-.topbar-actions { display: flex; align-items: center; gap: 10px; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 .search-bar {
   display: flex;
@@ -510,6 +496,7 @@ body.light .topbar {
   border-radius: var(--r-sm);
   padding: 8px 14px;
   width: 240px;
+  max-width: 100%;
   transition: all .2s;
 }
 
@@ -582,17 +569,13 @@ body.light .topbar {
 
 .btn-primary:active { transform: scale(.97); }
 
-/* ══════════════════════════════════════════════════════════════
-   CONTENT
-══════════════════════════════════════════════════════════════ */
+
 .content {
   padding: 24px 28px;
   flex: 1;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SECTION TITLE
-══════════════════════════════════════════════════════════════ */
+
 .section-title {
   font-family: var(--font);
   font-size: 15px;
@@ -607,9 +590,7 @@ body.light .topbar {
 
 .section-title a { font-size: 12px; color: var(--violet-mid); font-weight: 500; cursor: pointer; }
 
-/* ══════════════════════════════════════════════════════════════
-   STAT CARDS
-══════════════════════════════════════════════════════════════ */
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -632,7 +613,7 @@ body.light .topbar {
 
 .stat-card:hover { transform: translateY(-4px); }
 
-/* Neon top stripe */
+
 .stat-card::before {
   content: '';
   position: absolute;
@@ -689,7 +670,7 @@ body.light .topbar {
 .stat-delta.neutral { background: var(--surface-2); color: var(--muted); }
 .stat-delta--alert  { background: rgba(236,72,153,.18); color: #f472b6; border: 1px solid rgba(236,72,153,.3); }
 
-/* Light mode stat cards */
+
 body.light .stat-card {
   background: rgba(255,255,255,.75);
   border-color: rgba(139,92,246,.10);
@@ -699,9 +680,7 @@ body.light .stat-num  { color: #0d0f1e; }
 body.light .stat-label { color: rgba(13,15,30,.45); }
 body.light .stat-delta.up { background: rgba(16,185,129,.12); color: #059669; }
 
-/* ══════════════════════════════════════════════════════════════
-   QUICK ACTIONS
-══════════════════════════════════════════════════════════════ */
+
 .quick-actions {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -752,9 +731,7 @@ body.light .quick-btn:hover { background: rgba(139,92,246,.07); border-color: rg
 body.light .quick-icon { background: rgba(139,92,246,.08); }
 body.light .quick-btn p { color: rgba(13,15,30,.65); }
 
-/* ══════════════════════════════════════════════════════════════
-   CARD BASE
-══════════════════════════════════════════════════════════════ */
+
 .card {
   background: var(--glass);
   backdrop-filter: var(--blur-sm);
@@ -793,9 +770,7 @@ body.light .card-header { border-bottom-color: rgba(139,92,246,.10); }
 body.light .card-footer { border-top-color: rgba(139,92,246,.10); }
 body.light .card-header h3 { color: #0d0f1e; }
 
-/* ══════════════════════════════════════════════════════════════
-   EVENT ROWS (dashboard list)
-══════════════════════════════════════════════════════════════ */
+
 .event-row {
   display: flex;
   align-items: center;
@@ -832,9 +807,7 @@ body.light .card-header h3 { color: #0d0f1e; }
 .event-meta .reg  { font-size: 12px; font-weight: 700; color: var(--violet-mid); }
 .event-meta .date { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-/* ══════════════════════════════════════════════════════════════
-   BADGES
-══════════════════════════════════════════════════════════════ */
+
 .badge {
   display: inline-flex; align-items: center;
   padding: 3px 10px;
@@ -849,9 +822,7 @@ body.light .card-header h3 { color: #0d0f1e; }
 .badge.live     { background: rgba(236,72,153,.18); color: #f472b6; border: 1px solid rgba(236,72,153,.25); }
 .badge.free     { background: rgba(16,185,129,.18); color: #34d399; border: 1px solid rgba(16,185,129,.25); }
 
-/* ══════════════════════════════════════════════════════════════
-   ACTIVITY FEED
-══════════════════════════════════════════════════════════════ */
+
 .activity-item {
   display: flex; gap: 12px;
   padding: 12px 18px;
@@ -877,9 +848,7 @@ body.light .card-header h3 { color: #0d0f1e; }
 .act-text strong { color: var(--ink); font-weight: 600; }
 .act-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-/* ══════════════════════════════════════════════════════════════
-   PENDING APPROVALS
-══════════════════════════════════════════════════════════════ */
+
 .pending-badge {
   font-size: 11px;
   background: rgba(236,72,153,.18);
@@ -922,9 +891,7 @@ body.light .card-header h3 { color: #0d0f1e; }
 
 .approval-actions { display: flex; gap: 6px; }
 
-/* ══════════════════════════════════════════════════════════════
-   BUTTONS
-══════════════════════════════════════════════════════════════ */
+
 .btn-sm {
   padding: 5px 11px; border-radius: 8px;
   font-size: 11px; font-weight: 600;
@@ -969,9 +936,7 @@ body.light .card-header h3 { color: #0d0f1e; }
 body.light .btn-ghost { background: rgba(255,255,255,.8); border-color: rgba(139,92,246,.2); color: rgba(13,15,30,.65); }
 body.light .btn-ghost:hover { background: rgba(139,92,246,.08); color: #4c1d95; border-color: rgba(139,92,246,.35); }
 
-/* ══════════════════════════════════════════════════════════════
-   CERTIFICATES (dashboard widget)
-══════════════════════════════════════════════════════════════ */
+
 .cert-item {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 18px;
@@ -987,9 +952,7 @@ body.light .btn-ghost:hover { background: rgba(139,92,246,.08); color: #4c1d95; 
 .progress-bar { height: 5px; background: var(--surface-2); border-radius: 10px; overflow: hidden; margin-top: 5px; width: 100%; }
 .progress-fill { height: 100%; border-radius: 10px; }
 
-/* ══════════════════════════════════════════════════════════════
-   EMPTY STATE
-══════════════════════════════════════════════════════════════ */
+
 .empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 32px; color: var(--muted); font-size: 13px; gap: 8px;
@@ -998,9 +961,7 @@ body.light .btn-ghost:hover { background: rgba(139,92,246,.08); color: #4c1d95; 
 .empty-state span { font-size: 28px; }
 .empty-state--full { grid-column: 1 / -1; }
 
-/* ══════════════════════════════════════════════════════════════
-   EVENTS GRID
-══════════════════════════════════════════════════════════════ */
+
 .events-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1068,9 +1029,7 @@ body.light .event-card-title { color: #0d0f1e; }
 body.light .event-meta-row   { color: rgba(13,15,30,.5); }
 body.light .seat-left        { color: #4c1d95; }
 
-/* ══════════════════════════════════════════════════════════════
-   FILTER BAR
-══════════════════════════════════════════════════════════════ */
+
 .filter-bar {
   padding: 16px 18px; margin-bottom: 16px;
   display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
@@ -1103,31 +1062,25 @@ body.light .filter-input, body.light .filter-select {
 }
 body.light .filter-select option { background: white; color: #0d0f1e; }
 
-/* ══════════════════════════════════════════════════════════════
-   DATA TABLES
-══════════════════════════════════════════════════════════════ */
+
 .table-wrap { overflow-x: auto; }
 
-.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
 
 .table-head-row { border-bottom: 1px solid var(--border); text-align: left; }
 
 .th { padding: 10px 18px; color: var(--muted); font-weight: 600; letter-spacing: .3px; font-size: 11px; text-transform: uppercase; }
 
-.data-table td { color: var(--ink2); }
+.data-table td { color: var(--ink2); padding: 10px 18px; }
 
 .table-empty { text-align: center; padding: 40px; color: var(--muted); }
 
-/* ══════════════════════════════════════════════════════════════
-   TWO-COL / BOTTOM ROW
-══════════════════════════════════════════════════════════════ */
+
 .two-col   { display: grid; grid-template-columns: 1fr 340px; gap: 16px; margin-bottom: 22px; }
 .bottom-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 .dash-bottom-row { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start; }
 
-/* ══════════════════════════════════════════════════════════════
-   VENUES PAGE
-══════════════════════════════════════════════════════════════ */
+
 .venue-layout { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
 .venue-sidebar-card { padding: 18px; }
 .venue-sidebar-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; padding: 4px 6px 10px; }
@@ -1196,9 +1149,7 @@ body.light .venue-list-item:hover { background: rgba(139,92,246,.08); color: #0d
 .legend-dot--partial   { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,.6); }
 .legend-dot--booked    { background: #ec4899; box-shadow: 0 0 6px rgba(236,72,153,.6); }
 
-/* ══════════════════════════════════════════════════════════════
-   NOTIFICATIONS
-══════════════════════════════════════════════════════════════ */
+
 .notif-tabs { display: flex; gap: 6px; padding: 12px 18px; border-bottom: 1px solid var(--border); }
 .ntab { padding: 6px 14px; font-size: 12px; }
 .ntab.active { border-color: var(--violet); color: var(--violet-mid); }
@@ -1210,9 +1161,7 @@ body.light .venue-list-item:hover { background: rgba(139,92,246,.08); color: #0d
 .notif-text p    { font-size: 12.5px; color: var(--ink2); line-height: 1.5; }
 .notif-text span { font-size: 11px; color: var(--muted); }
 
-/* ══════════════════════════════════════════════════════════════
-   EXECOM GRID
-══════════════════════════════════════════════════════════════ */
+
 .execom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
 
 .execom-card {
@@ -1244,9 +1193,7 @@ body.light .venue-list-item:hover { background: rgba(139,92,246,.08); color: #0d
 body.light .execom-card { background: rgba(255,255,255,.70); border-color: rgba(139,92,246,.10); }
 body.light .execom-card h4 { color: #0d0f1e; }
 
-/* ══════════════════════════════════════════════════════════════
-   SETTINGS / PROFILE
-══════════════════════════════════════════════════════════════ */
+
 .settings-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
 
 .profile-card { padding: 26px; text-align: center; }
@@ -1291,7 +1238,7 @@ body.light .execom-card h4 { color: #0d0f1e; }
 .pref-row { display: flex; align-items: center; justify-content: space-between; }
 .pref-label { font-size: 13px; color: var(--ink2); }
 
-/* Dark mode toggle */
+
 .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .toggle-track {
@@ -1307,9 +1254,7 @@ body.light .execom-card h4 { color: #0d0f1e; }
 #darkModeToggle:checked + .toggle-track { background: var(--violet); border-color: var(--violet); box-shadow: 0 0 12px rgba(139,92,246,.5); }
 #darkModeToggle:checked + .toggle-track .toggle-thumb { transform: translateX(18px); }
 
-/* ══════════════════════════════════════════════════════════════
-   MODALS
-══════════════════════════════════════════════════════════════ */
+
 .modal-overlay {
   display: none; position: fixed; inset: 0;
   background: rgba(0,0,0,.65); backdrop-filter: blur(6px);
@@ -1332,7 +1277,7 @@ body.light .execom-card h4 { color: #0d0f1e; }
   overflow: hidden;
 }
 
-/* Hero stripe on modal */
+
 .modal-box::before {
   content: '';
   display: block;
@@ -1367,7 +1312,7 @@ body.light .execom-card h4 { color: #0d0f1e; }
 .modal-body    { padding: 20px; }
 .modal-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
 
-/* ── Modal Forms ── */
+
 .modal-form { display: grid; gap: 12px; padding: 20px; }
 
 .form-input, .form-select, .form-textarea {
@@ -1410,9 +1355,7 @@ body.light .form-input, body.light .form-select, body.light .form-textarea {
 body.light .form-input::placeholder { color: rgba(13,15,30,.35); }
 body.light .form-select option { background: white; color: #0d0f1e; }
 
-/* ══════════════════════════════════════════════════════════════
-   TOAST
-══════════════════════════════════════════════════════════════ */
+
 .toast {
   position: fixed;
   bottom: 24px; right: 24px;
@@ -1440,23 +1383,17 @@ body.light .toast {
   color: #0d0f1e;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SCROLLBAR
-══════════════════════════════════════════════════════════════ */
+
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(139,92,246,.25); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,.45); }
 
-/* ══════════════════════════════════════════════════════════════
-   ANNOUNCEMENTS TABLE
-══════════════════════════════════════════════════════════════ */
+
 #announcementBody tr { border-bottom: 1px solid var(--border); }
 #announcementBody td { color: var(--ink2); }
 
-/* ══════════════════════════════════════════════════════════════
-   CERTIFICATE WIZARD
-══════════════════════════════════════════════════════════════ */
+
 .cert-wizard { display: flex; flex-direction: column; gap: 24px; }
 
 .cert-steps {
@@ -1466,6 +1403,7 @@ body.light .toast {
   border-radius: var(--r-lg);
   padding: 18px 24px;
   backdrop-filter: var(--blur-sm);
+  overflow-x: auto;
 }
 
 .cert-step { display: flex; align-items: center; gap: 10px; opacity: .4; transition: opacity .2s; }
@@ -1592,11 +1530,9 @@ body.light .toast {
 .cert-progress-bar  { height: 8px; background: var(--surface-2); border-radius: 10px; overflow: hidden; }
 .cert-progress-fill { height: 100%; background: var(--g-hero); border-radius: 10px; transition: width .3s ease; width: 0%; }
 
-/* ══════════════════════════════════════════════════════════════
-   DASHBOARD CALENDAR — student-style
-══════════════════════════════════════════════════════════════ */
 
-/* Card wrapper */
+
+
 #eventCalendarCard {
   padding: 18px 18px 16px;
   overflow: hidden;
@@ -1619,7 +1555,7 @@ body.light #eventCalendarCard {
   font-size: 14px; font-weight: 700; color: var(--ink);
 }
 
-/* Nav buttons */
+
 .cal-nav-btn {
   width: 28px; height: 28px; border-radius: 8px;
   border: 1px solid var(--border); background: var(--surface-2);
@@ -1636,7 +1572,7 @@ body.light #eventCalendarCard {
   min-width: 110px; text-align: center;
 }
 
-/* Calendar grid */
+
 .mini-calendar { width: 100%; }
 .cal-weekdays  { display: grid; grid-template-columns: repeat(7,1fr); margin-bottom: 6px; }
 .cal-weekday   {
@@ -1675,7 +1611,7 @@ body.light #eventCalendarCard {
   box-shadow: 0 4px 16px rgba(139,92,246,.4);
 }
 
-/* Event detail popup */
+
 .cal-event-detail {
   margin-top: 12px; padding: 13px 15px;
   background: linear-gradient(135deg, rgba(139,92,246,.1), rgba(236,72,153,.07));
@@ -1693,9 +1629,7 @@ body.light #eventCalendarCard {
 
 #calMonthLabel { color: var(--ink); font-weight: 700; font-size: 13px; }
 
-/* ══════════════════════════════════════════════════════════════
-   COUNT PILL
-══════════════════════════════════════════════════════════════ */
+
 .count-pill {
   margin-left: 10px; padding: 3px 10px;
   border-radius: 999px; font-size: 12px;
@@ -1704,9 +1638,7 @@ body.light #eventCalendarCard {
   font-weight: 700;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
@@ -1719,13 +1651,18 @@ body.light #eventCalendarCard {
   .form-row      { grid-template-columns: 1fr; }
   .content       { padding: 16px 16px 32px; }
   .topbar        { padding: 12px 16px; }
+  .topbar-title  { font-size: 16px; }
+  .search-bar    { display: none; }
+  .stats-grid    { grid-template-columns: 1fr 1fr; }
+  .venue-tabs    { gap: 6px; }
+  .venue-tab     { padding: 7px 14px; font-size: 12px; }
 }
 
 @media (max-width: 600px) {
   .stats-grid    { grid-template-columns: 1fr 1fr; }
   .quick-actions { grid-template-columns: repeat(2, 1fr); }
 }
-/* ── Topbar theme toggle ── */
+
 .theme-topbar-btn {
   position: relative;
   overflow: hidden;
@@ -1742,15 +1679,15 @@ body.light #eventCalendarCard {
   transition: transform 0.35s cubic-bezier(.34,1.56,.64,1), opacity 0.25s ease;
 }
  
-/* Dark mode (default): show moon, hide sun */
+
 .theme-topbar-btn .theme-icon-moon { transform: translateY(0)  rotate(0deg);   opacity: 1; }
 .theme-topbar-btn .theme-icon-sun  { transform: translateY(20px) rotate(90deg); opacity: 0; }
  
-/* Light mode: hide moon, show sun */
+
 body.light .theme-topbar-btn .theme-icon-moon { transform: translateY(-20px) rotate(-90deg); opacity: 0; }
 body.light .theme-topbar-btn .theme-icon-sun  { transform: translateY(0)     rotate(0deg);   opacity: 1; }
  
-/* Glow effect on hover */
+
 .theme-topbar-btn:hover {
   background: rgba(139,92,246,.18) !important;
   border-color: rgba(139,92,246,.4) !important;
@@ -1765,11 +1702,8 @@ body.light .theme-topbar-btn:hover {
 .theme-topbar-btn:active {
   transform: scale(0.94);
 }
-/* ── Filter pill buttons ── */
-/* ══════════════════════════════════════════════════════════════
-   CLUBS PAGE — fully aligned with organizer portal theme
-   Uses var(--font), var(--glass), var(--border), var(--ink) etc.
-══════════════════════════════════════════════════════════════ */
+
+
 
 .org-club-filter-bar {
   display: flex;
@@ -1813,7 +1747,7 @@ body.light .theme-topbar-btn:hover {
   box-shadow: 0 4px 14px rgba(139,92,246,.35);
 }
 
-/* ── Search input ── */
+
 .org-club-search {
   padding: 8px 16px;
   border-radius: 999px;
@@ -1834,14 +1768,14 @@ body.light .theme-topbar-btn:hover {
 
 .org-club-search::placeholder { color: var(--muted); }
 
-/* ── Grid ── */
+
 .org-clubs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
 }
 
-/* ── Card ── */
+
 .org-club-card {
   background: var(--glass);
   backdrop-filter: var(--blur-sm);
@@ -1861,7 +1795,7 @@ body.light .theme-topbar-btn:hover {
   border-color: rgba(139,92,246,.3);
 }
 
-/* ── Banner ── */
+
 .org-club-banner {
   height: 128px;
   display: flex;
@@ -1884,7 +1818,7 @@ body.light .theme-topbar-btn:hover {
 
 .org-club-icon { font-size: 46px; line-height: 1; }
 
-/* Category badge — top right */
+
 .org-club-cat-badge {
   position: absolute;
   top: 13px; right: 13px;
@@ -1896,7 +1830,7 @@ body.light .theme-topbar-btn:hover {
   letter-spacing: .15px;
 }
 
-/* ── Card body ── */
+
 .org-club-body {
   padding: 15px 17px 6px;
   flex: 1;
@@ -1947,7 +1881,7 @@ body.light .theme-topbar-btn:hover {
   gap: 4px;
 }
 
-/* ── Card footer ── */
+
 .org-club-footer {
   padding: 10px 17px 15px;
   display: flex;
@@ -1968,18 +1902,16 @@ body.light .theme-topbar-btn:hover {
 
 .org-club-view-link:hover { color: var(--violet-mid); }
 
-/* ── Responsive ── */
+
 @media (max-width: 768px) {
   .org-clubs-grid      { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
   .org-club-filter-bar { flex-direction: column; align-items: flex-start; }
   .org-club-search     { width: 100%; }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   CLUB SINGLE PAGE — aligned with organizer portal theme
-══════════════════════════════════════════════════════════════ */
 
-/* ── Hero banner ── */
+
+
 .ocs-hero {
   border-radius: var(--r-lg);
   padding: 28px 28px 24px;
@@ -2047,7 +1979,7 @@ body.light .theme-topbar-btn:hover {
   backdrop-filter: blur(4px);
 }
 
-/* ── Two column layout ── */
+
 .ocs-layout {
   display: grid;
   grid-template-columns: 1fr 280px;
@@ -2055,7 +1987,7 @@ body.light .theme-topbar-btn:hover {
   align-items: start;
 }
 
-/* ── Section ── */
+
 .ocs-section { margin-bottom: 20px; }
 
 .ocs-section-title {
@@ -2069,7 +2001,7 @@ body.light .theme-topbar-btn:hover {
   border-bottom: 1px solid var(--border);
 }
 
-/* ── Execom grid ── */
+
 .ocs-exec-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -2136,7 +2068,7 @@ body.light .theme-topbar-btn:hover {
 
 .ocs-exec-contact:hover { text-decoration: underline; }
 
-/* ── Events row ── */
+
 .ocs-events-row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -2185,7 +2117,7 @@ body.light .theme-topbar-btn:hover {
   margin-bottom: 3px;
 }
 
-/* ── Right sidebar: about card ── */
+
 .ocs-about-card {
   background: var(--glass);
   backdrop-filter: var(--blur-sm);
@@ -2229,7 +2161,7 @@ body.light .theme-topbar-btn:hover {
   font-weight: 500;
 }
 
-/* ── Light mode ── */
+
 body.light .ocs-exec-card,
 body.light .ocs-event-card,
 body.light .ocs-about-card { background: #fff; border-color: rgba(139,92,246,.10); }
@@ -2237,7 +2169,7 @@ body.light .ocs-hero-name  { color: #0d0d14; }
 body.light .ocs-exec-name  { color: #0d0d14; }
 body.light .ocs-event-name { color: #0d0d14; }
 
-/* ── Responsive ── */
+
 @media (max-width: 900px) {
   .ocs-layout { grid-template-columns: 1fr; }
 }
@@ -2249,12 +2181,9 @@ body.light .ocs-event-name { color: #0d0d14; }
   .ocs-stat-row    { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   EVENT DETAIL PAGE  (merged from org.css)
-   Replaces standalone org.html + org.css + org.js
-══════════════════════════════════════════════════════════════ */
 
-/* Banner */
+
+
 .ed-banner {
   height: 260px;
   border-radius: var(--r-lg);
@@ -2268,7 +2197,7 @@ body.light .ocs-event-name { color: #0d0d14; }
   object-fit: cover; display: block;
 }
 
-/* Two-column layout */
+
 .ed-layout {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
@@ -2276,7 +2205,7 @@ body.light .ocs-event-name { color: #0d0d14; }
   align-items: start;
 }
 
-/* Shared card base already exists (.card), reuse it */
+
 .ed-main {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -2294,7 +2223,7 @@ body.light .ocs-event-name { color: #0d0d14; }
   backdrop-filter: var(--blur);
 }
 
-/* Title row */
+
 .ed-head {
   display: flex;
   justify-content: space-between;
@@ -2309,7 +2238,7 @@ body.light .ocs-event-name { color: #0d0d14; }
   line-height: 1.2;
 }
 
-/* Status pill */
+
 .ed-status {
   padding: 6px 14px;
   border-radius: 999px;
@@ -2323,7 +2252,7 @@ body.light .ocs-event-name { color: #0d0d14; }
 .ed-status.draft   { border-color: var(--amber);  background: var(--amber-light);  color: var(--amber); }
 .ed-status.closed  { border-color: var(--rose);   background: var(--rose-light);   color: var(--rose); }
 
-/* Badges */
+
 .ed-badges {
   display: flex;
   flex-wrap: wrap;
@@ -2345,7 +2274,7 @@ body.light .ocs-event-name { color: #0d0d14; }
   color: var(--violet-mid);
 }
 
-/* Meta info */
+
 .ed-meta {
   display: flex;
   flex-direction: column;
@@ -2362,7 +2291,7 @@ body.light .ocs-event-name { color: #0d0d14; }
 }
 .ed-meta i { color: var(--violet-mid); width: 14px; }
 
-/* Tabs — reuse .tab / .tab.active from existing style, but scoped */
+
 .ed-tabs {
   display: flex;
   gap: 8px;
@@ -2389,18 +2318,18 @@ body.light .ocs-event-name { color: #0d0d14; }
   color: var(--violet-mid);
 }
 
-/* Tab panels */
+
 .ed-panel { display: none; }
 .ed-panel.active { display: block; }
 
-/* Description text */
+
 .ed-desc {
   font-size: 14px;
   color: var(--ink2);
   line-height: 1.8;
 }
 
-/* Registration sidebar */
+
 .ed-reg-label {
   font-size: 16px;
   font-weight: 800;
@@ -2415,7 +2344,7 @@ body.light .ocs-event-name { color: #0d0d14; }
   margin-bottom: 6px;
 }
 
-/* Progress bar */
+
 .ed-progress {
   height: 8px;
   border-radius: 999px;
@@ -2429,7 +2358,7 @@ body.light .ocs-event-name { color: #0d0d14; }
   background: var(--g-violet);
 }
 
-/* KPI mini cards */
+
 .ed-kpi-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2456,10 +2385,10 @@ body.light .ocs-event-name { color: #0d0d14; }
 .ed-kpi b   { font-size: 17px; color: var(--ink); display: block; }
 .ed-kpi small { font-size: 11px; color: var(--muted); font-weight: 600; }
 
-/* Divider */
+
 .ed-hr { height: 1px; background: var(--border); margin: 14px 0; }
 
-/* Sidebar detail rows */
+
 .ed-detail-row {
   font-size: 13px;
   color: var(--muted);
@@ -2467,7 +2396,7 @@ body.light .ocs-event-name { color: #0d0d14; }
 }
 .ed-detail-row b { color: var(--ink2); }
 
-/* Edit form inside the page */
+
 .ed-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2493,7 +2422,7 @@ body.light .ocs-event-name { color: #0d0d14; }
 .ed-form-group textarea:focus { border-color: var(--violet); }
 .ed-form-group textarea { resize: vertical; }
 
-/* Participants table inside tab */
+
 .ed-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .ed-table th {
   padding: 8px 10px;
@@ -2509,7 +2438,7 @@ body.light .ocs-event-name { color: #0d0d14; }
 }
 .ed-table td:nth-child(2) { font-weight: 600; color: var(--ink); }
 
-/* Light mode tweaks */
+
 body.light .ed-main,
 body.light .ed-side {
   background: #fff;
@@ -2520,7 +2449,7 @@ body.light .ed-badge  { background: #f4f4fb; color: #555; }
 body.light .ed-kpi    { background: #f8f8ff; }
 body.light .ed-desc   { color: #444; }
 
-/* Mobile */
+
 @media (max-width: 900px) {
   .ed-layout { grid-template-columns: 1fr; }
   .ed-side   { position: static; }
@@ -2528,10 +2457,11 @@ body.light .ed-desc   { color: #444; }
   .ed-title  { font-size: 22px; }
   .ed-form-grid { grid-template-columns: 1fr; }
 }
-/* ── Venue page tabs ─────────────────────────────────────────── */
+
 .venue-tabs {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 20px;
 }
  
@@ -2559,7 +2489,7 @@ body.light .ed-desc   { color: #444; }
   color: var(--ink);
 }
  
-/* ── Slot chip buttons (time slot picker) ────────────────────── */
+
 .slot-chip {
   padding: 7px 16px;
   border-radius: 20px;
@@ -2587,7 +2517,7 @@ body.light .ed-desc   { color: #444; }
   font-weight: 700;
 }
  
-/* ── Calendar day — pending (amber) ──────────────────────────── */
+
 .calendar-day.pending {
   background: var(--amber-light) !important;
   color: var(--amber) !important;
@@ -2596,7 +2526,7 @@ body.light .ed-desc   { color: #444; }
   font-weight: 600;
 }
  
-/* ── Calendar day — available (clickable) ────────────────────── */
+
 .calendar-day.available {
   cursor: pointer;
   transition: background 0.15s, transform 0.12s;
@@ -2608,13 +2538,13 @@ body.light .ed-desc   { color: #444; }
   transform: scale(1.08);
 }
  
-/* ── My Bookings tab — modal body scroll ─────────────────────── */
+
 #venueBookModal .modal-body {
   max-height: 80vh;
   overflow-y: auto;
 }
  
-/* ── Light mode overrides for new venue styles ───────────────── */
+
 body.light .venue-tab {
   background: #f5f3ff;
   border-color: #ddd6fe;
@@ -2650,9 +2580,7 @@ body.light .calendar-day.available:hover {
   background: #ede9fe;
   color: #5b21b6;
 }
-/* ═══════════════════════════════════════════════════════════════
-   CERTIFICATE PAGE — MAIN TAB BAR
-   ═══════════════════════════════════════════════════════════════ */
+
 .cert-main-tabs {
   display: flex;
   gap: 8px;
@@ -2680,7 +2608,7 @@ body.light .calendar-day.available:hover {
   border-bottom-color: var(--violet);
 }
 
-/* ─── Wizard step indicator tidy-up ─────────────────────────── */
+
 .cert-steps {
   display: flex;
   align-items: center;
@@ -2724,14 +2652,14 @@ body.light .calendar-day.available:hover {
 .cert-step.complete .cs-num::after { content: "✓"; font-size: 14px; }
 .cs-divider { flex: 1; height: 2px; min-width: 18px; background: var(--border); margin: 0 8px; border-radius: 2px; }
 
-/* ─── Config grid in step 3 ──────────────────────────────────── */
+
 .cert-config-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-/* ─── Source tabs inside step 2 ─────────────────────────────── */
+
 .cert-src-tabs {
   display: flex;
   gap: 6px;
@@ -2758,7 +2686,7 @@ body.light .calendar-day.available:hover {
   color: var(--violet-mid);
 }
 
-/* ─── File status bar ────────────────────────────────────────── */
+
 .cert-file-status {
   display: flex;
   align-items: center;
@@ -2771,7 +2699,7 @@ body.light .calendar-day.available:hover {
 }
 .cert-file-icon { font-size: 20px; flex-shrink: 0; }
 
-/* ─── Success card after generation ─────────────────────────── */
+
 .cert-success-card {
   display: flex;
   flex-direction: column;
@@ -2819,7 +2747,7 @@ body.light .calendar-day.available:hover {
   justify-content: center;
 }
 
-/* ─── History table badge ────────────────────────────────────── */
+
 .badge--violet {
   display: inline-block;
   padding: 3px 10px;
@@ -2830,7 +2758,7 @@ body.light .calendar-day.available:hover {
   color: var(--violet-mid);
 }
 
-/* ─── Responsive ─────────────────────────────────────────────── */
+
 @media (max-width: 700px) {
   .cert-config-grid { grid-template-columns: 1fr; }
   .cert-success-actions { flex-direction: column; }

@@ -1,6 +1,4 @@
-// ===========================
-//  clubs.js — connected to backend
-// ===========================
+
 
 let allClubs      = [];
 let joinedClubIds = new Set();
@@ -8,10 +6,8 @@ let currentFilter = "all";
 let currentSearch = "";
 const STATIC_BASE = API_BASE.replace("/api", "");
 
-// ── Detect view mode from URL ─────────────────────────
 const isMyClubs = new URLSearchParams(window.location.search).get("view") === "mine";
 
-// ── Update page title based on view ──────────────────
 if (isMyClubs) {
   const title    = document.querySelector(".title");
   const subtitle = document.querySelector(".subtitle");

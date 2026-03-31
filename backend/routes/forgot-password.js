@@ -1,4 +1,4 @@
-// routes/forgot-password.js
+
 
 const express    = require("express");
 const bcrypt     = require("bcrypt");
@@ -6,10 +6,10 @@ const nodemailer = require("nodemailer");
 const db         = require("../db");
 const router     = express.Router();
 
-// ── In-memory OTP store: { email: { otp, expiresAt, role, table, userId, idCol } }
+
 const otpStore = {};
 
-// ── Nodemailer transporter ───────────────────────────────────
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -18,7 +18,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ── Helper: find user by email across all tables ─────────────
+
 function findUserByEmail(email, callback) {
   const tables = [
     { table: "students",   role: "STUDENT",   idCol: "id"       },
@@ -46,15 +46,15 @@ function findUserByEmail(email, callback) {
   next();
 }
 
-// ── Generate 6-digit OTP ─────────────────────────────────────
+
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// ════════════════════════════════════════════════════════════
-//  POST /api/forgot-password/send-otp
-//  Body: { email }
-// ════════════════════════════════════════════════════════════
+
+
+
+
 router.post("/send-otp", async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: "Email is required." });
@@ -64,7 +64,7 @@ router.post("/send-otp", async (req, res) => {
     if (!user) return res.status(404).json({ message: "No account found with this email." });
 
     const otp       = generateOTP();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const expiresAt = Date.now() + 10 * 60 * 1000; 
 
     otpStore[email] = {
       otp,
@@ -101,10 +101,10 @@ router.post("/send-otp", async (req, res) => {
   });
 });
 
-// ════════════════════════════════════════════════════════════
-//  POST /api/forgot-password/verify-otp
-//  Body: { email, otp }
-// ════════════════════════════════════════════════════════════
+
+
+
+
 router.post("/verify-otp", (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required." });
@@ -117,10 +117,10 @@ router.post("/verify-otp", (req, res) => {
   res.json({ success: true, message: "OTP verified." });
 });
 
-// ════════════════════════════════════════════════════════════
-//  POST /api/forgot-password/reset
-//  Body: { email, otp, newPassword }
-// ════════════════════════════════════════════════════════════
+
+
+
+
 router.post("/reset", async (req, res) => {
   const { email, otp, newPassword } = req.body;
   if (!email || !otp || !newPassword)

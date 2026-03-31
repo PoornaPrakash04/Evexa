@@ -1,6 +1,4 @@
-/* ===========================
-   my-issues.css
-   =========================== */
+
 
 .issues-list {
   display: flex;
@@ -10,7 +8,6 @@
   max-width: 860px;
 }
 
-/* ── Issue Card ─────────────────────────────────────── */
 .issue-card {
   background: #fff;
   border-radius: 18px;

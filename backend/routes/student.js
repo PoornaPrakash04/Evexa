@@ -1,4 +1,4 @@
-// student.js
+
 const express  = require("express");
 const bcrypt   = require("bcrypt");
 const router   = express.Router();
@@ -8,7 +8,7 @@ const multer   = require("multer");
 const path     = require("path");
 const fs       = require("fs");
 
-// ── Multer — avatar uploads ───────────────────────────────────────────────
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const dir = path.join(__dirname, "uploads/avatars");
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB max
+  limits: { fileSize: 2 * 1024 * 1024 }, 
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
       return cb(new Error("Only image files are allowed."));
@@ -31,7 +31,7 @@ const upload = multer({
   }
 });
 
-// ── GET /api/student/my-registrations ────────────────────────────────────
+
 router.get("/my-registrations", authorize(["STUDENT"]), (req, res) => {
   db.query(
     "SELECT * FROM registrations WHERE student_id = ?",
@@ -43,7 +43,7 @@ router.get("/my-registrations", authorize(["STUDENT"]), (req, res) => {
   );
 });
 
-// ── PUT /api/student/profile ──────────────────────────────────────────────
+
 router.put("/profile", authorize(["STUDENT"]), (req, res) => {
   const { name, phone } = req.body;
 
@@ -67,7 +67,7 @@ router.put("/profile", authorize(["STUDENT"]), (req, res) => {
   );
 });
 
-// ── PUT /api/student/change-password ─────────────────────────────────────
+
 router.put("/change-password", authorize(["STUDENT"]), async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
@@ -109,7 +109,7 @@ router.put("/change-password", authorize(["STUDENT"]), async (req, res) => {
   );
 });
 
-// ── POST /api/student/avatar ──────────────────────────────────────────────
+
 router.post("/avatar", authorize(["STUDENT"]), upload.single("avatar"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: "No file uploaded." });
@@ -132,11 +132,11 @@ router.post("/avatar", authorize(["STUDENT"]), upload.single("avatar"), (req, re
     }
   );
 });
-// ── GET /api/student/notifications ─────────────────────────────
+
 router.get("/notifications", authorize(["STUDENT"]), (req, res) => {
   const userId = req.user.id;
 
-  // Get student registrations + event info
+  
   db.query(
     `SELECT r.registered_at, e.title, e.date
      FROM registrations r
@@ -161,13 +161,13 @@ router.get("/notifications", authorize(["STUDENT"]), (req, res) => {
       results.forEach(r => {
         const eventDate = new Date(r.date);
 
-        // HISTORY → already registered
+        
         data.history.push({
           text: `You registered for "${r.title}"`,
           time: new Date(r.registered_at).toLocaleString()
         });
 
-        // SCHEDULE → upcoming events
+        
         if (eventDate > now) {
           data.schedule.push({
             text: `"${r.title}" is coming up`,

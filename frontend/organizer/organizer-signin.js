@@ -1,12 +1,9 @@
-// ===========================
-//  organizer-signin.js
-// ===========================
+
 
 const API_BASE = "http://localhost:5000/api";
 
 const form = document.getElementById("loginForm");
 
-// ── Show inline error ─────────────────────────────────
 function showError(msg) {
   let err = document.getElementById("formError");
   if (!err) {
@@ -31,15 +28,14 @@ function clearError() {
   if (err) err.textContent = "";
 }
 
-// ── Submit ────────────────────────────────────────────
 form.addEventListener("submit", async function (e) {
   e.preventDefault();
   clearError();
 
-  const admission_no = document.getElementById("admission_no").value.trim();
-  const password     = document.getElementById("password").value;
+  const identifier = document.getElementById("admission_no").value.trim();
+  const password   = document.getElementById("password").value;
 
-  if (!admission_no || !password) {
+  if (!identifier || !password) {
     showError("Please enter your Admission Number and password.");
     return;
   }
@@ -52,15 +48,15 @@ form.addEventListener("submit", async function (e) {
     const response = await fetch(`${API_BASE}/auth/login`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ admission_no, password }),
+      body:    JSON.stringify({ role: "ORGANIZER", identifier, password }),
     });
 
     const data = await response.json();
 
-    if (response.ok && data.token) {
-      localStorage.setItem("organizer_authToken", data.token);
-
-      window.location.href = "http://127.0.0.1:5501/frontend/organizer/orgfront.html";
+    if (response.ok && data.accessToken) {
+      localStorage.setItem("organizer_authToken", data.accessToken);
+      localStorage.setItem("organizer_refreshToken", data.refreshToken);
+      window.location.href = "../organizer/orgfront.html";
     } else {
       showError(data.message || "Login failed. Please try again.");
       btn.textContent = "Sign In";
@@ -74,14 +70,12 @@ form.addEventListener("submit", async function (e) {
     btn.disabled    = false;
   }
 });
-// ── Password Toggle ────────────────────────────
+
 const togglePassword = document.getElementById("togglePassword");
 const passwordInput  = document.getElementById("password");
 
 togglePassword.addEventListener("click", function () {
   const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
   passwordInput.setAttribute("type", type);
-
-  // Optional: change icon
   this.textContent = type === "password" ? "👁️" : "🙈";
 });

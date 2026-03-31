@@ -1,6 +1,4 @@
-<!-- ===========================
-     student-dashboard.html
-     =========================== -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,7 +11,7 @@
 <body>
   <div class="app">
 
-    <!-- Sidebar -->
+
     <aside class="sidebar" id="sidebar">
       
       <div class="brand">
@@ -36,7 +34,7 @@
           <span>Events</span>
         </a>
 
-        <!-- ✅ My Clubs -->
+       
         <a class="nav-item" href="clubs.html?view=mine">
   <span class="icon">🏛️</span><span>My Clubs</span>
 </a>
@@ -55,10 +53,10 @@
       </div>
     </aside>
 
-    <!-- Main -->
+  
     <main class="main">
 
-      <!-- Topbar -->
+      
       <header class="topbar">
         <div class="topbar-left">
           <button class="icon-btn" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
@@ -72,7 +70,7 @@
           <nav class="top-links">
   <button class="icon-btn theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Switch to Light Mode">🌙</button>
 
-  <!-- Notification Bell -->
+ 
   <div class="notif-wrap">
     <button class="icon-btn notif-bell" id="notifBtn" title="Notifications">
       🔔
@@ -97,16 +95,16 @@
         </div>
       </header>
 
-      <!-- Content -->
+      
       <section class="content">
 
-        <!-- ══════════ NOTIFICATION HISTORY PAGE ══════════ -->
+   
         <div id="pg-notif-history" class="page-section" style="display:none">
           <div class="notif-hist-bar">
             <button class="btn ghost sm" onclick="closeNotifHistoryPage()">← Back to Dashboard</button>
           </div>
 
-          <!-- List card -->
+        
           <div class="nh-card">
             <div class="notif-hist-list" id="notifHistoryList">
               <div class="list-empty" style="padding:24px;">Loading…</div>
@@ -114,10 +112,8 @@
           </div>
         </div>
 
-        <!-- ══════════ DASHBOARD CONTENT ══════════ -->
+        
         <div id="pg-dashboard-content">
-
-        <!-- ── My Progress Card ─────────────────────────────────────── -->
         <div class="progress-section">
           <div class="progress-card">
             <div class="progress-card-header">
@@ -154,7 +150,7 @@
 
 <div class="middle-grid">
 
-  <!-- Student Profile -->
+
   <div class="panel">
     <div class="panel-header">
       <div class="panel-title">Student</div>
@@ -178,7 +174,7 @@
     </div>
   </div>
 
-  <!-- Event Calendar -->
+ 
   <div class="panel">
     <div class="panel-header">
       <div class="panel-title">📅 Event Calendar</div>
@@ -198,11 +194,10 @@
 
 </div>
 
-      </div><!-- /pg-dashboard-content -->
+      </div>
 
       </section>
 
-  <!-- Profile Drawer -->
   <div class="overlay" id="overlay"></div>
 
   <aside class="drawer" id="profileDrawer" aria-hidden="true">
@@ -261,7 +256,7 @@
       </div>
     </div>
   </aside>
-  <!-- Upcoming Registered Events Modal -->
+
 <div class="modal-overlay" id="upcomingModalOverlay" onclick="closeUpcomingModal()"></div>
 
 <div class="modal-panel" id="upcomingModal">

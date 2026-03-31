@@ -1,7 +1,3 @@
-// ===========================
-//  eve.js — EVE AI Assistant
-//  Real-time DB + Gemini fallback
-// ===========================
 
 const GEMINI_API_KEY = "AIzaSyBx1cmV1fbge0vXVAMY4_DEjsYCZ2nTp2k";
 const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;

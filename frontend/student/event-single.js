@@ -1,6 +1,4 @@
-// event-single.js — backend connected
-
-// ── Get event ID from URL or sessionStorage ───────────
+// event-single.js
 const urlParams  = new URLSearchParams(window.location.search);
 const urlId      = urlParams.get("id");
 const ssId       = sessionStorage.getItem("selectedEventId");
@@ -8,7 +6,6 @@ const selectedId = urlId || ssId;
 
 const content = document.getElementById("pageContent");
 
-// ── Fetch and render ──────────────────────────────────
 async function loadEvent() {
   if (!selectedId) {
     window.location.href = "event-details.html";

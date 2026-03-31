@@ -1,5 +1,4 @@
-// adminRoutes.js  —  EVEXA Admin API
-// Mount at: app.use("/api/admin", require("./routes/adminRoutes"))
+
 
 const express    = require("express");
 const bcrypt     = require("bcrypt");
@@ -8,12 +7,6 @@ const nodemailer = require("nodemailer");
 const db         = require("../db");
 
 const router  = express.Router();
-
-// ─────────────────────────────────────────────────────────────
-//  AUTO-MIGRATION — add deleted_at to tables if not present
-//  Runs once on startup so soft-delete features work immediately
-// ─────────────────────────────────────────────────────────────
-// Safe migration: checks information_schema first — works on MySQL 5.7 and 8.x
 function addColumnIfMissing(table, column, definition) {
   const checkSql = `
     SELECT COUNT(*) AS cnt
@@ -23,7 +16,7 @@ function addColumnIfMissing(table, column, definition) {
       AND COLUMN_NAME  = ?`;
   db.query(checkSql, [table, column], (err, rows) => {
     if (err) return console.warn(`[Migration] Check failed for ${table}.${column}:`, err.message);
-    if (rows[0].cnt > 0) return; // column already exists
+    if (rows[0].cnt > 0) return; 
     db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, (err2) => {
       if (err2) console.warn(`[Migration] Failed to add ${table}.${column}:`, err2.message);
       else      console.log(`[Migration] Added ${table}.${column}`);
@@ -39,9 +32,6 @@ function addColumnIfMissing(table, column, definition) {
   addColumnIfMissing("clubs",      "deleted_at", "DATETIME DEFAULT NULL");
 })();
 
-// ─────────────────────────────────────────────────────────────
-//  EMAIL TRANSPORTER
-// ─────────────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -50,9 +40,9 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ─────────────────────────────────────────────────────────────
-//  MIDDLEWARE
-// ─────────────────────────────────────────────────────────────
+
+
+
 function adminOnly(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith("Bearer "))
@@ -77,9 +67,9 @@ function pushLog(type, icon, color, action, user) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-//  LOGIN
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
@@ -106,9 +96,9 @@ router.post("/login", async (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  PROFILE
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/profile", adminOnly, (req, res) => {
   db.query(
     "SELECT admin_id AS id, admin_name AS name, email, phone, created_at FROM admin WHERE admin_id = ?",
@@ -152,9 +142,9 @@ router.put("/change-password", adminOnly, async (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  DASHBOARD
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/dashboard", adminOnly, (req, res) => {
   const q = (sql, params = []) =>
     new Promise((resolve, reject) =>
@@ -225,7 +215,7 @@ router.get("/dashboard", adminOnly, (req, res) => {
           totalUsers:         students.total + organizers.total + faculty.total,
           certsIssued:        certs.total,
           activeClubs:        mostActiveClubs.length,
-          pendingRoles:       pending.total,  // reuse actual pending events count
+          pendingRoles:       pending.total,  
           eventsThisWeek:     eventsThisWeek.total,
           totalParticipation: totalParticipation.total,
           userBreakdown: {
@@ -250,9 +240,9 @@ router.get("/dashboard", adminOnly, (req, res) => {
     });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  EVENTS
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/events", adminOnly, (req, res) => {
   const { search = "", status = "all", category = "all" } = req.query;
   let sql = `SELECT e.*, COALESCE(c.club_name, CONCAT('Club #', e.club_id)) AS organizer_name
@@ -303,10 +293,10 @@ router.delete("/events/:id", adminOnly, (req, res) => {
   db.query("SELECT title FROM events WHERE id=?", [req.params.id], (err, rows) => {
     if (err) return res.status(500).json({ message: err.message });
     const evName = rows?.[0]?.title || `ID ${req.params.id}`;
-    // Soft delete — moves event to recycle bin
+    
     db.query("UPDATE events SET deleted_at = NOW() WHERE id=?", [req.params.id], (err2) => {
       if (err2) {
-        // Fallback: hard delete if deleted_at column doesn't exist yet
+        
         if (err2.code === "ER_BAD_FIELD_ERROR") {
           return db.query("DELETE FROM events WHERE id=?", [req.params.id], (err3) => {
             if (err3) return res.status(500).json({ message: err3.message });
@@ -353,7 +343,7 @@ router.post("/events/bulk-delete", adminOnly, (req, res) => {
   });
 });
 
-// GET /api/admin/events/:id/participants — full participant list
+
 router.get("/events/:id/participants", adminOnly, (req, res) => {
   db.query(
     `SELECT
@@ -379,7 +369,7 @@ router.get("/events/:id/participants", adminOnly, (req, res) => {
   );
 });
 
-// GET /api/admin/events/:id/participants/csv — download as CSV
+
 router.get("/events/:id/participants/csv", adminOnly, (req, res) => {
   db.query(
     "SELECT title AS event_title, date AS event_date FROM events WHERE id = ?",
@@ -433,14 +423,14 @@ router.get("/events/:id/participants/csv", adminOnly, (req, res) => {
   );
 });
 
-// POST /api/admin/send-message — send email to event organizer
+
 router.post("/send-message", adminOnly, (req, res) => {
   const { event_id, to_email, subject, message } = req.body;
 
   if (!to_email || !subject || !message)
     return res.status(400).json({ message: "to_email, subject, and message are required." });
 
-  // Optionally verify the email belongs to the organizer of this event
+  
   const verifySql = `
     SELECT o.name AS organizer_name, o.email AS organizer_email, e.title
     FROM events e
@@ -492,9 +482,9 @@ router.post("/send-message", adminOnly, (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  CLUB PERFORMANCE
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/clubs/performance", adminOnly, (req, res) => {
   const { academic_year } = req.query;
   let where = "WHERE 1=1";
@@ -548,14 +538,14 @@ router.get("/clubs/growth", adminOnly, (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  USERS
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/users", adminOnly, (req, res) => {
   const { search = "", role = "all" } = req.query;
 
-  // UNION ALL across all user tables matching the actual DB schema.
-  // deleted_at is filtered only if the column exists (added via migration on startup).
+  
+  
   const roleQueries = {
     student:   `SELECT id, name, email, 'student'   AS role, department         AS department, 'active' AS status, admission_no              AS admission_no, phone    AS phone, NULL       AS last FROM students   WHERE deleted_at IS NULL`,
     organizer: `SELECT id, name, email, 'organizer' AS role, COALESCE(club,'') AS department, 'active' AS status, COALESCE(admission_no,'') AS admission_no, phone    AS phone, created_at AS last FROM organizers WHERE deleted_at IS NULL`,
@@ -659,10 +649,10 @@ router.delete("/users/:id", adminOnly, (req, res) => {
   const table  = tables[role];
   if (!table) return res.status(400).json({ message: "Invalid or unremovable role." });
 
-  // Soft delete — moves user to recycle bin
+  
   db.query(`UPDATE ${table} SET deleted_at = NOW() WHERE id=?`, [req.params.id], (err) => {
     if (err) {
-      // Fallback: hard delete if deleted_at column doesn't exist yet
+      
       if (err.code === "ER_BAD_FIELD_ERROR") {
         return db.query(`DELETE FROM ${table} WHERE id=?`, [req.params.id], (err2) => {
           if (err2) return res.status(500).json({ message: err2.message });
@@ -687,9 +677,9 @@ router.put("/users/:id/assign-club", adminOnly, (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  ACTIVITY LOGS
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/logs", adminOnly, (req, res) => {
   const { search = "", type = "all", from = "", to = "" } = req.query;
   let sql      = "SELECT * FROM activity_logs WHERE 1=1";
@@ -715,9 +705,9 @@ router.delete("/logs", adminOnly, (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  ANALYTICS
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/analytics", adminOnly, (req, res) => {
   const { academic_year } = req.query;
   const q = (sql, p = []) =>
@@ -725,8 +715,8 @@ router.get("/analytics", adminOnly, (req, res) => {
       db.query(sql, p, (err, rows) => (err ? reject(err) : resolve(rows)))
     );
 
-  // academic_year format: "2025-26" → date BETWEEN '2025-08-01' AND '2026-07-31'
-  // events table has no academic_year column, so derive date range from the string
+  
+  
   let yearWhere  = "";
   const yearParams = [];
   if (academic_year && academic_year !== "all") {
@@ -737,19 +727,19 @@ router.get("/analytics", adminOnly, (req, res) => {
   }
 
   Promise.all([
-    // Events per month
+    
     q(`SELECT DATE_FORMAT(e.date,'%Y-%m') AS ym, DATE_FORMAT(e.date,'%b') AS month, COUNT(*) AS count
        FROM events e WHERE 1=1 ${yearWhere}
        GROUP BY DATE_FORMAT(e.date,'%Y-%m'), DATE_FORMAT(e.date,'%b')
        ORDER BY ym`, yearParams),
 
-    // Technical vs Non-Technical
+    
     q(`SELECT
          SUM(CASE WHEN e.category = 'Technical' THEN 1 ELSE 0 END)                        AS academic,
          SUM(CASE WHEN e.category != 'Technical' OR e.category IS NULL THEN 1 ELSE 0 END) AS non_academic
        FROM events e WHERE 1=1 ${yearWhere}`, yearParams),
 
-    // Participation per month
+    
     q(`SELECT DATE_FORMAT(e.date,'%Y-%m') AS ym, DATE_FORMAT(e.date,'%b') AS month, COUNT(r.id) AS participants
        FROM events e
        LEFT JOIN registrations r ON r.event_id = e.id
@@ -757,13 +747,13 @@ router.get("/analytics", adminOnly, (req, res) => {
        GROUP BY DATE_FORMAT(e.date,'%Y-%m'), DATE_FORMAT(e.date,'%b')
        ORDER BY ym`, yearParams),
 
-    // Semester split
+    
     q(`SELECT
          SUM(CASE WHEN MONTH(e.date) BETWEEN 8 AND 12 THEN 1 ELSE 0 END) AS sem1,
          SUM(CASE WHEN MONTH(e.date) BETWEEN 1  AND 7  THEN 1 ELSE 0 END) AS sem2
        FROM events e WHERE 1=1 ${yearWhere}`, yearParams),
 
-    // Role distribution
+    
     q(`SELECT 'Students'   AS role, COUNT(*) AS count FROM students
        UNION ALL SELECT 'Faculty',    COUNT(*) FROM faculty
        UNION ALL SELECT 'Organizers', COUNT(*) FROM organizers
@@ -780,9 +770,9 @@ router.get("/analytics", adminOnly, (req, res) => {
     });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  SYSTEM HEALTH
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/system-health", adminOnly, (req, res) => {
   const q = (sql, p = []) =>
     new Promise((resolve, reject) =>
@@ -792,21 +782,21 @@ router.get("/system-health", adminOnly, (req, res) => {
   const startTime = Date.now();
 
   Promise.all([
-    // Real row counts per table
+    
     q("SELECT COUNT(*) AS total FROM events"),
     q("SELECT COUNT(*) AS total FROM students"),
     q("SELECT COUNT(*) AS total FROM registrations"),
     q("SELECT COUNT(*) AS total FROM certificates"),
     q("SELECT COUNT(*) AS total FROM activity_logs"),
-    // Actual DB size in MB for the evexa schema
+    
     q(`SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb
        FROM information_schema.tables
        WHERE table_schema = DATABASE()`),
   ])
     .then(([[events], [students], [registrations], [certs], [logs], [dbSize]]) => {
-      const dbMs      = Date.now() - startTime;   // how long all queries took
+      const dbMs      = Date.now() - startTime;   
       const sizeMb    = parseFloat(dbSize.size_mb) || 0;
-      const limitMb   = 100;                       // adjust to your actual DB size limit
+      const limitMb   = 100;                       
       const usedPct   = Math.min(Math.round((sizeMb / limitMb) * 100), 100);
       const freeMb    = Math.max(limitMb - sizeMb, 0).toFixed(2);
       const dbHealthPct = dbMs < 200 ? 100 : dbMs < 500 ? 90 : dbMs < 1000 ? 75 : 60;
@@ -839,19 +829,19 @@ router.get("/system-health", adminOnly, (req, res) => {
     });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  RECYCLE BIN  (soft-delete trash routes)
-//  Requires: deleted_at DATETIME DEFAULT NULL on events, students,
-//            organizers, faculty, clubs tables.
-//  Run once:
-//    ALTER TABLE events    ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
-//    ALTER TABLE students  ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
-//    ALTER TABLE organizers ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
-//    ALTER TABLE faculty   ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
-//    ALTER TABLE clubs     ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL;
-// ─────────────────────────────────────────────────────────────
 
-// ── GET deleted items ────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
 
 router.get("/trash/events", adminOnly, (req, res) => {
   db.query(
@@ -869,7 +859,7 @@ router.get("/trash/events", adminOnly, (req, res) => {
 });
 
 router.get("/trash/users", adminOnly, (req, res) => {
-  // Merge soft-deleted users from students, organizers and faculty
+  
   const sql = `
     SELECT id, name, email, 'student'   AS role, department, deleted_at FROM students   WHERE deleted_at IS NOT NULL
     UNION ALL
@@ -900,7 +890,7 @@ router.get("/trash/clubs", adminOnly, (req, res) => {
   );
 });
 
-// ── RESTORE (set deleted_at = NULL) ─────────────────────────
+
 
 router.put("/trash/events/:id/restore", adminOnly, (req, res) => {
   db.query("SELECT title FROM events WHERE id = ?", [req.params.id], (err, rows) => {
@@ -952,7 +942,7 @@ router.put("/trash/clubs/:id/restore", adminOnly, (req, res) => {
   });
 });
 
-// ── PERMANENT DELETE ─────────────────────────────────────────
+
 
 router.delete("/trash/events/:id", adminOnly, (req, res) => {
   db.query("SELECT title FROM events WHERE id = ? AND deleted_at IS NOT NULL", [req.params.id], (err, rows) => {

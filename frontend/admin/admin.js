@@ -1,16 +1,11 @@
-// ============================================================
-//  admin.js  —  EVEXA Admin Portal  (API-connected)
-//  FIXED: Full review pass — rendering, data mapping, guards,
-//         modal field reads, badge logic, chart teardown, etc.
-// ============================================================
 
 const API       = "http://localhost:5000/api/admin";
 const EVENTS_API = "http://localhost:5000/api/events";
 
-// ── AUTH TOKEN ────────────────────────────────────────────────
+
 function token() { return localStorage.getItem("adminToken") || ""; }
 
-// apiFetch — hits the admin API (dashboard, users, clubs, analytics, logs, profile)
+
 async function apiFetch(path, opts = {}) {
   const res = await fetch(API + path, {
     headers: {
@@ -21,12 +16,12 @@ async function apiFetch(path, opts = {}) {
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
 
-  // FIX: gracefully handle non-JSON responses (e.g. 401 HTML pages)
+  
   let data = {};
   try { data = await res.json(); } catch (_) {}
 
   if (!res.ok) {
-    // FIX: if token is invalid/expired, redirect to login immediately
+    
     if (res.status === 401) {
       localStorage.removeItem("adminToken");
       window.location.href = "adsignin.html";
@@ -37,8 +32,8 @@ async function apiFetch(path, opts = {}) {
   return data;
 }
 
-// eventsFetch — hits /api/events directly (same routes as organizer portal)
-// Admin token is sent; backend's isAdmin(req) check grants full access.
+
+
 async function eventsFetch(path, opts = {}) {
   const res = await fetch(EVENTS_API + path, {
     headers: {
@@ -61,15 +56,15 @@ async function eventsFetch(path, opts = {}) {
   return data;
 }
 
-// ── STATE ────────────────────────────────────────────────────
+
 let events = [];
 let users  = [];
 let logs   = [];
 let chartRefs = {};
-// Events cache for the calendar (populated by loadDashboard / loadEvents)
+
 let adminCalEvents   = [];
 
-// ── NAVIGATION ────────────────────────────────────────────────
+
 function navigateTo(page) {
   localStorage.setItem("adminPage", page);
   document.querySelectorAll("[id^='pg-']").forEach(el => (el.style.display = "none"));
@@ -96,7 +91,7 @@ function navigateTo(page) {
   if (titleEl) titleEl.textContent = t;
   if (subEl)   subEl.textContent   = s;
 
-  // FIX: each page loads fresh — removed stale analyticsLoaded / growthLoaded flags
+  
   if (page === "dashboard") loadDashboard();
   if (page === "events")    loadEvents();
   if (page === "clubs")     loadClubs();
@@ -107,7 +102,7 @@ function navigateTo(page) {
   if (page === "profile")   loadProfile();
 }
 
-// ── HELPERS ───────────────────────────────────────────────────
+
 function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : ""; }
 
 function setBadge(id, val) {
@@ -148,7 +143,7 @@ function closeModal() {
   document.getElementById("overlay")?.classList.remove("open");
 }
 
-// FIX: added null/NaN guard — won't crash on undefined rating
+
 function starsHTML(rating) {
   const r = parseFloat(rating);
   const n = isNaN(r) ? 0 : Math.min(5, Math.max(0, Math.round(r)));
@@ -166,7 +161,7 @@ function destroyChart(id) {
 function makeChart(id, type, labels, datasets, extraOpts = {}) {
   destroyChart(id);
   const ctx = document.getElementById(id);
-  if (!ctx) return; // FIX: silently skip if canvas not in DOM yet
+  if (!ctx) return; 
   chartRefs[id] = new Chart(ctx, {
     type,
     data: { labels, datasets },
@@ -215,14 +210,14 @@ function makeDoughnut(id, labels, data, colors, legendEl) {
   }
 }
 
-// ── DASHBOARD ────────────────────────────────────────────────
+
 async function loadDashboard() {
   try {
     const d = await apiFetch("/dashboard");
-    if (!d) return; // guard against redirect (401)
+    if (!d) return; 
     const s = d.stats || {};
 
-    // FIX: use optional chaining so missing keys don't crash the whole function
+    
     const setEl = (id, val) => {
       const el = document.getElementById(id);
       if (el) el.textContent = val ?? "—";
@@ -236,8 +231,8 @@ async function loadDashboard() {
     setBadge("badge-events",   s.totalEvents);
     setBadge("badge-activity", (d.recentLogs || []).length);
 
-    // Populate calendar: fetch all events directly from /api/events/all
-    // This gives us the full list regardless of what dashboard returns
+    
+    
     try {
       const allEvs = await eventsFetch("/all") || [];
       if (allEvs.length) {
@@ -250,7 +245,7 @@ async function loadDashboard() {
         renderAdminCalEvents(adminCalSelected);
       }
     } catch (_) {
-      // Fallback to whatever dashboard returned
+      
       if (d.recentEvents && d.recentEvents.length) {
         adminCalEvents = d.recentEvents;
         renderAdminCalendar();
@@ -258,7 +253,7 @@ async function loadDashboard() {
       }
     }
 
-    // Academic doughnut
+    
     const acad = s.academicSplit || { academic: 0, non_academic: 0 };
     makeDoughnut(
       "dashAcadChart",
@@ -268,7 +263,7 @@ async function loadDashboard() {
       document.getElementById("dashAcadLegend")
     );
 
-    // Most active clubs
+    
     const dashActiveClubs = document.getElementById("dashActiveClubs");
     if (dashActiveClubs) {
       dashActiveClubs.innerHTML = (d.mostActiveClubs || []).slice(0, 5).map((c, i) => `
@@ -289,13 +284,16 @@ async function loadDashboard() {
   }
 }
 
-// ── EVENTS ───────────────────────────────────────────────────
+
 async function loadEvents() {
   const search = document.getElementById("evSearchInput")?.value.trim().toLowerCase() || "";
   const year   = document.getElementById("evYearFilter")?.value   || "all";
 
   try {
     let data = await eventsFetch("/all") || [];
+
+    
+    data = data.filter(e => (e.status || "").toLowerCase() !== "submitted");
 
     if (search) {
       data = data.filter(e =>
@@ -320,7 +318,7 @@ async function loadEvents() {
 }
 
 function renderEventsTable() {
-  // Sync calendar with latest full events list
+  
   if (events.length) {
     adminCalEvents = events;
     renderAdminCalendar();
@@ -329,7 +327,7 @@ function renderEventsTable() {
   const tbody = document.getElementById("eventsBody");
   if (!tbody) return;
 
-  // Format ISO datetime from MySQL to readable date
+  
   function fmtDate(raw) {
     if (!raw) return "—";
     const d = new Date(raw);
@@ -341,10 +339,11 @@ function renderEventsTable() {
     const safeTitle = (e.title || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     const safeOrg   = (e.organizer_label || e.organizer || "").replace(/"/g,"&quot;");
     const safeEmail = (e.organizer_email || "").replace(/"/g,"&quot;");
+    const safeClub  = (e.club || e.club_name || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     return `
     <tr>
       <td style="font-weight:800;">${safeTitle || "—"}</td>
-      <td>${safeOrg || e.club || "—"}</td>
+      <td>${safeClub || safeOrg || "—"}</td>
       <td><span class="tag">${e.category || "—"}</span></td>
       <td>${fmtDate(e.date)}</td>
       <td id="part-count-${e.id}">${Number(e.participants || 0).toLocaleString()}</td>
@@ -358,7 +357,7 @@ function renderEventsTable() {
   }).join("")
     || `<tr><td colspan="6" style="padding:24px;text-align:center;opacity:.5;font-weight:700;">No events found.</td></tr>`;
 
-  // Attach events via addEventListener (safe — no inline onclick XSS risk)
+  
   tbody.querySelectorAll(".ev-participants-btn").forEach(btn => {
     btn.addEventListener("click", () => viewParticipants(Number(btn.dataset.id), btn.dataset.name));
   });
@@ -468,7 +467,7 @@ function addEvent() {
 async function saveNewEvent() {
   const name = document.getElementById("newEvName")?.value.trim();
   if (!name) return showToast("Please enter an event name.", "error");
-  // FIX: was sending organizer text as club_id (wrong type). Now sent as organizer string.
+  
   try {
     await eventsFetch("", {
       method: "POST",
@@ -486,9 +485,9 @@ async function saveNewEvent() {
   } catch (err) { showToast(err.message, "error"); }
 }
 
-// ── PARTICIPANTS ──────────────────────────────────────────────
+
 async function viewParticipants(eventId, eventName) {
-  // FIX: apostrophes in eventName no longer break the inline onclick handler
+  
   const safeName = (eventName || "").replace(/"/g, "&quot;");
   openModal(`👥 Participants — ${safeName}`, `
     <div>
@@ -510,11 +509,11 @@ async function viewParticipants(eventId, eventName) {
     const count = rows.length;
     if (countEl) countEl.textContent = count + " participant" + (count !== 1 ? "s" : "") + " registered";
 
-    // Update live participant count cell in the events table
+    
     const tableCell = document.getElementById("part-count-" + eventId);
     if (tableCell) tableCell.textContent = count.toLocaleString();
 
-    // Wire up CSV download using fetched rows (avoids broken /csv endpoint)
+    
     if (dlBtn) {
       dlBtn.disabled = false;
       dlBtn.onclick = () => downloadParticipantsFromRows(rows, safeName);
@@ -600,7 +599,7 @@ function downloadParticipantsFromRows(rows, eventName) {
 }
 
 
-// ── SEND MESSAGE TO ORGANIZER ─────────────────────────────────
+
 function openSendMessage(eventId, eventName, organizerName, organizerEmail) {
   if (!organizerEmail) {
     showToast("Organizer email not available for this event.", "error");
@@ -640,7 +639,7 @@ async function sendMessageToOrganizer(eventId, organizerEmail) {
   }
 }
 
-// ── CLUB PERFORMANCE ─────────────────────────────────────────
+
 async function loadClubs() {
   const year = document.getElementById("clubYearFilter")?.value || "all";
   try {
@@ -662,7 +661,7 @@ async function loadClubs() {
   }
 }
 
-// ── USERS ─────────────────────────────────────────────────────
+
 async function loadUsers() {
   const search = document.getElementById("userSearchInput")?.value.trim() || "";
   const role   = document.getElementById("roleFilter")?.value || "all";
@@ -739,7 +738,7 @@ async function saveUser(id, role) {
         status:     document.getElementById("editUStatus")?.value || "active",
         department: document.getElementById("editUDept").value.trim(),
         phone:      document.getElementById("editUPhone").value.trim(),
-        // FIX: club and department are the same field — avoid duplication confusion
+        
         club:       document.getElementById("editUDept").value.trim(),
         faculty_no: document.getElementById("editUFacultyNo")?.value.trim() || null,
       },
@@ -826,7 +825,7 @@ async function saveAssignClub(id) {
   } catch (err) { showToast(err.message, "error"); }
 }
 
-// ── Step 1: Pick role ────────────────────────────────────────
+
 function addUser() {
   const roles = [
     { key: "student",   icon: "🎓", label: "Student",   desc: "Enrolled student account" },
@@ -859,7 +858,7 @@ function addUser() {
     </div>`);
 }
 
-// ── Step 2: Show fields based on role ────────────────────────
+
 function addUserStep2(role) {
   const titles = {
     student:   "🎓 Add Student",
@@ -868,7 +867,7 @@ function addUserStep2(role) {
     admin:     "🛡️ Add Admin",
   };
 
-  // Fields per role based on actual DB schema
+  
   const fieldSets = {
     student: `
       <label class="field-label">Full Name *</label>
@@ -944,7 +943,7 @@ function addUserStep2(role) {
     </div>`);
 }
 
-// ── Save new user ─────────────────────────────────────────────
+
 async function saveNewUser(role) {
   const name  = document.getElementById("newUName")?.value.trim();
   const email = document.getElementById("newUEmail")?.value.trim();
@@ -989,14 +988,14 @@ async function saveNewUser(role) {
   } catch (err) { showToast(err.message, "error"); }
 }
 
-// ── ANALYTICS ────────────────────────────────────────────────
+
 async function loadAnalytics() {
   const year = document.getElementById("analyticsYearFilter")?.value || "all";
   try {
     const d = await apiFetch(`/analytics?academic_year=${year}`);
     if (!d) return;
 
-    // FIX: all map calls guarded with || [] so empty API responses don't crash
+    
     makeChart("eventsMonthChart", "bar",
       (d.eventsPerMonth || []).map(r => r.month),
       [{
@@ -1050,7 +1049,7 @@ async function loadAnalytics() {
   }
 }
 
-// ── ACTIVITY LOGS ────────────────────────────────────────────
+
 async function loadLogs() {
   const search = document.getElementById("logSearch")?.value.trim() || "";
   const type   = document.getElementById("logTypeFilter")?.value || "all";
@@ -1082,7 +1081,7 @@ function renderLogs() {
     || `<div style="padding:24px;text-align:center;color:#9ca3af;font-weight:700;">No logs found.</div>`;
 }
 
-// ── RECYCLE BIN (Soft-Delete Backup & Restore) ───────────────
+
 let rbData = { events: [], users: [], clubs: [] };
 let rbActiveTab = 'events';
 
@@ -1186,7 +1185,7 @@ function renderRecycleBin() {
 
 async function restoreItem(type, id) {
   try {
-    // The backend restore route for users requires ?role=student|organizer|faculty
+    
     let url = '/trash/' + type + '/' + id + '/restore';
     if (type === 'users') {
       const item = rbData.users.find(i => i.id === id);
@@ -1205,7 +1204,7 @@ async function restoreItem(type, id) {
 async function permanentDelete(type, id, name) {
   if (!confirm('Permanently delete "' + name + '"?\n\nThis cannot be undone.')) return;
   try {
-    // The backend permanent delete route for users requires ?role=student|organizer|faculty
+    
     let url = '/trash/' + type + '/' + id;
     if (type === 'users') {
       const item = rbData.users.find(i => i.id === id);
@@ -1220,9 +1219,9 @@ async function permanentDelete(type, id, name) {
     showToast('Delete failed: ' + err.message, 'error');
   }
 }
-// ── ADMIN PROFILE ────────────────────────────────────────────
+
 async function loadProfile() {
-  // Fast fallback: populate sidebar from JWT immediately (no API wait)
+  
   try {
     const parts = token().split(".");
     if (parts.length === 3) {
@@ -1240,7 +1239,7 @@ async function loadProfile() {
     const p = await apiFetch("/profile");
     if (!p) return;
 
-    // FIX: all setters guarded so missing DOM elements don't throw
+    
     const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ""; };
     const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || ""; };
 
@@ -1255,7 +1254,7 @@ async function loadProfile() {
     setText("sidebarAvatar", initials);
     setText("sidebarName",   p.name || "Admin");
 
-    // JWT expiry
+    
     try {
       const parts = token().split(".");
       if (parts.length === 3) {
@@ -1310,7 +1309,7 @@ async function changePassword() {
       const el = document.getElementById(id);
       if (el) el.value = "";
     });
-    // Reset strength meter
+    
     const fill  = document.getElementById("pwStrengthFill");
     const label = document.getElementById("pwStrengthLabel");
     if (fill)  fill.style.width = "0%";
@@ -1318,7 +1317,7 @@ async function changePassword() {
   } catch (err) { showToast(err.message, "error"); }
 }
 
-// ── CSV EXPORT ────────────────────────────────────────────────
+
 function downloadCSV(rows, filename) {
   if (!rows || !rows.length) return showToast("No data to export.", "error");
   const headers = Object.keys(rows[0]);
@@ -1382,9 +1381,9 @@ async function exportReport(type) {
   }
 }
 
-// ── THEME ─────────────────────────────────────────────────────
+
 function setupTheme() {
-  // Sync body class with documentElement class (set by the inline script)
+  
   const saved = localStorage.getItem("evexa_theme");
   document.body.classList.toggle("light", saved === "light");
   document.documentElement.classList.toggle("light", saved === "light");
@@ -1403,7 +1402,7 @@ function applyTheme(mode) {
   showToast(isLight ? "☀️ Light mode on" : "🌙 Dark mode on", "info");
 }
 
-// ── ADMIN EVENT CALENDAR ──────────────────────────────────────
+
 let adminCalCursor   = new Date(); adminCalCursor.setDate(1);
 let adminCalSelected = null;
 
@@ -1439,7 +1438,7 @@ function renderAdminCalendar() {
 
   grid.innerHTML = "";
 
-  // Weekday headers
+  
   ["Su","Mo","Tu","We","Th","Fr","Sa"].forEach(d => {
     const el = document.createElement("div");
     el.className = "admin-cal-weekday";
@@ -1452,7 +1451,7 @@ function renderAdminCalendar() {
   const today       = adminCalYMD(new Date());
   const eventDates  = new Set(adminCalEvents.map(e => adminToYMD(e.date || e.event_date)));
 
-  // Empty leading cells
+  
   for (let i = 0; i < firstDay; i++) {
     const empty = document.createElement("div");
     empty.className = "admin-cal-day empty";
@@ -1470,7 +1469,7 @@ function renderAdminCalendar() {
     if (adminCalSelected === dateStr)   cell.classList.add("selected");
 
     cell.addEventListener("click", () => {
-      // Toggle: clicking same date again deselects
+      
       if (adminCalSelected === dateStr) {
         adminCalSelected = null;
       } else {
@@ -1535,20 +1534,20 @@ function setupAdminCalendar() {
   renderAdminCalEvents(adminCalSelected);
 }
 
-// ── INIT ─────────────────────────────────────────────────────
+
 document.addEventListener("DOMContentLoaded", () => {
 
-  // Redirect to login if no token
+  
   if (!token()) {
     window.location.href = "adsignin.html";
     return;
   }
 
 
-  // ── AUTO-LOGOUT after 10 min of inactivity ───────────────────
+  
   (function setupAutoLogout() {
-    const TIMEOUT_MS = 10 * 60 * 1000; // 10 min total
-    const WARNING_MS =  9 * 60 * 1000; //  9 min — warn 60s before logout
+    const TIMEOUT_MS = 10 * 60 * 1000; 
+    const WARNING_MS =  9 * 60 * 1000; 
     let logoutTimer, warningTimer, warningOverlay;
 
     function clearWarning() {
@@ -1608,13 +1607,13 @@ document.addEventListener("DOMContentLoaded", () => {
     resetTimers();
   })();
 
-  // Apply saved theme immediately
+  
   setupTheme();
 
-  // Setup calendar navigation
+  
   setupAdminCalendar();
 
-  // Sidebar toggle
+  
   document.getElementById("sidebarToggle")?.addEventListener("click", () => {
     const s = document.getElementById("sidebar");
     if (!s) return;
@@ -1622,39 +1621,39 @@ document.addEventListener("DOMContentLoaded", () => {
     else s.classList.toggle("collapsed");
   });
 
-  // Nav links
+  
   document.querySelectorAll(".nav-item[data-page]").forEach(el =>
     el.addEventListener("click", e => { e.preventDefault(); navigateTo(el.dataset.page); })
   );
 
-  // Modal close
+  
   document.getElementById("closeModal")?.addEventListener("click", closeModal);
   document.getElementById("overlay")?.addEventListener("click", closeModal);
 
-  // ── EVENTS ──
+  
   ["evSearchInput","evYearFilter"].forEach(id => {
     document.getElementById(id)?.addEventListener("change", loadEvents);
   });
   document.getElementById("evSearchInput")?.addEventListener("input", loadEvents);
 
-  // ── CLUBS ──
+  
   document.getElementById("clubYearFilter")?.addEventListener("change", loadClubs);
 
-  // ── USERS ──
+  
   document.getElementById("addUserBtn")?.addEventListener("click", addUser);
   document.getElementById("userSearchInput")?.addEventListener("input", loadUsers);
   document.getElementById("roleFilter")?.addEventListener("change", loadUsers);
 
 
-  // ── LOGS ──
+  
   document.getElementById("logApplyBtn")?.addEventListener("click", loadLogs);
   document.getElementById("logSearch")?.addEventListener("input", loadLogs);
   document.getElementById("logTypeFilter")?.addEventListener("change", loadLogs);
-  // ── ANALYTICS ──
+  
   document.getElementById("analyticsReloadBtn")?.addEventListener("click", loadAnalytics);
   document.getElementById("analyticsYearFilter")?.addEventListener("change", loadAnalytics);
 
-  // ── PROFILE ──
+  
   document.getElementById("saveProfileBtn")?.addEventListener("click", saveProfile);
   document.getElementById("changePasswordBtn")?.addEventListener("click", changePassword);
   document.getElementById("pwNew")?.addEventListener("input", function () {
@@ -1673,9 +1672,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ── LOGOUT ──
+  
   const doLogout = () => {
-    // Custom styled logout confirmation modal
+    
     const overlay = document.createElement("div");
     overlay.id = "logoutOverlay";
     overlay.style.cssText = `
@@ -1721,16 +1720,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("logoutBtn")?.addEventListener("click", doLogout);
   document.getElementById("logoutBtn2")?.addEventListener("click", doLogout);
 
-  // ── NOTIFICATIONS ──
+  
   document.getElementById("notifBtn")?.addEventListener("click", () =>
     showToast("🔔 3 new system notifications", "info")
   );
 
-  // ── SIDEBAR BOTTOM — click opens profile ──
   document.getElementById("sidebarUserBtn")?.addEventListener("click", () => navigateTo("profile"));
 
-  // ── INITIAL LOAD — restore last visited page on refresh ──
-  // Always load profile data first so sidebar name/avatar populate immediately
+
   loadProfile().catch(() => {});
   const savedPage = localStorage.getItem("adminPage") || "dashboard";
   navigateTo(savedPage);

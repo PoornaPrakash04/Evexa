@@ -1,9 +1,4 @@
-/* ============================================================
-   ADD THIS TO event-single.css or a new ticket.css file
-   and link it in event-single.html
-   ============================================================ */
 
-/* Overlay */
 .ticket-overlay {
   position: fixed;
   inset: 0;

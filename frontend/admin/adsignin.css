@@ -15,7 +15,7 @@ overflow:hidden;
 position:relative;
 }
 
-/* -------- FLOATING SHAPES -------- */
+
 
 .background{
 position:fixed;
@@ -34,7 +34,7 @@ animation:float 8s infinite ease-in-out;
 will-change:transform;
 }
 
-/* Admin Green Theme */
+
 
 .s1{
 width:220px;
@@ -67,7 +67,7 @@ animation-delay:3s;
 50%{transform:translateY(-35px)}
 }
 
-/* -------- SIGNIN CARD -------- */
+
 
 .signin-container{
 background:rgba(255,255,255,.85);
@@ -130,7 +130,7 @@ transform:scale(1.05);
 box-shadow:0 10px 25px rgba(17,153,142,.35);
 }
 
-/* -------- REGISTER PROMPT -------- */
+
 
 .register-prompt{
 margin-top:1.2rem;
@@ -151,7 +151,7 @@ color:#0d7a70;
 text-decoration:underline;
 }
 
-/* -------- BACK BUTTON -------- */
+
 
 .back-wrapper{
 position:fixed;

@@ -1,9 +1,4 @@
-/* ===========================
-   account-settings.css
-   =========================== */
 
-   
-/* ── Layout ── */
 .settings-layout {
   display: grid;
   grid-template-columns: 220px 1fr;
@@ -11,7 +6,6 @@
   align-items: start;
 }
 
-/* ── Tab sidebar ── */
 .settings-tabs {
   background: rgba(255,255,255,.85);
   border: 1px solid rgba(229,231,235,.75);
@@ -49,7 +43,6 @@
 }
 .stab-icon { font-size: 16px; }
 
-/* ── Panels ── */
 .settings-panels { min-width: 0; }
 
 .spanel {

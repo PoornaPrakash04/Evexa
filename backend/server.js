@@ -1,4 +1,5 @@
 require("dotenv").config();
+console.log("JWT_SECRET loaded:", !!process.env.JWT_SECRET); 
 const path    = require("path");
 const express = require("express");
 const cors    = require("cors");
@@ -29,7 +30,7 @@ const corsOptions = {
     "http://localhost:5500", "http://127.0.0.1:5500",
     "http://localhost:5501", "http://127.0.0.1:5501",
   ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
@@ -39,17 +40,14 @@ app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
 
-// ── Frontend static files ─────────────────────────────────────
-// server.js lives in /backend, frontend is at /frontend (sibling folder)
 app.use(express.static(path.join(__dirname, "../frontend")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ── Cron: auto-complete past approved events every 15 min ─────
 cron.schedule("*/15 * * * *", () => {
   db.query(
     `UPDATE events
-     SET status = 'Completed'
-     WHERE status = 'Approved'
+     SET status = 'completed'
+     WHERE status IN ('hall_approved', 'published')
        AND CONCAT(date, ' ', COALESCE(time, '23:59:00')) < NOW()`,
     (err, result) => {
       if (err) return console.error("Auto-complete cron error:", err);
@@ -59,7 +57,6 @@ cron.schedule("*/15 * * * *", () => {
   );
 });
 
-// ── API routes ────────────────────────────────────────────────
 app.use("/api/organizer",       organizerRoutes);
 app.use("/api/auth",            authRoutes);
 app.use("/api/events",          eventRoutes);

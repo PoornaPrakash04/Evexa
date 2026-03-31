@@ -1,6 +1,3 @@
-// ===========================
-//  faculty-signin.js
-// ===========================
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -9,7 +6,6 @@ const idInput = document.getElementById("faculty_no");
 const pwInput = document.getElementById("password");
 const btn     = form.querySelector(".signin-btn");
 
-// ── Show inline error ─────────────────────────────────
 function showError(msg) {
   let err = document.getElementById("formError");
   if (!err) {
@@ -33,15 +29,14 @@ function clearError() {
   if (err) err.textContent = "";
 }
 
-// ── Submit ────────────────────────────────────────────
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearError();
 
-  const faculty_no = idInput.value.trim();
+  const identifier = idInput.value.trim();
   const password   = pwInput.value;
 
-  if (!faculty_no || !password) {
+  if (!identifier || !password) {
     showError("Please enter your Faculty No. and password.");
     return;
   }
@@ -50,35 +45,43 @@ form.addEventListener("submit", async (e) => {
   btn.disabled    = true;
 
   try {
-    const res = await fetch(`${API_BASE}/auth/faculty-login`, {
+    const response = await fetch(`${API_BASE}/auth/login`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ faculty_no, password }),
+      body: JSON.stringify({ role: "FACULTY", identifier, password }),
     });
 
-    const data = await res.json();
+    let data = {};
+    const ct = response.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      data = await response.json();
+    }
 
-    if (!res.ok) {
+    if (!response.ok) {
       showError(data.message || "Invalid credentials. Please try again.");
       btn.textContent = "Sign In";
       btn.disabled    = false;
       return;
     }
+    if (!data.accessToken) {
+      showError("Login failed. Please try again.");
+      btn.textContent = "Sign In";
+      btn.disabled    = false;
+      return;
+    }
 
-    // ── Store token + role ────────────────────────────
-    localStorage.setItem("faculty_auth_token", data.token);
-
-    // ── Redirect to faculty dashboard ─────────────────
+    localStorage.setItem("faculty_auth_token",   data.accessToken);
+    localStorage.setItem("faculty_refresh_token", data.refreshToken);
     window.location.href = "faculty-dashboard.html";
 
   } catch (err) {
     console.error("Login error:", err);
-    showError("Server error. Please try again.");
+    showError("Network error. Please try again.");
     btn.textContent = "Sign In";
     btn.disabled    = false;
   }
 });
-// Password toggle
+
 const togglePassword = document.getElementById("togglePassword");
 
 togglePassword.addEventListener("click", () => {

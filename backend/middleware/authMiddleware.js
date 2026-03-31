@@ -9,7 +9,6 @@ function authorize(roles = []) {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    // Check if header starts with "Bearer "
     if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "Invalid authorization format" });
     }
@@ -21,15 +20,15 @@ function authorize(roles = []) {
     }
 
     try {
-      // ✅ USE ENVIRONMENT VARIABLE (same as in auth.js)
+     
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Check if role is allowed (if roles specified)
+     
       if (roles.length && !roles.map(r => r.toLowerCase()).includes((decoded.role || "").toLowerCase())) {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      // Attach user data to request
+      
       req.user = decoded;
       next();
     } catch (err) {

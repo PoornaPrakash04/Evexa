@@ -1,9 +1,5 @@
-/* ============================================================
-   orgscript.js — EVEXA Organizer Portal (Backend-Connected)
-   ============================================================ */
-
-const API = "http://localhost:5000/api";
-const LOGIN_URL = "/organizer/ogsignin.html";
+var API = "http://localhost:5000/api";
+window.API = API;
 let execomMembersCache = [];
 
 if (window.__EVEXA_INITIALIZED__) {
@@ -46,7 +42,7 @@ if (window.__EVEXA_INITIALIZED__) {
 
     wireStaticButtons();
 
-    // Wire Add Member button (merged from orgexecom.js)
+ 
     document.getElementById("addExecomBtn")?.addEventListener("click", openAddExecomModal);
     const execomForm = document.getElementById("execomEditForm");
     if (execomForm && !execomForm.dataset.listenerAttached) {
@@ -57,10 +53,6 @@ if (window.__EVEXA_INITIALIZED__) {
     console.log("✅ Dashboard ready");
   });
 }
-
-// ─────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────
 
 function apiFetch(path, opts = {}) {
   const token = localStorage.getItem("organizer_authToken");
@@ -74,14 +66,16 @@ function redirectToLogin() {
 }
 
 function logout() {
-  // Show confirmation modal
+
+  const loginUrl = window.LOGIN_URL || "../organizer/ogsignin.html";
+
   const existing = document.getElementById("__logoutModal");
   if (existing) existing.remove();
 
   const modal = document.createElement("div");
   modal.id = "__logoutModal";
   modal.innerHTML = `
-    <div onclick="document.getElementById('__logoutModal').remove()"
+    <div id="__logoutBackdrop"
          style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9998;backdrop-filter:blur(6px);"></div>
     <div style="
       position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
@@ -96,7 +90,6 @@ function logout() {
       backdrop-filter:blur(20px);
       font-family:'Outfit',sans-serif;
     ">
-      <!-- Hero stripe -->
       <div style="position:absolute;top:0;left:0;right:0;height:3px;border-radius:24px 24px 0 0;background:linear-gradient(135deg,#ec4899,#f43f5e);box-shadow:0 0 20px rgba(236,72,153,.5);"></div>
 
       <div style="font-size:42px;margin-bottom:14px;">👋</div>
@@ -110,8 +103,7 @@ function logout() {
       </div>
 
       <div style="display:flex;gap:12px;">
-        <button
-          onclick="document.getElementById('__logoutModal').remove()"
+        <button id="__logoutCancelBtn"
           style="
             flex:1;padding:12px 0;border-radius:12px;
             border:1px solid rgba(255,255,255,.10);
@@ -126,14 +118,7 @@ function logout() {
         >
           Cancel
         </button>
-        <button
-          onclick="
-            localStorage.removeItem('organizer_authToken');
-            localStorage.removeItem('organizerData');
-            localStorage.removeItem('currentPage');
-            window.__currentOrganizer = null;
-            window.location.href = '${LOGIN_URL}';
-          "
+        <button id="__logoutConfirmBtn"
           style="
             flex:1;padding:12px 0;border-radius:12px;border:none;
             background:linear-gradient(135deg,#ec4899,#f43f5e);
@@ -153,7 +138,21 @@ function logout() {
 
   document.body.appendChild(modal);
 
-  // Close on Escape
+
+  const closeModal = () => modal.remove();
+
+  document.getElementById("__logoutBackdrop")?.addEventListener("click", closeModal);
+  document.getElementById("__logoutCancelBtn")?.addEventListener("click", closeModal);
+  document.getElementById("__logoutConfirmBtn")?.addEventListener("click", () => {
+    localStorage.removeItem("organizer_authToken");
+    localStorage.removeItem("organizer_refreshToken");
+    localStorage.removeItem("organizerData");
+    localStorage.removeItem("currentPage");
+    window.__currentOrganizer = null;
+    window.location.href = loginUrl;  
+  });
+
+ 
   const onKey = e => {
     if (e.key === "Escape") {
       modal.remove();
@@ -204,12 +203,7 @@ function setText(id, val) {
   if (el) el.textContent = val;
 }
 
-// ─────────────────────────────────────────────────────────────
-// PROFILE
-// ─────────────────────────────────────────────────────────────
-
 function updateOrganizerProfile(organizer) {
-  // Store on window — tab-scoped, never shared across tabs via localStorage
   window.__currentOrganizer = organizer;
 
   const name     = organizer.name || "Organizer";
@@ -243,16 +237,13 @@ function updateProfileStats() {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// DASHBOARD STATS  (real data from /api/organizer/dashboard)
-// ─────────────────────────────────────────────────────────────
 async function loadDashboardStats() {
   try {
     const res = await apiFetch("/organizer/dashboard");
     if (!res.ok) return;
     const d = await res.json();
 
-    // Update any stat-card nums that exist in the HTML
+  
     const statMap = {
       statTotalEvents:        d.total_events        ?? 0,
       statApprovedEvents:     d.approved_events     ?? 0,
@@ -264,11 +255,11 @@ async function loadDashboardStats() {
       if (el) el.textContent = val;
     });
 
-    // Update profile sidebar stat rows
+    
     const nums = document.querySelectorAll(".pstat-num");
     if (nums.length >= 2) {
       nums[0].textContent = d.total_events ?? events.length;
-      // Show pending count (Draft + Pending = awaiting faculty approval)
+    
       nums[1].textContent = d.pending_events ?? events.filter(e => e.status === "Pending" || e.status === "Draft").length;
     }
   } catch (err) {
@@ -288,10 +279,6 @@ function setupProfile() {
     });
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────────────────────
 
 let events         = [];
 let allEvents      = [];
@@ -322,10 +309,6 @@ const notificationsData = {
     { text: "Python Bootcamp Lab booking request sent.", time: "Jan 15", color: "#43d9a2" },
   ]
 };
-
-// ─────────────────────────────────────────────────────────────
-// SIDEBAR & NAVIGATION
-// ─────────────────────────────────────────────────────────────
 
 function setupSidebar() {
   const toggle      = document.getElementById("sidebarToggle");
@@ -377,7 +360,6 @@ function switchPage(name) {
   currentPage = name;
   localStorage.setItem("currentPage", name);
 
-  // ── FIX 3: set topbar title even when no nav-item matches ──
   const titleEl = document.getElementById("topbarTitle");
   if (titleEl) {
     if (nav) {
@@ -392,7 +374,6 @@ function switchPage(name) {
     }
   }
 
-  // ── Page-specific loaders ──
   if (name === "registrations")  loadEventParticipantsTable();
   if (name === "announcements")  loadAnnouncements();
   if (name === "venues")         loadVenues();
@@ -400,22 +381,14 @@ function switchPage(name) {
   if (name === "clubs")          loadOrgClubs();
   if (name === "tickets")        setTimeout(initTicketScanner, 150);
   if (name === "certificates") {
-    setupCertificateUpload(); // attach listeners first (guarded — only runs once)
-    // Only refresh the events list — do NOT wipe certState or uploaded files
-    // resetCertWizard() is only called when the user explicitly clicks "Start New Batch"
+    setupCertificateUpload(); 
     loadCertificateEvents();
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// LOAD EVENTS
-// ─────────────────────────────────────────────────────────────
-
 async function loadEvents() {
   console.log("🔄 Loading events…");
   try {
-    // Organizers only see their own events — all statuses (Pending, Approved, Rejected, Published)
-    // The /events/all route is for admin views and event-detail lookups only
     const [myRes, allRes] = await Promise.all([
       apiFetch("/events/my"),
       apiFetch("/events/all")
@@ -424,7 +397,6 @@ async function loadEvents() {
     allEvents = allRes.ok ? await allRes.json() : [];
     events    = await hydrateRegistrationCounts(events);
     allEvents = await hydrateRegistrationCounts(allEvents);
-    // The events grid on the Events page shows the organizer's OWN events (all statuses)
     filteredEvents = [...allEvents];
     localStorage.setItem("evexa_events", JSON.stringify(allEvents));
     window.allEvents = allEvents;
@@ -465,10 +437,6 @@ async function hydrateRegistrationCounts(list) {
   return list;
 }
 
-// ─────────────────────────────────────────────────────────────
-// DASHBOARD: EVENTS LIST
-// ─────────────────────────────────────────────────────────────
-
 function renderDashEventList() {
   const container = document.getElementById("dashEventList");
   if (!container) return;
@@ -506,16 +474,11 @@ function renderDashEventList() {
   });
 }
 
-// ─────────────────────────────────────────────────────────────
-// DASHBOARD: PENDING APPROVALS
-// ─────────────────────────────────────────────────────────────
-
 function renderDashApprovals() {
   const list = document.getElementById("approvalList");
   if (!list) return;
 
   const orgData = window.__currentOrganizer || {};
-  // Show events pending faculty approval (Draft is the legacy name for Pending)
   const pending = events.filter(e => e.status === "Pending" || e.status === "Draft");
 
   if (!pending.length) {
@@ -553,10 +516,6 @@ async function handleApproval(id, approve) {
     showToast(approve ? "✅ Approved (offline)" : "❌ Rejected (offline)");
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-// DASHBOARD: CERTIFICATES
-// ─────────────────────────────────────────────────────────────
 
 function renderDashCertificates() {
   const list   = document.getElementById("certList");
@@ -596,10 +555,6 @@ async function handleCertAction(id, action) {
   } else { showToast("✅ Certificates verified"); }
 }
 
-// ─────────────────────────────────────────────────────────────
-// DASHBOARD: VENUE STATUS
-// ─────────────────────────────────────────────────────────────
-
 function renderDashVenueStatus(venueData) {
   const list = document.getElementById("venueStatusList");
   if (!list) return;
@@ -622,10 +577,6 @@ function renderDashVenueStatus(venueData) {
       </div>`;
   }).join("");
 }
-
-// ─────────────────────────────────────────────────────────────
-// ACTIVITY FEED
-// ─────────────────────────────────────────────────────────────
 
 function addActivityItem(htmlText, color = "violet", timeText = "Just now") {
   const feed = document.getElementById("activityFeed");
@@ -654,10 +605,6 @@ function loadActivityFeed() {
     </div>`).join("");
 }
 
-// ─────────────────────────────────────────────────────────────
-// EVENTS PAGE
-// ─────────────────────────────────────────────────────────────
-
 function renderEventsGrid() {
   const grid = document.getElementById("eventsGrid");
   if (!grid) return;
@@ -676,11 +623,11 @@ function createEventCard(e) {
   const seatsLeft  = Math.max(0, capacity - registered);
   const percent    = capacity > 0 ? (registered / capacity) * 100 : 0;
 
-  // Status badge config — Draft is legacy name for Pending (same workflow stage)
+  
   const statusConfig = {
   Pending:          { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
   Draft:            { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
-  "Faculty Approved": { label: "✅ Faculty Approved",       bg: "#dbeafe",              color: "#1d4ed8" }, // ← add this
+  "Faculty Approved": { label: "✅ Faculty Approved",       bg: "#dbeafe",              color: "#1d4ed8" }, 
   Approved:         { label: "✅ Approved",                 bg: "var(--emerald-light)", color: "#065f46" },
   Rejected:         { label: "❌ Rejected",                 bg: "var(--rose-light)",    color: "#be123c" },
   Published:        { label: "🌐 Published",                bg: "var(--violet-light)",  color: "var(--violet)" },
@@ -721,7 +668,7 @@ function filterEvents() {
   const club   = document.getElementById("filterClub")?.value  || "";
   const venue  = document.getElementById("filterVenue")?.value || "";
   const date   = document.getElementById("filterDate")?.value  || "";
-  // Filter from the organizer's own events (all statuses)
+ 
   filteredEvents = events.filter(e => {
     if (search && !e.title.toLowerCase().includes(search)) return false;
     if (type  && e.type  !== type)  return false;
@@ -738,7 +685,7 @@ function clearFilters() {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
-  filteredEvents = [...events]; // reset to organizer's own events, all statuses
+  filteredEvents = [...events]; 
   renderEventsGrid();
 }
 
@@ -764,10 +711,6 @@ function populateFilterDropdowns() {
     document.getElementById(id)?.addEventListener("change", filterEvents);
   });
 }
-
-// ─────────────────────────────────────────────────────────────
-// VENUES
-// ─────────────────────────────────────────────────────────────
 
 async function loadVenues() {
   try {
@@ -848,15 +791,12 @@ async function openVenueSlots(day) {
   document.getElementById("venueBookInfo").innerHTML =
     `<strong>📍 ${currentVenue}</strong> &nbsp;·&nbsp; 📅 ${formatDateYMD(dateStr)}`;
 
-  // Reset form
   document.getElementById("vbSlotStart").value = "";
   document.getElementById("vbSlotEnd").value   = "";
   document.getElementById("vbPurpose").value   = "";
   document.getElementById("vbDoc").value        = "";
   document.getElementById("vbSubmitBtn").disabled = false;
 
-  // Populate event dropdown
-  // Populate event dropdown — only organizer's own Pending events
 const evSel = document.getElementById("vbEventId");
 evSel.innerHTML = `<option value="">— Select an event (optional) —</option>`;
 const pendingEvents = events.filter(e => e.status === "Pending");
@@ -868,7 +808,6 @@ pendingEvents.forEach(e => {
   evSel.insertAdjacentHTML("beforeend",
     `<option value="${e.id}">${e.title} (${formatEventDate(e.date)})</option>`);
 });
-  // Load available slots
   const slotList = document.getElementById("vbSlotList");
   slotList.innerHTML = `<span style="color:var(--muted);font-size:13px;">Loading slots…</span>`;
   openModal("venueBookModal");
@@ -956,7 +895,6 @@ async function submitVenueBooking(e) {
   btn.disabled = false; btn.textContent = "📩 Submit Booking Request";
 }
 
-// ── Venue tab switcher ────────────────────────────────────────
 function switchVenueTab(tab) {
   document.querySelectorAll(".venue-tab").forEach(t => t.classList.remove("active"));
   document.getElementById("vtab-panel-calendar").style.display   = tab === "calendar"    ? "" : "none";
@@ -965,7 +903,6 @@ function switchVenueTab(tab) {
   if (tab === "mybookings") loadMyVenueBookings();
 }
 
-// ── My Bookings ───────────────────────────────────────────────
 async function loadMyVenueBookings() {
   const tbody = document.getElementById("myVenueBookingsBody");
   if (!tbody) return;
@@ -978,29 +915,30 @@ async function loadMyVenueBookings() {
       return;
     }
     tbody.innerHTML = data.map((b, i) => {
-      const statusColor = b.status === "Approved" ? "var(--emerald)" :
-                          b.status === "Rejected" ? "var(--rose)"    : "var(--amber)";
-      const statusBg    = b.status === "Approved" ? "var(--emerald-light)" :
-                          b.status === "Rejected" ? "var(--rose-light)"    : "var(--amber-light)";
-      const canCancel   = b.status === "Pending";
+      const statusColor = b.status === "hall_approved"    ? "var(--emerald)"  :
+                          b.status === "faculty_approved" ? "var(--sky)"      :
+                          b.status === "rejected"         ? "var(--rose)"     : "var(--amber)";
+      const statusBg    = b.status === "hall_approved"    ? "var(--emerald-light)"  :
+                          b.status === "faculty_approved" ? "var(--sky-light)"      :
+                          b.status === "rejected"         ? "var(--rose-light)"     : "var(--amber-light)";
       return `
         <tr style="border-bottom:1px solid var(--line);">
           <td style="padding:10px 14px;">${i+1}</td>
           <td style="padding:10px 14px;font-weight:500;">📍 ${b.venue_name}</td>
           <td style="padding:10px 14px;color:var(--ink2);">${b.event_title || "—"}</td>
           <td style="padding:10px 14px;color:var(--ink2);">${formatDateYMD(b.date)}</td>
-          <td style="padding:10px 14px;color:var(--ink2);">${(b.slot_start||"").slice(0,5)} – ${(b.slot_end||"").slice(0,5)}</td>
+          <td style="padding:10px 14px;color:var(--ink2);">${(b.slot_start||"").slice(0,5)}${b.slot_end ? " – " + b.slot_end.slice(0,5) : ""}</td>
           <td style="padding:10px 14px;">
-            <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${statusBg};color:${statusColor};">${b.status}</span>
-          </td>
-          <td style="padding:10px 14px;">
-            ${canCancel
-              ? `<button class="btn-ghost" style="font-size:12px;color:var(--rose);" onclick="cancelVenueBooking(${b.id})">Cancel</button>`
-              : `<span style="color:var(--muted);font-size:12px;">—</span>`}
+            <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${statusBg};color:${statusColor};">${
+              b.status === 'hall_approved'    ? 'Hall Approved'    :
+              b.status === 'faculty_approved' ? 'Faculty Approved' :
+              b.status === 'rejected'         ? 'Rejected'         :
+              b.status === 'pending'          ? 'Pending'          : b.status
+            }</span>
           </td>
         </tr>`;
     }).join("");
-  } catch { tbody.innerHTML = `<tr><td colspan="7" class="table-empty">Failed to load</td></tr>`; }
+  } catch { tbody.innerHTML = `<tr><td colspan="6" class="table-empty">Failed to load</td></tr>`; }
 }
 
 async function cancelVenueBooking(id) {
@@ -1012,7 +950,6 @@ async function cancelVenueBooking(id) {
   } catch { showToast("❌ Network error"); }
 }
 
-// ── Month nav ─────────────────────────────────────────────────
 document.getElementById("prevMonth")?.addEventListener("click", async () => {
   currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; }
   await loadVenueBookings(); renderCalendar();
@@ -1021,10 +958,6 @@ document.getElementById("nextMonth")?.addEventListener("click", async () => {
   currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; }
   await loadVenueBookings(); renderCalendar();
 });
-
-// ─────────────────────────────────────────────────────────────
-// ANNOUNCEMENTS
-// ─────────────────────────────────────────────────────────────
 
 async function loadAnnouncements() {
   try {
@@ -1077,23 +1010,40 @@ async function submitAnnouncement(e) {
   const form   = e.target;
   const raw    = form.dataset.editId;
   const editId = raw && raw !== "undefined" ? Number(raw) : null;
-  const payload = {
-    title:   document.getElementById("annTitle").value.trim(),
-    type:    document.getElementById("annType").value,
-    message: document.getElementById("annMessage").value.trim(),
-  };
+
+  const title   = document.getElementById("annTitle")?.value.trim()   || "";
+  const type    = document.getElementById("annType")?.value.trim()    || "General"; 
+  const message = document.getElementById("annMessage")?.value.trim() || "";
+
+  if (!title || !message) {
+    showToast("⚠️ Title and message are required.");
+    return;
+  }
+
+  const payload = { title, type, message };
+
   try {
     const url    = editId ? `/announcements/${editId}` : `/announcements`;
     const method = editId ? "PUT" : "POST";
-    const res    = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    if (!res.ok) { const d = await res.json().catch(() => ({})); showToast("❌ " + (d.message || "Failed")); return; }
+    const res    = await apiFetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      showToast("❌ " + (d.message || "Failed"));
+      return;
+    }
     showToast(editId ? "✅ Announcement updated!" : "📢 Announcement published!");
     closeModal("addAnnouncementModal");
-    form.reset(); delete form.dataset.editId;
+    form.reset();
+    delete form.dataset.editId;
     await loadAnnouncements();
-  } catch { showToast("❌ Something went wrong"); }
+  } catch {
+    showToast("❌ Something went wrong");
+  }
 }
-
 async function deleteAnnouncement(id) {
   if (!confirm("Delete this announcement?")) return;
   try {
@@ -1101,10 +1051,6 @@ async function deleteAnnouncement(id) {
     if (res.ok) { showToast("🗑️ Announcement deleted"); await loadAnnouncements(); }
   } catch { showToast("❌ Delete failed"); }
 }
-
-// ─────────────────────────────────────────────────────────────
-// EXECOM
-// ─────────────────────────────────────────────────────────────
 
 async function loadExecom() {
   const orgData = window.__currentOrganizer || {};
@@ -1163,10 +1109,6 @@ async function deleteExecomMember(id) {
   } catch { showToast("❌ Network error"); }
 }
 
-// ─────────────────────────────────────────────────────────────
-// CREATE EVENT
-// ─────────────────────────────────────────────────────────────
-
 async function submitCreateEvent(e) {
   e.preventDefault();
   const form     = e.target;
@@ -1199,10 +1141,6 @@ async function submitCreateEvent(e) {
   } catch { showToast("❌ Network error"); }
 }
 
-// ─────────────────────────────────────────────────────────────
-// NOTIFICATIONS
-// ─────────────────────────────────────────────────────────────
-
 function setupNotifications() {
   const btn = document.getElementById("notifBtn");
   if (btn) {
@@ -1227,10 +1165,6 @@ function renderNotifications() {
       <div class="notif-text"><p>${n.text}</p><span>${n.time}</span></div>
     </div>`).join("");
 }
-
-// ─────────────────────────────────────────────────────────────
-// DARK MODE  (FIX 1: single applyTheme, no duplicate)
-// ─────────────────────────────────────────────────────────────
 
 function setupDarkMode() {
   const saved   = localStorage.getItem("evexa_theme");
@@ -1259,10 +1193,6 @@ function applyTheme(mode) {
   if (settingsToggle) settingsToggle.checked = isLight;
   showToast(isLight ? "☀️ Light mode on" : "🌙 Dark mode on");
 }
-
-// ─────────────────────────────────────────────────────────────
-// QUICK ACTIONS
-// ─────────────────────────────────────────────────────────────
 
 function setupQuickActions() {
   const actionMap = {
@@ -1295,10 +1225,6 @@ function exportRegistrations() {
   showToast("📤 Full events table exported!");
 }
 
-// ─────────────────────────────────────────────────────────────
-// SEARCH FILTER
-// ─────────────────────────────────────────────────────────────
-
 function setupSearchFilter() {
   const input = document.getElementById("globalSearch");
   if (!input) return;
@@ -1321,10 +1247,6 @@ function setupPressBounce() {
     });
   });
 }
-
-// ─────────────────────────────────────────────────────────────
-// WIRE STATIC BUTTONS
-// ─────────────────────────────────────────────────────────────
 
 function wireStaticButtons() {
   document.getElementById("viewAllEventsLink")?.addEventListener("click", () => switchPage("events"));
@@ -1350,20 +1272,12 @@ function startClock() {
   tick(); setInterval(tick, 30_000);
 }
 
-// ─────────────────────────────────────────────────────────────
-// MODALS
-// ─────────────────────────────────────────────────────────────
-
 function openModal(id)  { document.getElementById(id)?.classList.add("open"); }
 function closeModal(id) { document.getElementById(id)?.classList.remove("open"); }
 
 document.querySelectorAll(".modal-overlay").forEach(overlay => {
   overlay.addEventListener("click", e => { if (e.target === overlay) overlay.classList.remove("open"); });
 });
-
-// ─────────────────────────────────────────────────────────────
-// TOAST
-// ─────────────────────────────────────────────────────────────
 
 function showToast(message) {
   const toast = document.getElementById("toast");
@@ -1376,10 +1290,6 @@ function showToast(message) {
 }
 
 console.log("✅ orgscript.js loaded");
-
-// ─────────────────────────────────────────────────────────────
-// DASHBOARD EVENT CALENDAR
-// ─────────────────────────────────────────────────────────────
 
 let evCalCursor = new Date(); evCalCursor.setDate(1);
 let evSelectedDate = null;
@@ -1407,7 +1317,6 @@ function renderEventCalendar() {
   const firstDay     = new Date(year, month, 1).getDay();
   const daysInMonth  = new Date(year, month + 1, 0).getDate();
 
-  // Build event map: key -> array of events
   const eventMap = {};
   getCalendarEvents().forEach(e => {
     const d = new Date(e.date);
@@ -1437,7 +1346,6 @@ function renderEventCalendar() {
   html += `</div>`;
   cal.innerHTML = html;
 
-  // Hide detail if no selected date
   const detail = document.getElementById("calEventDetail");
   if (detail && !evSelectedDate) detail.style.display = "none";
 }
@@ -1448,7 +1356,6 @@ function calDayClick(el) {
   const detail = document.getElementById("calEventDetail");
   const dateStr = evYMD(new Date(evCalCursor.getFullYear(), evCalCursor.getMonth(), parseInt(el.dataset.day)));
 
-  // Toggle off if already selected
   if (evSelectedDate === dateStr) {
     evSelectedDate = null;
     if (detail) detail.style.display = "none";
@@ -1492,14 +1399,9 @@ function setupEventCalendarNav() {
   next.addEventListener("click", () => { evCalCursor = new Date(evCalCursor.getFullYear(), evCalCursor.getMonth()+1, 1); evSelectedDate = null; renderEventCalendar(); });
 }
 
-// ─────────────────────────────────────────────────────────────
-// CERTIFICATES
-// ─────────────────────────────────────────────────────────────
-
 let certState = { step:1, eventId:null, eventTitle:null, participantCount:0, templateFile:null, excelFile:null, parsedNames:[] };
 let certSetupDone = false;
 
-// ─── Step navigation ─────────────────────────────────────────
 function certGoStep(n) {
   for (let i = 1; i <= 4; i++) {
     document.getElementById(`cpanel-${i}`)?.classList.toggle("active", i === n);
@@ -1520,7 +1422,6 @@ function updateCertSummary() {
   setText("csum-fontsize", (document.getElementById("certFontSize")?.value || 36) + "px");
 }
 
-// ─── Load events list (Step 1) ───────────────────────────────
 async function loadCertificateEvents() {
   const list = document.getElementById("certEventsList");
   if (!list) return;
@@ -1551,7 +1452,7 @@ async function loadCertificateEvents() {
           </div>
         </div>`;
     }).join("");
-    // Bind clicks via delegated listener on the list container (safe to set .onclick each time)
+   
     list.onclick = (e) => {
       const item = e.target.closest(".cert-event-item");
       if (!item) return;
@@ -1572,9 +1473,8 @@ async function loadCertificateEvents() {
   }
 }
 
-// ─── Template upload (Step 2) ─────────────────────────────────
 function setupCertificateUpload() {
-  if (certSetupDone) return; // only attach listeners once — prevents duplicate stacking
+  if (certSetupDone) return; 
   certSetupDone = true;
 
   const input = document.getElementById("certTemplateFile");
@@ -1624,10 +1524,9 @@ function setupCertificateUpload() {
             return;
           }
 
-          // Find the "Name" column by header (case-insensitive), fallback to column B (index 1)
           const headers  = rows[0].map(h => String(h).trim().toLowerCase());
           let   nameCol  = headers.findIndex(h => h === "name");
-          if (nameCol === -1) nameCol = 1; // fallback: column B
+          if (nameCol === -1) nameCol = 1; 
 
           const names = rows.slice(1)
             .map(r => String(r[nameCol] || "").trim())
@@ -1685,7 +1584,6 @@ function checkCertStep2() {
   if (btn) btn.disabled = !(hasTemplate && hasData);
 }
 
-// ─── Debug logger — shows messages ON SCREEN inside the preview box ──────────
 function certDebug(container, icon, title, detail) {
   const msg = `[CERT DEBUG] ${icon} ${title}${detail ? " | " + detail : ""}`;
   console.warn(msg);
@@ -1700,7 +1598,6 @@ function certDebug(container, icon, title, detail) {
   }
 }
 
-// ─── Preview (Step 3) ────────────────────────────────────────
 async function previewCertificate(e) {
   if (e && typeof e.stopPropagation === "function") {
     e.stopPropagation();
@@ -1781,7 +1678,6 @@ async function previewCertificate(e) {
   }
 }
 
-// ─── Generate (Step 4) ───────────────────────────────────────
 async function generateCertificates() {
   if (!certState.templateFile)                          { showToast("⚠️ No template uploaded"); return; }
   if (!certState.parsedNames || !certState.parsedNames.length) { showToast("⚠️ No names found in uploaded file"); return; }
@@ -1804,7 +1700,7 @@ async function generateCertificates() {
 
   const fd = new FormData();
   fd.append("template",  certState.templateFile);
-  fd.append("names",     JSON.stringify(certState.parsedNames));   // parsed client-side
+  fd.append("names",     JSON.stringify(certState.parsedNames));   
   fd.append("font_size", document.getElementById("certFontSize")?.value || 36);
   fd.append("x_pct",     document.getElementById("certXPct")?.value     || 50);
   fd.append("y_pct",     document.getElementById("certYPct")?.value     || 52);
@@ -1845,7 +1741,6 @@ async function generateCertificates() {
       date:     new Date().toISOString()
     });
 
-    // Show success screen
     setTimeout(() => {
       const genView = document.getElementById("certGenerateView");
       const sucView = document.getElementById("certSuccessView");
@@ -1866,7 +1761,6 @@ async function generateCertificates() {
   }
 }
 
-// ─── Tab switching ────────────────────────────────────────────
 function switchCertMainTab(tab) {
   const isGen = tab === "generate";
   document.getElementById("certTabGenerate").style.display = isGen ? "" : "none";
@@ -1876,12 +1770,10 @@ function switchCertMainTab(tab) {
   if (!isGen) loadCertHistory();
 }
 
-// ─── Reset wizard for a new batch ────────────────────────────
 function resetCertWizard() {
   certState = { step:1, eventId:null, eventTitle:null, participantCount:0, templateFile:null, excelFile:null, parsedNames:[] };
-  certSetupDone = false; // allow re-attaching upload listeners after a full reset
+  certSetupDone = false; 
 
-  // Step indicators
   for (let i = 1; i <= 4; i++) {
     const s = document.getElementById(`cstep-${i}`);
     if (s) { s.classList.remove("active","complete"); if (i===1) s.classList.add("active"); }
@@ -1889,13 +1781,11 @@ function resetCertWizard() {
     if (p) { p.classList.toggle("active", i===1); }
   }
 
-  // Step 1 badge & button
   const badge = document.getElementById("certStep1Selection");
   const next1 = document.getElementById("certStep1Next");
   if (badge) { badge.style.display = "none"; badge.textContent = ""; }
   if (next1) next1.disabled = true;
 
-  // Step 2 template upload
   const zone   = document.getElementById("certUploadZone");
   const status = document.getElementById("certFileStatus");
   const tInput = document.getElementById("certTemplateFile");
@@ -1905,21 +1795,16 @@ function resetCertWizard() {
   if (tInput) tInput.value         = "";
   if (fName)  fName.textContent    = "";
 
-  // Step 2 excel input
   const excelIn   = document.getElementById("certExcelFile");
   const excelPrev = document.getElementById("certExcelPreview");
   if (excelIn)   excelIn.value         = "";
   if (excelPrev) excelPrev.textContent = "";
 
-  // Step 2 next button
   const next2 = document.getElementById("certStep2Next");
   if (next2) next2.disabled = true;
 
-  // Step 3 preview
   const container = document.getElementById("certPreviewContainer");
   if (container) container.innerHTML = `<div class="empty-state"><span>👁</span><p>Click Preview to render</p></div>`;
-
-  // Step 4 generate/success views
   const genView  = document.getElementById("certGenerateView");
   const sucView  = document.getElementById("certSuccessView");
   const footer   = document.getElementById("certStep4Footer");
@@ -1934,12 +1819,8 @@ function resetCertWizard() {
   if (fill)     fill.style.width       = "0%";
   if (label)    label.textContent      = "Preparing…";
   if (genBtn)   genBtn.disabled        = false;
-
-  // Reload events list
   loadCertificateEvents();
 }
-
-// ─── History ──────────────────────────────────────────────────
 function saveCertHistory(entry) {
   try {
     const list = JSON.parse(localStorage.getItem("cert_history") || "[]");
@@ -1989,11 +1870,6 @@ function deleteCertHistoryEntry(id) {
     showToast("🗑 Entry removed");
   } catch {}
 }
-
-// ─────────────────────────────────────────────────────────────
-// EXECOM EDIT / ADD
-// ─────────────────────────────────────────────────────────────
-
 function openEditExecomModal(memberId) {
   const m = execomMembersCache.find(x => x.id === memberId);
   if (!m) { showToast("❌ Member not found"); return; }
@@ -2035,11 +1911,6 @@ async function submitExecomEdit(e) {
     await loadExecom();
   } catch (err) { console.error("submitExecomEdit error:", err); showToast("❌ Network error — check your connection"); }
 }
-
-// ─────────────────────────────────────────────────────────────
-// REGISTRATIONS
-// ─────────────────────────────────────────────────────────────
-
 async function loadEventParticipantsTable() {
   const tbody = document.getElementById("eventParticipantsBody");
   if (!tbody) return;
@@ -2072,11 +1943,6 @@ async function downloadParticipantsCSV(eventId, eventTitle = "event") {
     showToast("✅ Participants CSV downloaded");
   } catch (err) { console.error(err); showToast("❌ Download failed"); }
 }
-
-// ─────────────────────────────────────────────────────────────
-// QR TICKET SCANNER
-// ─────────────────────────────────────────────────────────────
-
 let html5Qr; let lastToken = null; let scanning = false;
 
 function setScanResult(html) { const el = document.getElementById("scanResult"); if (el) el.innerHTML = html; }
@@ -2088,15 +1954,12 @@ function extractTokenFromQR(decodedText) {
     const obj = JSON.parse(decodedText);
     if (obj && obj.t) { console.log("✅ Extracted token:", obj.t); return obj.t; }
   } catch (_) {}
-  // Accept any non-empty string as a raw token (remove old >20 char restriction)
   if (decodedText.trim().length > 0) return decodedText.trim();
   return null;
 }
 
 async function verifyTicketToken(token) {
   if (!token) { setScanResult(`<b>❌ Invalid QR</b><br/>Could not read token from this QR code.`); return; }
-  // FIX: only skip if the LAST SUCCESSFUL verification was this token.
-  // Reset lastToken on any failure so the user can retry.
   if (token === lastToken) return;
   setScanResult(`⏳ Verifying ticket...`);
   try {
@@ -2107,11 +1970,9 @@ async function verifyTicketToken(token) {
     });
     const data = await res.json();
     if (!res.ok) {
-      // FIX: do NOT set lastToken on failure — allow the same QR to be retried
       setScanResult(`<b>❌ ${data.message || "Verification failed"}</b>`);
       return;
     }
-    // Only lock-out the token on a definitive server response
     lastToken = token;
     if (data.status === "VALID") {
       setScanResult(`<div style="padding:10px;border-radius:12px;background:#ecfdf5;border:1px solid #10b9811f;">
@@ -2142,36 +2003,25 @@ async function verifyTicketToken(token) {
     setScanResult(`<b>ℹ️ ${data.status}</b>`);
   } catch (err) {
     console.error("verifyTicketToken error:", err);
-    // FIX: reset lastToken on network error so the scan can be retried
     lastToken = null;
     setScanResult(`<b>❌ Network / Server error</b>`);
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// TICKET SCANNER  (robust: contrast boost + small qrbox + dual strategy)
-// ─────────────────────────────────────────────────────────────
-
-let html5QrScanInterval = null;   // manual scan loop handle
-
-/**
- * Grab the current video frame, apply contrast enhancement,
- * and hand it to Html5Qrcode.scanFileV2 for decoding.
- * Returns the decoded text or null.
- */
+let html5QrScanInterval = null;   
 async function _scanFrameWithBoost(html5QrInstance, videoEl, canvasEl) {
   const W = canvasEl.width  = videoEl.videoWidth  || 640;
   const H = canvasEl.height = videoEl.videoHeight || 480;
   const ctx = canvasEl.getContext("2d", { willReadFrequently: true });
 
-  // Draw current video frame
+ 
   ctx.drawImage(videoEl, 0, 0, W, H);
 
-  // ── Contrast + brightness boost (helps purple-on-white screen QRs) ──
+
   const imgData = ctx.getImageData(0, 0, W, H);
   const d = imgData.data;
-  const contrast   = 2.2;   // >1 = more contrast
-  const brightness = 10;    // pixel offset
+  const contrast   = 2.2;   
+  const brightness = 10;   
   const factor     = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
   for (let i = 0; i < d.length; i += 4) {
     d[i]   = Math.min(255, Math.max(0, factor * (d[i]   - 128) + 128 + brightness));
@@ -2180,7 +2030,6 @@ async function _scanFrameWithBoost(html5QrInstance, videoEl, canvasEl) {
   }
   ctx.putImageData(imgData, 0, 0);
 
-  // Convert to blob then scan
   return new Promise((resolve) => {
     canvasEl.toBlob(async (blob) => {
       if (!blob) { resolve(null); return; }
@@ -2203,7 +2052,6 @@ function initTicketScanner() {
   if (startBtn.dataset.bound === "1") return;
   startBtn.dataset.bound = "1"; stopBtn.dataset.bound = "1";
 
-  // Off-screen canvas for frame processing
   const offCanvas = document.createElement("canvas");
 
   startBtn.onclick = async () => {
@@ -2213,7 +2061,6 @@ function initTicketScanner() {
     startBtn.disabled = true; stopBtn.disabled = false;
 
     try {
-      // Clean up previous instance
       if (html5QrScanInterval) { clearInterval(html5QrScanInterval); html5QrScanInterval = null; }
       if (html5Qr) {
         try { await html5Qr.stop(); } catch (_) {}
@@ -2225,7 +2072,6 @@ function initTicketScanner() {
 
       await new Promise(r => setTimeout(r, 80));
       const rawWidth = document.getElementById("qr-reader")?.offsetWidth || 0;
-      // Small box = user must aim precisely, but decoder is faster & more accurate
       const boxSize = Math.max(Math.floor(rawWidth * 0.55), 180);
       console.log("qr-reader offsetWidth:", rawWidth, "\u2192 boxSize:", boxSize);
 
@@ -2233,7 +2079,7 @@ function initTicketScanner() {
         fps: 10,
         qrbox: { width: boxSize, height: boxSize },
         rememberLastUsedCamera: true,
-        supportedScanTypes: [0],   // QR_CODE only
+        supportedScanTypes: [0],  
       };
 
       const onDecodeSuccess = (decodedText) => {
@@ -2241,7 +2087,7 @@ function initTicketScanner() {
       };
       const onDecodeError = (_) => {};
 
-      // ── Strategy 1: native html5-qrcode scanning (facingMode) ──
+  
       let nativeStarted = false;
       try {
         await html5Qr.start({ facingMode: "environment" }, scanConfig, onDecodeSuccess, onDecodeError);
@@ -2264,8 +2110,6 @@ function initTicketScanner() {
 
       setScanResult("✅ Camera ready — centre the QR inside the box.");
 
-      // ── Strategy 2: overlay a contrast-boosted manual scan loop ──
-      // Runs in parallel. If native ZXing misses it, this will catch it.
       const videoEl = document.querySelector("#qr-reader video");
       if (videoEl && typeof html5Qr.scanFileV2 === "function") {
         console.log("\uD83D\uDD0D Contrast-boost scan loop active");
@@ -2278,7 +2122,7 @@ function initTicketScanner() {
               verifyTicketToken(extractTokenFromQR(text));
             }
           } catch (_) {}
-        }, 350);   // check ~3×/sec independent of native fps
+        }, 350); 
       } else {
         console.log("scanFileV2 not available — relying on native ZXing only");
       }
@@ -2308,16 +2152,11 @@ function initTicketScanner() {
   };
 }
 
-// ─────────────────────────────────────────────────────────────
-// CLUBS  (FIX 4: click handlers inside renderOrgClubsGrid,
-//         no broken _origRenderOrgClubsGrid patch)
-// ─────────────────────────────────────────────────────────────
-
 let allOrgClubs      = [];
 let filteredOrgClubs = [];
 let currentClubFilter = "all";
 
-// Wire pill filter buttons (event delegation)
+
 document.addEventListener("click", function (e) {
   const pill = e.target.closest("#clubPillBar .org-club-pill");
   if (!pill) return;
@@ -2366,7 +2205,6 @@ function filterClubs() {
   renderOrgClubsGrid();
 }
 
-// FIX 6: clearClubFilters was missing
 function clearClubFilters() {
   const s = document.getElementById("clubSearch");
   if (s) s.value = "";
@@ -2415,7 +2253,6 @@ function renderOrgClubCard(c) {
     </div>`;
 }
 
-// FIX 4: click handlers added directly here, no broken patch
 function renderOrgClubsGrid() {
   const grid = document.getElementById("clubsGrid");
   if (!grid) return;
@@ -2430,9 +2267,7 @@ function renderOrgClubsGrid() {
   });
 }
 
-// ─────────────────────────────────────────────────────────────
-// CLUB SINGLE
-// ─────────────────────────────────────────────────────────────
+
 
 function openOrgClubSingle(clubId) {
   switchPage("club-single");
@@ -2461,7 +2296,7 @@ async function loadOrgClubSingle(clubId) {
     let memberCount = "—";
     try { const mRes = await apiFetch(`/clubs/${clubId}/members`); if (mRes.ok) { const mData = await mRes.json(); memberCount = mData.count ?? mData.length ?? "—"; } } catch (_) {}
 
-    // FIX 5: renamed to clubEvents to avoid shadowing global events[]
+  
     let clubEvents = [];
     try { const evRes = await apiFetch(`/clubs/${clubId}/events`); if (evRes.ok) clubEvents = await evRes.json(); } catch (_) {}
 
@@ -2492,7 +2327,6 @@ function renderOrgClubSingle(club, memberCount, clubEvents, execom, content) {
   function fmtDate(raw) { if (!raw) return "TBD"; const d = new Date(raw); return isNaN(d) ? raw : d.toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" }); }
   function fmtTime(raw) { if (!raw) return ""; if (/^\d{2}:\d{2}:\d{2}$/.test(String(raw))) return String(raw).slice(0,5); const d = new Date(raw); return isNaN(d) ? raw : d.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" }); }
 
-  // Events HTML
   let eventsHtml = "";
   if (clubEvents.length) {
     const cards = clubEvents.map(ev => {
@@ -2522,7 +2356,6 @@ function renderOrgClubSingle(club, memberCount, clubEvents, execom, content) {
     eventsHtml = `<div class="ocs-section"><div class="ocs-section-title">Events</div><div class="empty-state" style="padding:20px;"><span>📭</span><p>No events from this club yet.</p></div></div>`;
   }
 
-  // Execom HTML
   let execomHtml = "";
   const rolePriority  = ["chairperson","chair","vice chairperson","vice chair","secretary","treasurer"];
   const sortedExecom  = [...execom].sort((a, b) => {
@@ -2558,8 +2391,6 @@ function renderOrgClubSingle(club, memberCount, clubEvents, execom, content) {
   } else {
     execomHtml = `<div class="ocs-section"><div class="ocs-section-title">Executive Committee</div><div class="empty-state" style="padding:20px;"><span>👥</span><p>No execom data available.</p></div></div>`;
   }
-
-  // Store execom in window so download button can reference it
   window.__currentClubExecom = execom;
   window.__currentClubId     = club.club_id;
   window.__currentClubName   = name;
@@ -2611,10 +2442,6 @@ function renderOrgClubSingle(club, memberCount, clubEvents, execom, content) {
       </div>
     </div>`;
 }
-// ─────────────────────────────────────────────────────────────
-// CLUB SINGLE — DOWNLOAD HELPERS
-// ─────────────────────────────────────────────────────────────
-
 async function downloadClubMembersCSV(clubId, clubName) {
   try {
     const res = await apiFetch(`/organizer/clubs/${clubId}/members`);
@@ -2665,13 +2492,6 @@ function downloadClubExecomCSV(execomData, clubName) {
   URL.revokeObjectURL(a.href);
   showToast("✅ Execom list downloaded");
 }
-
-// ═══════════════════════════════════════════════════════════════
-// EVENT DETAIL PAGE  (merged from org.js + org.html + org.css)
-// Call openEventDetail(id) from anywhere in the SPA instead of
-// navigating to org.html?id=...
-// ═══════════════════════════════════════════════════════════════
-
 let _edCurrentId   = null;
 let _edCurrentData = null;
 
@@ -2682,17 +2502,11 @@ async function openEventDetail(id, mode = "view") {
   const container = document.getElementById("edContainer");
   if (!container) return;
   container.innerHTML = `<div class="empty-state"><span>⏳</span><p>Loading event…</p></div>`;
-
-  // Fetch event data — check the organizer's own list first (covers all statuses
-  // including Pending/Rejected), then fall back to /events/all for Published events,
-  // then finally the single-event endpoint.
   let eData = null;
   try {
-    // 1. Check already-loaded organizer events cache (fastest, covers all statuses)
     if (Array.isArray(events) && events.length) {
       eData = events.find(e => String(e.id) === String(id)) || null;
     }
-    // 2. Re-fetch /events/my in case cache is stale
     if (!eData) {
       const myRes = await apiFetch("/events/my");
       if (myRes.ok) {
@@ -2700,7 +2514,6 @@ async function openEventDetail(id, mode = "view") {
         eData = myList.find(e => String(e.id) === String(id)) || null;
       }
     }
-    // 3. Fall back to single-event endpoint (works for any status)
     if (!eData) {
       const singleRes = await apiFetch(`/events/${id}`);
       if (singleRes.ok) eData = await singleRes.json();
@@ -2711,8 +2524,6 @@ async function openEventDetail(id, mode = "view") {
     container.innerHTML = `<div class="card" style="padding:24px;"><b>Event not found.</b><p style="color:var(--muted);margin-top:8px;">It may have been deleted or you lack permission.</p></div>`;
     return;
   }
-
-  // Hydrate registration count
   try {
     const cRes = await apiFetch(`/registrations/count/${id}`);
     if (cRes.ok) { const cData = await cRes.json(); eData.registered = Number(cData.count || 0); }
@@ -2722,8 +2533,6 @@ async function openEventDetail(id, mode = "view") {
   if (mode === "edit") renderEventEdit(container, eData, id);
   else                 renderEventView(container, eData, id);
 }
-
-// ─── helpers ──────────────────────────────────────────────────
 function edFormatDate(dateStr) {
   if (!dateStr) return "N/A";
   const d = new Date(dateStr);
@@ -2735,8 +2544,6 @@ function edFormatTime(t) {
   return `${h > 12 ? h - 12 : h || 12}:${String(m).padStart(2,"0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 function edCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
-
-// ─── VIEW ─────────────────────────────────────────────────────
 function renderEventView(container, eData, id) {
   const posterBg = { Workshop:"#6c63ff", Seminar:"#ff6584", Hackathon:"#43d9a2", Cultural:"#f4a261", Sports:"#ffd166" };
   const bg       = posterBg[eData.type] || "#6c63ff";
@@ -2744,8 +2551,6 @@ function renderEventView(container, eData, id) {
   const seatsLeft = Math.max((Number(eData.capacity)||0) - (Number(eData.registered)||0), 0);
   const pct       = Number(eData.capacity) > 0 ? Math.min(100, Math.round((Number(eData.registered||0)/Number(eData.capacity))*100)) : 0;
   const statusCls = { open:"", draft:"draft", closed:"closed" }[eData.status] || "";
-
-  // ── Status banner: contextual info + action per workflow stage ──
   const statusBanners = {
     Pending: `
       <div style="margin-bottom:18px;padding:14px 18px;border-radius:14px;
@@ -2760,7 +2565,6 @@ function renderEventView(container, eData, id) {
           </div>
         </div>
       </div>`,
-    // Draft is the legacy equivalent of Pending — same banner
     Draft: `
       <div style="margin-bottom:18px;padding:14px 18px;border-radius:14px;
                   background:var(--amber-light,#fef3c7);border:1px solid rgba(180,83,9,.2);
@@ -2921,7 +2725,7 @@ function renderEventView(container, eData, id) {
       </aside>
     </div>`;
 
-  // Tabs
+ 
   let participantsLoaded = false;
   container.querySelectorAll(".ed-tab").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -2936,7 +2740,7 @@ function renderEventView(container, eData, id) {
     });
   });
 
-  // Buttons
+ 
   document.getElementById("edEditBtn")?.addEventListener("click", () => openEventDetail(id, "edit"));
   document.getElementById("edShareBtn")?.addEventListener("click", async () => {
     const url = `${location.origin}${location.pathname}?eventId=${id}`;
@@ -2945,8 +2749,6 @@ function renderEventView(container, eData, id) {
   });
   document.getElementById("edDownloadBtn")?.addEventListener("click", () => edDownloadCSV(id));
   document.getElementById("edUploadReportBtn")?.addEventListener("click", () => edUploadReport(id));
-
-  // ── Publish button (only rendered when status === 'Approved') ──
   document.getElementById("edPublishBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("edPublishBtn");
     if (!btn) return;
@@ -2964,7 +2766,7 @@ function renderEventView(container, eData, id) {
       if (res.ok) {
         showToast("🌐 Event published! Now visible in all portals.");
         await loadEvents();
-        openEventDetail(id); // refresh to show Published banner
+        openEventDetail(id); 
       } else {
         const err = await res.json().catch(() => ({}));
         showToast("❌ " + (err.message || "Publish failed."));
@@ -2978,8 +2780,6 @@ function renderEventView(container, eData, id) {
     }
   });
 }
-
-// ─── load participants table ───────────────────────────────────
 async function edLoadParticipants(id) {
   const wrap = document.getElementById("edParticipantsWrap");
   if (!wrap) return;
@@ -3008,7 +2808,6 @@ async function edLoadParticipants(id) {
   } catch { wrap.innerHTML = `<p class="ed-desc">Failed to load participants.</p>`; }
 }
 
-// ─── download CSV ─────────────────────────────────────────────
 async function edDownloadCSV(id) {
   try {
     const res  = await apiFetch(`/registrations/event/${id}`);
@@ -3024,8 +2823,6 @@ async function edDownloadCSV(id) {
     a.click();
   } catch { showToast("❌ Download failed."); }
 }
-
-// ─── EVENT REPORT ─────────────────────────────────────────────
 
 async function edUploadReport(id) {
   const file = document.getElementById("edReportFile")?.files?.[0];
@@ -3056,7 +2853,7 @@ async function edUploadReport(id) {
   }
 }
 
-// ─── EDIT ─────────────────────────────────────────────────────
+
 function renderEventEdit(container, eData, id) {
   container.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
@@ -3145,8 +2942,8 @@ function renderEventEdit(container, eData, id) {
           await apiFetch(`/events/${id}/poster`, { method:"PUT", body:fd });
         }
         showToast("✅ Event updated!");
-        await loadEvents(); // refresh cached event list
-        openEventDetail(id); // go back to view mode
+        await loadEvents(); 
+        openEventDetail(id); 
       } else {
         const err = await res.json().catch(() => ({}));
         showToast("❌ Save failed: " + (err.message || res.status));

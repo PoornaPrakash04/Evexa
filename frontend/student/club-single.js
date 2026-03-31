@@ -1,6 +1,4 @@
-// ===========================
-//  club-single.js — connected to backend
-// ===========================
+
 {
 const STATIC_BASE = API_BASE.replace("/api", "");
 const urlParams  = new URLSearchParams(window.location.search);
@@ -8,7 +6,6 @@ const urlId      = urlParams.get("id");
 const ssId       = sessionStorage.getItem("selectedClubId");
 const selectedId = parseInt(urlId || ssId || "1", 10);
 
-// ── Category colors ───────────────────────────────────────
 const categoryColors = {
   Technical: "#6d5efc",
   Social:    "#f59e0b",

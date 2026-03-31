@@ -12,7 +12,7 @@ async function loadMyIssues() {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    // Show exact error instead of spinning forever
+   
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       list.innerHTML = `

@@ -1,4 +1,4 @@
-// events.js
+
 const express    = require("express");
 const db         = require("../db");
 const authorize  = require("../middleware/authMiddleware");
@@ -15,16 +15,108 @@ const transporter = nodemailer.createTransport({
 
 const router = express.Router();
 
-// ─────────────────────────────────────────────────────────────
-//  HELPER — admin bypass check
-// ─────────────────────────────────────────────────────────────
-const isAdmin = (req) => req.user?.role === "admin";
 
-// ─────────────────────────────────────────────────────────────
-//  ⚠️  STATIC / NAMED ROUTES  — must come BEFORE  /:id  routes
-// ─────────────────────────────────────────────────────────────
 
-// ── Create event ──────────────────────────────────────────────
+
+const isAdmin   = (req) => (req.user?.role || "").toUpperCase() === "ADMIN";
+const isFaculty = (req) => (req.user?.role || "").toUpperCase() === "FACULTY";
+const isHall    = (req) => (req.user?.role || "").toUpperCase() === "HALL";
+
+/**
+ * STATUS TRANSITION MAP
+ * Defines which role can move an event from one status to another.
+ *
+ *   submitted       ──[FACULTY]──►  faculty_approved  |  rejected
+ *   faculty_approved──[HALL]────►  hall_approved     |  rejected
+ *   hall_approved   ──[ORGANIZER/ADMIN]──► published
+ */
+const STATUS_TRANSITIONS = {
+  
+  submitted: {
+    faculty_approved: ["FACULTY", "ADMIN"],
+    rejected:         ["FACULTY", "ADMIN"],
+  },
+  faculty_approved: {
+    hall_approved: ["HALL", "ADMIN"],
+    rejected:      ["HALL", "ADMIN"],
+  },
+  hall_approved: {
+    published: ["ORGANIZER", "ADMIN"],
+    rejected:  ["HALL", "ADMIN"],
+  },
+};
+
+/**
+ * Validate whether a role may perform a given status transition.
+ * Returns { ok: true } or { ok: false, reason: string }
+ */
+function validateTransition(currentStatus, nextStatus, role) {
+  const upperRole = (role || "").toUpperCase();
+  const fromMap   = STATUS_TRANSITIONS[currentStatus];
+
+  if (!fromMap) {
+    return { ok: false, reason: `Event status '${currentStatus}' cannot be changed.` };
+  }
+  if (!(nextStatus in fromMap)) {
+    return {
+      ok: false,
+      reason: `Cannot transition from '${currentStatus}' to '${nextStatus}'.`,
+    };
+  }
+  if (!fromMap[nextStatus].includes(upperRole)) {
+    return {
+      ok: false,
+      reason: `Role '${upperRole}' is not permitted to set status '${nextStatus}'.`,
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * Core status-update logic (extracted from routes so it can be reused).
+ * Performs the DB update, updates linked venue_bookings when appropriate,
+ * and resolves/rejects a promise.
+ */
+function applyStatusChange(eventId, currentStatus, nextStatus, role) {
+  return new Promise((resolve, reject) => {
+    const check = validateTransition(currentStatus, nextStatus, role);
+    if (!check.ok) return reject({ status: 400, message: check.reason });
+
+    db.query(
+      "UPDATE events SET status = ? WHERE id = ?",
+      [nextStatus, eventId],
+      (err, result) => {
+        if (err)                  return reject({ status: 500, message: "Server error", error: err.message });
+        if (!result.affectedRows) return reject({ status: 404, message: "Event not found." });
+
+        
+        if (nextStatus === "faculty_approved") {
+          db.query(
+            `UPDATE venue_bookings SET status = 'faculty_approved'
+             WHERE event_id = ? AND status = 'pending'`,
+            [eventId],
+            (e) => { if (e) console.error("Venue booking sync error:", e); }
+          );
+        } else if (nextStatus === "hall_approved") {
+          db.query(
+            `UPDATE venue_bookings SET status = 'hall_approved'
+             WHERE event_id = ? AND status = 'faculty_approved'`,
+            [eventId],
+            (e) => { if (e) console.error("Venue booking sync error:", e); }
+          );
+        }
+
+        resolve({ message: `Event status updated to '${nextStatus}'.` });
+      }
+    );
+  });
+}
+
+
+
+
+
+
 router.post("/", authorize(), upload.single("poster"), (req, res) => {
   const title            = (req.body.title || req.body.name || "").trim();
   const { type, description, date, time, capacity, registration_fee, venue, category, academic_year } = req.body;
@@ -35,14 +127,13 @@ router.post("/", authorize(), upload.single("poster"), (req, res) => {
 
   if (!title) return res.status(400).json({ message: "Event title is required." });
 
-  // If we already have a numeric club_id, use it directly.
-  // Otherwise look it up by name (the frontend sends club as a name string).
+  
   function doInsert(resolved_club_id) {
     db.query(
-      `INSERT INTO events 
+      `INSERT INTO events
         (title, type, description, date, time, capacity, registration_fee,
          venue, club_id, status, organizer_id, organizer_label, poster, category, academic_year)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?, ?, ?, ?)`,
       [
         title, type || null, description || null, date, time || null,
         capacity || null, registration_fee || 0, venue || null,
@@ -62,17 +153,11 @@ router.post("/", authorize(), upload.single("poster"), (req, res) => {
   if (club_id_direct) {
     doInsert(club_id_direct);
   } else if (club_name_raw) {
-    // Resolve club name → club_id
     db.query(
       "SELECT club_id FROM clubs WHERE club_name = ? LIMIT 1",
       [club_name_raw],
       (err, rows) => {
-        if (err || !rows.length) {
-          // Club not found — insert with null club_id rather than failing
-          doInsert(null);
-        } else {
-          doInsert(rows[0].club_id);
-        }
+        doInsert((!err && rows.length) ? rows[0].club_id : null);
       }
     );
   } else {
@@ -80,30 +165,67 @@ router.post("/", authorize(), upload.single("poster"), (req, res) => {
   }
 });
 
-// ── Bulk approve ──────────────────────────────────────────────
+
+
+
+
+
 router.post("/bulk-approve", authorize(), (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || !ids.length)
     return res.status(400).json({ message: "No event IDs provided." });
 
+  const role = (req.user?.role || "").toUpperCase();
+
+  
+  let fromStatus, toStatus;
+  if (role === "FACULTY") {
+    fromStatus = "submitted";
+    toStatus   = "faculty_approved";
+  } else if (role === "HALL") {
+    fromStatus = "faculty_approved";
+    toStatus   = "hall_approved";
+  } else if (role === "ADMIN") {
+    
+    fromStatus = req.body.from_status;
+    toStatus   = req.body.to_status;
+    if (!fromStatus || !toStatus) {
+      return res.status(400).json({
+        message: "Admin bulk-approve requires 'from_status' and 'to_status' in the request body.",
+      });
+    }
+    const check = validateTransition(fromStatus, toStatus, "ADMIN");
+    if (!check.ok) return res.status(400).json({ message: check.reason });
+  } else {
+    return res.status(403).json({ message: "You do not have permission to bulk-approve events." });
+  }
+
+  
   db.query(
-    "UPDATE events SET status = 'Approved' WHERE id IN (?)",
-    [ids],
-    (err) => {
+    "UPDATE events SET status = ? WHERE id IN (?) AND status = ?",
+    [toStatus, ids, fromStatus],
+    (err, result) => {
       if (err) {
         console.error("Bulk approve error:", err);
         return res.status(500).json({ message: "Server error" });
       }
-      res.json({ message: `${ids.length} event(s) approved.` });
+      res.json({
+        message: `${result.affectedRows} of ${ids.length} event(s) moved to '${toStatus}'. ` +
+                 `${ids.length - result.affectedRows} skipped (wrong current status).`,
+      });
     }
   );
 });
 
-// ── Bulk delete ───────────────────────────────────────────────
+
 router.post("/bulk-delete", authorize(), (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || !ids.length)
     return res.status(400).json({ message: "No event IDs provided." });
+
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access only." });
+  }
 
   db.query(
     "DELETE FROM events WHERE id IN (?)",
@@ -118,7 +240,7 @@ router.post("/bulk-delete", authorize(), (req, res) => {
   );
 });
 
-// ── Get organizer's own events ────────────────────────────────
+
 router.get("/my", authorize(), (req, res) => {
   db.query(
     `SELECT e.*, c.club_name AS club, c.club_logo
@@ -134,20 +256,15 @@ router.get("/my", authorize(), (req, res) => {
   );
 });
 
-// ── Get all events ────────────────────────────────────────────
-// Returns only Approved/Published/Completed events by default.
-// Pending and Rejected events are NEVER shown here — they only
-// appear in the owning organizer's /events/my list.
-// Admins may pass ?admin=1 to bypass the filter and see all.
+
 router.get("/all", authorize(), (req, res) => {
-  // Admins see everything. Faculty see all except Pending/Rejected (proposals page
-  // handles those via /faculty/proposals). Everyone else sees only published events.
+  const role = (req.user?.role || "").toUpperCase();
   const statusClause =
-    req.user?.role === "admin"
+    role === "ADMIN"
       ? ""
-      : req.user?.role === "FACULTY"
-      ? "WHERE e.status IN ('Approved', 'faculty_approved', 'Published', 'Completed')"
-      : "WHERE e.status IN ('Approved', 'Published', 'Completed')";
+      : role === "FACULTY"
+      ? "WHERE e.status IN ('hall_approved', 'faculty_approved', 'published', 'completed') AND e.deleted_at IS NULL"
+      : "WHERE e.status IN ('hall_approved', 'published', 'completed') AND e.deleted_at IS NULL";
 
   db.query(
     `SELECT
@@ -174,9 +291,8 @@ router.get("/all", authorize(), (req, res) => {
   );
 });
 
-// ── Get organizer issues (organizer dashboard) ────────────────
+
 router.get("/issues", authorize(), (req, res) => {
-  console.log("GET /issues | organizer id:", req.user.id);
   db.query(
     `SELECT i.*, e.title AS event_title, s.name AS student_name, s.roll_no
      FROM issues i
@@ -195,9 +311,8 @@ router.get("/issues", authorize(), (req, res) => {
   );
 });
 
-// ── Get student's own issues ──────────────────────────────────
+
 router.get("/my-issues", authorize(), (req, res) => {
-  console.log("GET /my-issues | student id:", req.user.id, "| role:", req.user.role);
   db.query(
     `SELECT i.*, e.title AS event_title, e.date AS event_date
      FROM issues i
@@ -215,15 +330,14 @@ router.get("/my-issues", authorize(), (req, res) => {
   );
 });
 
-// ── Get published events (students / public portals) ─────────
-// Only shows events that are explicitly Published (or Completed).
-// Approved events that haven't been published yet are NOT shown here.
+
 router.get("/", (req, res) => {
   db.query(
     `SELECT e.*, c.club_name AS club, c.club_logo
      FROM events e
      LEFT JOIN clubs c ON e.club_id = c.club_id
-     WHERE e.status IN ('Approved', 'Published', 'Completed')
+     WHERE e.status IN ('hall_approved', 'published', 'completed')
+     AND e.deleted_at IS NULL
      ORDER BY e.date DESC`,
     (err, result) => {
       if (err) return res.status(500).json({ message: "Server error" });
@@ -232,68 +346,61 @@ router.get("/", (req, res) => {
   );
 });
 
-// ─────────────────────────────────────────────────────────────
-//  DYNAMIC  /:id  ROUTES  — keep these AFTER all named routes
-// ─────────────────────────────────────────────────────────────
-
-// ── Approve event ─────────────────────────────────────────────
 router.put("/:id/status", authorize(), (req, res) => {
-  const { status } = req.body;
-  const allowedStatuses = ["Faculty Approved", "Rejected"];
+  const { status: nextStatus } = req.body;
+  const role                   = (req.user?.role || "").toUpperCase();
 
-  // Only faculty can use this route
-  if (req.user?.role !== "FACULTY") {
-    return res.status(403).json({ message: "Faculty access only." });
-  }
-  if (!allowedStatuses.includes(status)) {
-    return res.status(400).json({ message: "Invalid status." });
-  }
+  if (!nextStatus)
+    return res.status(400).json({ message: "A target 'status' is required." });
 
+  
   db.query(
-    "UPDATE events SET status = ? WHERE id = ?",
-    [status, req.params.id],
-    (err, result) => {
-      if (err) return res.status(500).json({ message: "Server error" });
-      if (!result.affectedRows) return res.status(404).json({ message: "Event not found." });
-
-      // If faculty approved, also update the linked venue booking to Faculty Approved
-      if (status === "Faculty Approved") {
-        db.query(
-          `UPDATE venue_bookings vb
-           JOIN venues v ON v.id = vb.venue_id
-           SET vb.status = 'Faculty Approved'
-           WHERE vb.event_id = ? AND vb.status = 'Pending'`,
-          [req.params.id],
-          (err2) => {
-            if (err2) console.error("Venue booking status update error:", err2);
-          }
-        );
-      }
-
-      res.json({ message: `Event ${status}.` });
-    }
-  );
-});
-// ── Reject event ──────────────────────────────────────────────
-router.put("/:id/reject", authorize(), (req, res) => {
-  db.query(
-    "UPDATE events SET status = 'Rejected' WHERE id = ?",
+    "SELECT id, status FROM events WHERE id = ?",
     [req.params.id],
-    (err) => {
-      if (err) return res.status(500).json({ message: "Server error" });
-      res.json({ message: "Event rejected" });
+    (err, rows) => {
+      if (err)         return res.status(500).json({ message: "Server error" });
+      if (!rows.length) return res.status(404).json({ message: "Event not found." });
+
+      const currentStatus = rows[0].status;
+
+      applyStatusChange(req.params.id, currentStatus, nextStatus, role)
+        .then((payload) => res.json(payload))
+        .catch((e)      => res.status(e.status || 500).json({ message: e.message }));
     }
   );
 });
 
-// ── Publish event (organizer-triggered, only after Approved) ──
-// Moves the event from 'Approved' → 'Published' so it appears
-// in the public/student portal. Organizers can only publish
-// events they own and that have already been approved by faculty.
+
+
+
+router.put("/:id/reject", authorize(), (req, res) => {
+  const role = (req.user?.role || "").toUpperCase();
+
+  if (!["FACULTY", "HALL", "ADMIN"].includes(role)) {
+    return res.status(403).json({ message: "You do not have permission to reject events." });
+  }
+
+  db.query(
+    "SELECT id, status FROM events WHERE id = ?",
+    [req.params.id],
+    (err, rows) => {
+      if (err)          return res.status(500).json({ message: "Server error" });
+      if (!rows.length) return res.status(404).json({ message: "Event not found." });
+
+      const currentStatus = rows[0].status;
+
+      applyStatusChange(req.params.id, currentStatus, "rejected", role)
+        .then((payload) => res.json(payload))
+        .catch((e)      => res.status(e.status || 500).json({ message: e.message }));
+    }
+  );
+});
+
+
 router.put("/:id/publish", authorize(), (req, res) => {
+  const role       = (req.user?.role || "").toUpperCase();
   const organizerId = req.user.id;
 
-  // First confirm the event belongs to this organizer and is Approved
   db.query(
     "SELECT id, status, organizer_id FROM events WHERE id = ?",
     [req.params.id],
@@ -303,66 +410,64 @@ router.put("/:id/publish", authorize(), (req, res) => {
 
       const ev = result[0];
 
-      // Admins may publish any event; organizers can only publish their own
-      if (req.user?.role !== "admin" && ev.organizer_id !== organizerId) {
+      
+      if (role !== "ADMIN" && ev.organizer_id !== organizerId) {
         return res.status(403).json({ message: "You are not the organizer of this event." });
       }
-      if (ev.status !== "Approved") {
-        const hint = (ev.status === "Pending" || ev.status === "Draft")
-          ? "It is still awaiting faculty approval."
-          : ev.status === "Rejected"
-          ? "It was rejected. Please edit and resubmit."
-          : ev.status === "Published"
-          ? "It is already published."
-          : "";
-        return res.status(400).json({
-          message: `Cannot publish: event status is '${ev.status}'. ${hint}`.trim()
-        });
-      }
 
-      db.query(
-        "UPDATE events SET status = 'Published' WHERE id = ?",
-        [req.params.id],
-        (err2) => {
-          if (err2) return res.status(500).json({ message: "Server error" });
-          res.json({ message: "Event published successfully! It is now visible in all portals." });
-        }
-      );
+      
+      applyStatusChange(req.params.id, ev.status, "published", role === "ADMIN" ? "ADMIN" : "ORGANIZER")
+        .then(() => res.json({ message: "Event published successfully! It is now visible in all portals." }))
+        .catch((e) => {
+          
+          const hints = {
+            submitted:        "It is still awaiting faculty approval.",
+            faculty_approved: "It is awaiting hall coordinator approval.",
+            rejected:         "It was rejected. Please edit and resubmit.",
+            published:        "It is already published.",
+          };
+          const hint = hints[ev.status] || "";
+          res.status(e.status || 400).json({ message: `${e.message} ${hint}`.trim() });
+        });
     }
   );
 });
 
-// ── General edit event (admin + organizer) ────────────────────
+
+
+
 router.put("/:id", authorize(), (req, res) => {
-  const title         = (req.body.title || req.body.name || "").trim();
-  const { organizer, date, category, academic_year, status,
+  const title = (req.body.title || req.body.name || "").trim();
+  const { organizer, date, category, academic_year,
           type, description, time, capacity, venue } = req.body;
 
-  const whereClause   = isAdmin(req)
-    ? "WHERE id = ?"
-    : "WHERE id = ? AND organizer_id = ?";
-  const whereParams   = isAdmin(req)
-    ? [req.params.id]
-    : [req.params.id, req.user.id];
+  
+  if (req.body.status !== undefined && !isAdmin(req)) {
+    return res.status(403).json({
+      message: "Status cannot be changed via this endpoint. Use the dedicated approval/publish routes.",
+    });
+  }
+
+  const whereClause = isAdmin(req) ? "WHERE id = ?" : "WHERE id = ? AND organizer_id = ?";
+  const whereParams = isAdmin(req) ? [req.params.id] : [req.params.id, req.user.id];
 
   db.query(
     `UPDATE events SET
-       title          = COALESCE(NULLIF(?, ''), title),
-       organizer_label= COALESCE(?, organizer_label),
-       date           = COALESCE(NULLIF(?, ''), date),
-       category       = COALESCE(NULLIF(?, ''), category),
-       academic_year  = COALESCE(NULLIF(?, ''), academic_year),
-       status         = COALESCE(NULLIF(?, ''), status),
-       type           = COALESCE(NULLIF(?, ''), type),
-       description    = COALESCE(NULLIF(?, ''), description),
-       time           = COALESCE(NULLIF(?, ''), time),
-       capacity       = COALESCE(NULLIF(?, ''), capacity),
-       venue          = COALESCE(NULLIF(?, ''), venue)
+       title           = COALESCE(NULLIF(?, ''), title),
+       organizer_label = COALESCE(?, organizer_label),
+       date            = COALESCE(NULLIF(?, ''), date),
+       category        = COALESCE(NULLIF(?, ''), category),
+       academic_year   = COALESCE(NULLIF(?, ''), academic_year),
+       type            = COALESCE(NULLIF(?, ''), type),
+       description     = COALESCE(NULLIF(?, ''), description),
+       time            = COALESCE(NULLIF(?, ''), time),
+       capacity        = COALESCE(NULLIF(?, ''), capacity),
+       venue           = COALESCE(NULLIF(?, ''), venue)
      ${whereClause}`,
     [
       title, organizer || null,
       date || null, category || null, academic_year || null,
-      status || null, type || null, description || null,
+      type || null, description || null,
       time || null, capacity || null, venue || null,
       ...whereParams,
     ],
@@ -378,7 +483,7 @@ router.put("/:id", authorize(), (req, res) => {
   );
 });
 
-// ── Upload poster ─────────────────────────────────────────────
+
 router.put("/:id/poster", authorize(), upload.single("poster"), (req, res) => {
   const poster = req.file ? req.file.filename : null;
   if (!poster) return res.status(400).json({ message: "No file uploaded." });
@@ -393,7 +498,7 @@ router.put("/:id/poster", authorize(), upload.single("poster"), (req, res) => {
   );
 });
 
-// ── Get organizer contact for an event ────────────────────────
+
 router.get("/:id/organizer", (req, res) => {
   db.query(
     `SELECT o.name, o.email, o.phone
@@ -409,10 +514,10 @@ router.get("/:id/organizer", (req, res) => {
   );
 });
 
-// ── Submit issue for an event ─────────────────────────────────
+
 router.post("/:id/issues", authorize(), (req, res) => {
   const { message } = req.body;
-  const eventId = req.params.id;
+  const eventId     = req.params.id;
 
   if (!message?.trim())
     return res.status(400).json({ message: "Issue message cannot be empty." });
@@ -461,10 +566,15 @@ router.post("/:id/issues", authorize(), (req, res) => {
   );
 });
 
-// ── Update issue status ───────────────────────────────────────
+
 router.put("/issues/:issueId", authorize(), (req, res) => {
   const { status } = req.body;
-  console.log("PUT /issues/:issueId | id:", req.params.issueId, "| status:", status);
+  const allowedIssueStatuses = ["open", "in_progress", "resolved", "closed"];
+
+  if (!allowedIssueStatuses.includes(status)) {
+    return res.status(400).json({ message: `Invalid issue status. Allowed: ${allowedIssueStatuses.join(", ")}` });
+  }
+
   db.query(
     "UPDATE issues SET status = ? WHERE id = ?",
     [status, req.params.issueId],
@@ -478,7 +588,7 @@ router.put("/issues/:issueId", authorize(), (req, res) => {
   );
 });
 
-// ── Delete event ──────────────────────────────────────────────
+
 router.delete("/:id", authorize(), (req, res) => {
   const query  = isAdmin(req)
     ? "DELETE FROM events WHERE id = ?"
@@ -498,8 +608,8 @@ router.delete("/:id", authorize(), (req, res) => {
   });
 });
 
-// ── Get single event ──────────────────────────────────────────
-// ⚠️ Always keep LAST among all GET routes
+
+
 router.get("/:id", (req, res) => {
   db.query(
     `SELECT e.*, c.club_name AS club, c.club_logo

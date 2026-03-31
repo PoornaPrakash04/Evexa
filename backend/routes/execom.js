@@ -4,9 +4,7 @@ const authorize = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-/* ===============================
-   GET ALL
-================================= */
+
 router.get("/", authorize(), (req, res) => {
   db.query(
     "SELECT * FROM execom ORDER BY position",
@@ -20,9 +18,7 @@ router.get("/", authorize(), (req, res) => {
   );
 });
 
-/* ===============================
-   GET BY CLUB
-================================= */
+
 router.get("/club/:club", authorize(), (req, res) => {
   db.query(
     "SELECT * FROM execom WHERE club = ? ORDER BY position",
@@ -37,9 +33,7 @@ router.get("/club/:club", authorize(), (req, res) => {
   );
 });
 
-/* ===============================
-   ADD MEMBER
-================================= */
+
 router.post("/", authorize(), (req, res) => {
   const { name, position, class: className, email, phone } = req.body;
   if (!name || !position) return res.status(400).json({ message: "Name and position are required" });
@@ -65,9 +59,7 @@ router.post("/", authorize(), (req, res) => {
     );
   });
 });
-/* ===============================
-   UPDATE MEMBER
-================================= */
+
 router.put("/:id", authorize(), (req, res) => {
   const id = Number(req.params.id);
   const { name, position, class: className, email, phone } = req.body;
@@ -93,9 +85,7 @@ router.put("/:id", authorize(), (req, res) => {
   });
 });
 
-/* ===============================
-   DELETE MEMBER
-================================= */
+
 router.delete("/:id", authorize(), (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ message: "Invalid ID" });

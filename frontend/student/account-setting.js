@@ -1,5 +1,4 @@
-//  account-setting.js
-// ── Toast ─────────────────────────────────────────────────────────────────
+
 function showToast(msg, type) {
   const toast = document.getElementById("toast");
   if (!toast) return;
@@ -8,8 +7,6 @@ function showToast(msg, type) {
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => { toast.className = "toast"; }, 3000);
 }
-
-// ── Load user profile from /api/auth/me ───────────────────────────────────
 async function loadUserProfile() {
   const token = localStorage.getItem("student_auth_token");
   if (!token) {

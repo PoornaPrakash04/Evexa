@@ -1,11 +1,6 @@
-/* ================================================================
-   EVEXA  —  Faculty Dashboard.css
-   Dark glass · Vivid neon · Full light/dark mode support
-   ================================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
-/* ── Design Tokens (Dark = default) ─────────────────────────── */
 :root {
   --bg:        #080b14;
   --bg-2:      #0d1120;
@@ -20,7 +15,7 @@
   --text-2: rgba(240,242,255,.65);
   --text-3: rgba(240,242,255,.38);
 
-  /* sidebar / topbar / dropdown backgrounds as tokens */
+ 
   --sidebar-bg:   rgba(10,13,28,.97);
   --topbar-bg:    rgba(8,11,20,.72);
   --dropdown-bg:  rgba(10,13,28,.97);
@@ -29,9 +24,9 @@
   --tooltip-bg:   rgba(8,11,20,.96);
   --select-opt:   #0d1120;
 
-  /* nav item default text */
+ 
   --nav-color:    rgba(200,205,255,.65);
-  /* mini-user name/role text */
+ 
   --mini-name-color: rgba(240,242,255,.92);
   --mini-role-color: rgba(200,205,255,.40);
 
@@ -75,7 +70,7 @@
   --font: 'Outfit', ui-sans-serif, sans-serif;
 }
 
-/* ── Light Mode Token Overrides ─────────────────────────────── */
+
 body.light {
   --bg:        #f2f4ff;
   --bg-2:      #eaeeff;
@@ -107,7 +102,7 @@ body.light {
   --shadow-lg: 0 20px 60px rgba(139,92,246,.14);
 }
 
-/* ── Reset ── */
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 
@@ -122,7 +117,7 @@ body {
   transition: background .25s ease, color .25s ease;
 }
 
-/* Ambient mesh */
+
 body::before {
   content: '';
   position: fixed; inset: 0;
@@ -143,9 +138,7 @@ body.light::before {
 
 .app { height: 100%; display: flex; position: relative; z-index: 1; }
 
-/* ══════════════════════════════════════════════════════════════
-   SIDEBAR
-══════════════════════════════════════════════════════════════ */
+
 .sidebar {
   width: 256px; flex-shrink: 0;
   background: var(--sidebar-bg);
@@ -157,7 +150,7 @@ body.light::before {
   position: relative; z-index: 20;
 }
 
-/* Ambient orb — dimmed in light mode */
+
 .sidebar::before {
   content: '';
   position: absolute; top: -80px; left: -80px;
@@ -174,7 +167,7 @@ body.light .sidebar::before { opacity: .3; }
   to   { opacity:1;  transform:scale(1.2); }
 }
 
-/* Collapsed sidebar */
+
 .sidebar.collapsed { width: 68px; }
 .sidebar.collapsed .brand-text,
 .sidebar.collapsed .nav-label,
@@ -198,7 +191,7 @@ body.light .sidebar::before { opacity: .3; }
   box-shadow: var(--shadow-md);
 }
 
-/* Brand */
+
 .brand {
   display: flex; align-items: center; gap: 12px;
   padding: 22px 18px 18px;
@@ -220,7 +213,7 @@ body.light .sidebar::before { opacity: .3; }
 }
 .brand-sub { font-size: 10px; color: var(--text-3); font-weight: 500; margin-top: 1px; }
 
-/* Nav */
+
 .nav {
   flex: 1; overflow-y: auto;
   padding: 10px;
@@ -275,7 +268,7 @@ body.light .sidebar::before { opacity: .3; }
 .nav-badge.green  { background: rgba(34,197,94,.15);  border-color: rgba(34,197,94,.32);   color: #4ade80; }
 .nav-badge.orange { background: rgba(245,158,11,.15); border-color: rgba(245,158,11,.32);  color: #fbbf24; }
 
-/* Sidebar bottom user */
+
 .sidebar-bottom {
   padding: 10px 10px 14px;
   border-top: 1px solid var(--border);
@@ -303,16 +296,14 @@ body.light .sidebar::before { opacity: .3; }
   background: var(--g-violet); flex-shrink: 0;
   box-shadow: var(--glow-v);
 }
-/* Use token so these change in light mode */
+
 .mini-name { font-size: 12px; font-weight: 700; color: var(--mini-name-color); line-height: 1.3; }
 .mini-role { font-size: 10px; color: var(--mini-role-color); }
 
-/* ══════════════════════════════════════════════════════════════
-   MAIN
-══════════════════════════════════════════════════════════════ */
+
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 
-/* Topbar */
+
 .topbar {
   height: 62px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
@@ -346,7 +337,7 @@ body.light .sidebar::before { opacity: .3; }
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-2); }
 
-/* Notification bell */
+
 .notif-wrap { position: relative; }
 .notif-bell { font-size: 16px; }
 .notif-count {
@@ -359,7 +350,7 @@ body.light .sidebar::before { opacity: .3; }
   box-shadow: 0 0 8px rgba(236,72,153,.8);
 }
 
-/* Notif dropdown */
+
 .notif-dropdown {
   position: absolute; top: calc(100% + 10px); right: 0;
   width: 320px; max-height: 420px;
@@ -388,7 +379,7 @@ body.light .sidebar::before { opacity: .3; }
 .notif-drop-list::-webkit-scrollbar { width: 4px; }
 .notif-drop-list::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 99px; }
 
-/* Profile button */
+
 .profile-btn { background: none; border: none; cursor: pointer; padding: 0; }
 .profile-avatar {
   width: 32px; height: 32px; border-radius: 9px;
@@ -411,7 +402,7 @@ body.light .sidebar::before { opacity: .3; }
 .top-link.danger { color: var(--pink); background: rgba(236,72,153,.10); border-color: rgba(236,72,153,.22); }
 .top-link.danger:hover { background: rgba(236,72,153,.18); }
 
-/* Content */
+
 .content { flex: 1; overflow-y: auto; padding: 22px 26px 40px; }
 .content::-webkit-scrollbar { width: 6px; }
 .content::-webkit-scrollbar-track { background: transparent; }
@@ -420,9 +411,7 @@ body.light .sidebar::before { opacity: .3; }
 .page-section { animation: pageIn .22s ease; }
 @keyframes pageIn { from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);} }
 
-/* ══════════════════════════════════════════════════════════════
-   HERO STRIP
-══════════════════════════════════════════════════════════════ */
+
 .hero-strip {
   display: flex; align-items: center; justify-content: space-between;
   gap: 20px; flex-wrap: wrap;
@@ -460,9 +449,7 @@ body.light .sidebar::before { opacity: .3; }
 .hero-stat-label { font-size: 11px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
 .hero-divider { width: 1px; height: 48px; background: var(--border-2); }
 
-/* ══════════════════════════════════════════════════════════════
-   DASHBOARD GRID
-══════════════════════════════════════════════════════════════ */
+
 .dash-grid {
   display: grid; grid-template-columns: repeat(3, 1fr);
   gap: 16px; margin-bottom: 18px; align-items: start;
@@ -471,7 +458,7 @@ body.light .sidebar::before { opacity: .3; }
 .col-span-2 { grid-column: span 2; }
 .col-span-3 { grid-column: span 3; }
 
-/* Clubs quick grid */
+
 .clubs-quick-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
   gap: 12px; padding: 16px;
@@ -499,9 +486,7 @@ body.light .sidebar::before { opacity: .3; }
   background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.3); color: #4ade80;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   DASH LIST ITEMS
-══════════════════════════════════════════════════════════════ */
+
 .dash-list { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px 14px; }
 .dash-item {
   display: flex; align-items: center; gap: 10px;
@@ -525,9 +510,7 @@ body.light .sidebar::before { opacity: .3; }
 
 .list-empty { font-size: 13px; color: var(--text-3); padding: 8px 2px; }
 
-/* ══════════════════════════════════════════════════════════════
-   PANEL
-══════════════════════════════════════════════════════════════ */
+
 .panel {
   background: var(--glass);
   backdrop-filter: var(--blur-sm);
@@ -546,12 +529,10 @@ body.light .sidebar::before { opacity: .3; }
 .panel-sub   { font-size: 11px; color: var(--text-3); margin-top: 2px; }
 .panel-body  { padding: 18px 20px; }
 
-/* ══════════════════════════════════════════════════════════════
-   LAYOUTS
-══════════════════════════════════════════════════════════════ */
+
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
 
-/* Club overview cards */
+
 .clubs-overview-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
   gap: 16px; margin-bottom: 16px;
@@ -604,9 +585,7 @@ body.light .sidebar::before { opacity: .3; }
 .club-event-date { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
 .club-card-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 
-/* ══════════════════════════════════════════════════════════════
-   ANALYTICS KPI
-══════════════════════════════════════════════════════════════ */
+
 .analytics-kpi-row {
   display: grid; grid-template-columns: repeat(4,1fr);
   gap: 12px; margin-bottom: 16px;
@@ -639,9 +618,7 @@ body.light .sidebar::before { opacity: .3; }
 .leg-text  { font-size: 13px; font-weight: 600; color: var(--text); }
 .leg-pct   { font-size: 12px; color: var(--text-3); margin-top: 1px; }
 
-/* ══════════════════════════════════════════════════════════════
-   FEEDBACK
-══════════════════════════════════════════════════════════════ */
+
 .comments-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
   gap: 12px; padding: 16px;
@@ -667,9 +644,7 @@ body.light .sidebar::before { opacity: .3; }
 .rating-bar-fill { height: 100%; border-radius: 999px; transition: width .8s cubic-bezier(.4,0,.2,1); }
 .rating-pct { font-size: 11px; color: var(--text-3); font-weight: 700; width: 32px; text-align: right; }
 
-/* ══════════════════════════════════════════════════════════════
-   FILTER BAR + INPUTS
-══════════════════════════════════════════════════════════════ */
+
 .filter-bar {
   display: flex; align-items: center; gap: 10px;
   flex-wrap: wrap; margin-bottom: 14px;
@@ -687,13 +662,11 @@ body.light .sidebar::before { opacity: .3; }
   box-shadow: 0 0 0 3px rgba(139,92,246,.12);
   background: var(--surface-3);
 }
-/* select dropdown options use token */
+
 .filter-select option { background: var(--select-opt); color: var(--text); }
 .bulk-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
 
-/* ══════════════════════════════════════════════════════════════
-   TABLE
-══════════════════════════════════════════════════════════════ */
+
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 thead th {
@@ -713,9 +686,7 @@ tbody td { padding: 12px 14px; font-weight: 500; color: var(--text-2); vertical-
 .ev-name { font-weight: 700; color: var(--text); cursor: pointer; }
 .ev-name:hover { color: var(--violet-2); text-decoration: underline; }
 
-/* ══════════════════════════════════════════════════════════════
-   BADGES
-══════════════════════════════════════════════════════════════ */
+
 .badge {
   padding: 3px 9px; border-radius: 999px;
   font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block;
@@ -726,17 +697,49 @@ tbody td { padding: 12px 14px; font-weight: 500; color: var(--text-2); vertical-
 .badge.review   { background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.3);  color: #2563eb; }
 .badge.purple   { background: rgba(139,92,246,.15); border: 1px solid rgba(139,92,246,.3);  color: var(--violet); }
 
-/* Badge text is dark-mode friendly via explicit colors above;
-   in light mode override to darker shades for contrast */
+
+
+.badge.submitted {
+  background: rgba(245,158,11,.15);
+  border: 1px solid rgba(245,158,11,.3);
+  color: #f59e0b;
+}
+
+.badge.faculty-approved,
+.badge.faculty_approved {
+  background: rgba(6,182,212,.15);
+  border: 1px solid rgba(6,182,212,.3);
+  color: #22d3ee;
+}
+
+.badge.hall-approved,
+.badge.hall_approved {
+  background: rgba(34,197,94,.15);
+  border: 1px solid rgba(34,197,94,.3);
+  color: #22c55e;
+}
+
+.badge.draft {
+  background: rgba(148,163,184,.1);
+  border: 1px solid rgba(148,163,184,.25);
+  color: #94a3b8;
+}
+
+body.light .badge.submitted       { color: #b45309; }
+body.light .badge.faculty-approved,
+body.light .badge.faculty_approved { color: #0891b2; }
+body.light .badge.hall-approved,
+body.light .badge.hall_approved   { color: #15803d; }
+body.light .badge.draft           { color: #64748b; }
+
+
 body.light .badge.pending  { color: #b45309; }
 body.light .badge.approved { color: #15803d; }
 body.light .badge.rejected { color: #b91c1c; }
 body.light .badge.review   { color: #1d4ed8; }
 body.light .badge.purple   { color: #6d28d9; }
 
-/* ══════════════════════════════════════════════════════════════
-   BUTTONS
-══════════════════════════════════════════════════════════════ */
+
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 15px; border-radius: var(--r-sm);
@@ -778,9 +781,7 @@ body.light .btn.danger  { color: #b91c1c; }
   color: var(--violet); display: inline-block;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   CALENDAR
-══════════════════════════════════════════════════════════════ */
+
 .cal-controls { display: flex; align-items: center; gap: 8px; }
 .cal-nav-btn {
   width: 28px; height: 28px; border-radius: 8px;
@@ -822,10 +823,15 @@ body.light .btn.danger  { color: #b91c1c; }
   cursor: pointer; font-weight: 700; color: var(--text);
   background: rgba(34,197,94,.10); border: 1px solid rgba(34,197,94,.25);
 }
-.cal-day.has-pending:hover, .cal-day.has-approved:hover { transform: scale(1.1); box-shadow: 0 0 16px rgba(139,92,246,.2); }
+.cal-day.has-event {
+  cursor: pointer; font-weight: 700; color: var(--text);
+  background: rgba(139,92,246,.09); border: 1px solid rgba(139,92,246,.22);
+}
+.cal-day.has-pending:hover, .cal-day.has-approved:hover, .cal-day.has-event:hover { transform: scale(1.1); box-shadow: 0 0 16px rgba(139,92,246,.2); }
 
 .cal-day.has-pending::after  { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,.8); }
 .cal-day.has-approved::after { background: var(--green);  box-shadow: 0 0 6px rgba(34,197,94,.8); }
+.cal-day.has-event::after    { background: var(--violet); box-shadow: 0 0 6px rgba(139,92,246,.6); }
 .cal-day.selected { background: var(--g-violet); color: white; font-weight: 800; box-shadow: var(--glow-v); }
 
 .cal-event-detail {
@@ -838,9 +844,7 @@ body.light .btn.danger  { color: #b91c1c; }
 .cal-detail-meta  { font-size: 12px; color: var(--text-3); margin-bottom: 10px; }
 .cal-detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* ══════════════════════════════════════════════════════════════
-   PROPOSAL DETAIL
-══════════════════════════════════════════════════════════════ */
+
 .detail-panel { margin-top: 0; }
 .detail-section { margin-bottom: 18px; }
 .detail-section-title { font-size: 11px; font-weight: 800; color: var(--text-3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
@@ -850,9 +854,7 @@ body.light .btn.danger  { color: #b91c1c; }
 .detail-val   { font-size: 13px; font-weight: 600; color: var(--text); }
 .detail-desc  { font-size: 13px; color: var(--text-2); line-height: 1.7; }
 
-/* ══════════════════════════════════════════════════════════════
-   ANNOUNCE CARD
-══════════════════════════════════════════════════════════════ */
+
 .announce-card {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -865,9 +867,7 @@ body.light .btn.danger  { color: #b91c1c; }
 .announce-meta  { font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
 .announce-body  { font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
 
-/* ══════════════════════════════════════════════════════════════
-   NOTIFICATION ITEMS
-══════════════════════════════════════════════════════════════ */
+
 .notif-item {
   display: flex; align-items: flex-start; gap: 12px;
   padding: 12px 16px; border-bottom: 1px solid var(--border);
@@ -888,9 +888,7 @@ body.light .btn.danger  { color: #b91c1c; }
 .notif-unread-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--violet); flex-shrink: 0; align-self: center; box-shadow: 0 0 6px rgba(139,92,246,.7); }
 .notif-hist-list { display: flex; flex-direction: column; }
 
-/* ══════════════════════════════════════════════════════════════
-   OVERLAY + DRAWER
-══════════════════════════════════════════════════════════════ */
+
 .overlay {
   position: fixed; inset: 0; z-index: 40;
   background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
@@ -917,14 +915,10 @@ body.light .btn.danger  { color: #b91c1c; }
 .drawer-sub   { font-size: 11px; color: var(--text-3); margin-top: 2px; }
 .drawer-body  { padding: 20px; overflow-y: auto; flex: 1; }
 
-/* ══════════════════════════════════════════════════════════════
-   MISC
-══════════════════════════════════════════════════════════════ */
+
 .divider { height: 1px; background: var(--border); margin: 14px 0; }
 
-/* ══════════════════════════════════════════════════════════════
-   TOAST
-══════════════════════════════════════════════════════════════ */
+
 .toast {
   position: fixed; bottom: 26px; left: 50%;
   transform: translateX(-50%) translateY(80px);
@@ -946,9 +940,7 @@ body.light .toast.success { color: #15803d; }
 body.light .toast.error   { color: #b91c1c; }
 body.light .toast.info    { color: #6d28d9; }
 
-/* ══════════════════════════════════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════════════════════════════════ */
+
 @media (max-width: 1280px) {
   .analytics-kpi-row { grid-template-columns: repeat(2,1fr); }
   .dash-grid { grid-template-columns: 1fr 1fr; }
@@ -1004,7 +996,7 @@ body.light .toast.info    { color: #6d28d9; }
   line-height:1.5;
   color:var(--text);
 }
-/* ══════ ALL CLUBS PAGE ══════ */
+
 .all-clubs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1082,7 +1074,7 @@ body.light .toast.info    { color: #6d28d9; }
   letter-spacing: .4px;
 }
 
-/* ══════ CLUB DETAIL DRAWER ══════ */
+
 .club-detail-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,.5);
@@ -1173,12 +1165,8 @@ body.light .toast.info    { color: #6d28d9; }
 }
 .club-info-label { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 4px; }
 .club-info-val   { font-size: 13px; font-weight: 600; color: var(--text); }
-/* ══════════════════════════════════════════════════════════════
-   VENUES PAGE
-══════════════════════════════════════════════════════════════ */
-/* =========================
-   VENUES PAGE - MATCH DASHBOARD
-========================= */
+
+
 
 .venue-match-layout {
   display: grid;
@@ -1323,9 +1311,9 @@ body.light .toast.info    { color: #6d28d9; }
 
 
 .venue-day .day-number {
-  font-size: 18px;        /* ↓ smaller size */
-  font-weight: 600;       /* ↓ less bold */
-  color: #2f855a;         /* softer green */
+  font-size: 18px;       
+  font-weight: 600;      
+  color: #2f855a;        
 }
 
 
@@ -1384,9 +1372,7 @@ body.light .toast.info    { color: #6d28d9; }
 
   color: #dc2626;
 }
-/* ══════════════════════════════════════════════════════════════
-   BACK BUTTON
-══════════════════════════════════════════════════════════════ */
+
 .back-btn {
   display: inline-flex;
   align-items: center;
@@ -1444,7 +1430,7 @@ body.light .toast.info    { color: #6d28d9; }
   stroke-linecap: round; stroke-linejoin: round;
 }
 
-/* Breadcrumb variant — for club-filtered pages */
+
 .back-btn.breadcrumb {
   background: transparent;
   border-color: transparent;
@@ -1467,7 +1453,7 @@ body.light .toast.info    { color: #6d28d9; }
   background-clip: text;
 }
 
-/* Light mode adjustments */
+
 body.light .back-btn { color: var(--text-2); }
 body.light .back-btn:hover { box-shadow: 0 0 18px rgba(139,92,246,.12); }
 body.light .back-btn .back-icon { background: var(--surface-3); }
@@ -1526,9 +1512,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
 #eventDetailDrawer.open {
   transform: translateX(0);
 }
-/* ===============================
-   EVENT DETAIL DRAWER (MODERN UI)
-================================= */
+
 
 #eventDetailDrawer {
   display: none;
@@ -1551,7 +1535,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   transform: translateX(0);
 }
 
-/* Header */
+
 .ev-detail-hero {
   background: linear-gradient(135deg, #6c63ff, #8b5cf6);
   color: white;
@@ -1571,7 +1555,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   gap: 6px;
 }
 
-/* badges */
+
 .ev-detail-club-badge,
 .ev-detail-cat-badge {
   background: rgba(255,255,255,0.15);
@@ -1587,7 +1571,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   padding: 18px;
 }
 
-/* each info box */
+
 .ev-detail-cell {
   background: #ffffff;
   padding: 14px;
@@ -1600,7 +1584,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   transform: translateY(-2px);
 }
 
-/* label + value */
+
 .ev-detail-label {
   font-size: 11px;
   color: #6b7280;
@@ -1613,7 +1597,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   color: #111827;
 }
 
-/* section blocks */
+
 .ev-detail-section {
   padding: 16px 18px;
 }
@@ -1631,7 +1615,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   color: #374151;
 }
 
-/* remark box */
+
 .remark-box {
   background: #fff7ed;
   border-left: 4px solid #f97316;
@@ -1639,7 +1623,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   border-radius: 10px;
 }
 
-/* bottom actions */
+
 .ev-detail-actions {
   padding: 16px;
   border-top: 1px solid #eee;
@@ -1647,9 +1631,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   position: sticky;
   bottom: 0;
 }
-/* ===============================
-   EVENT DETAIL TOP HEADER
-================================= */
+
 
 .ev-detail-topbar {
   display: flex;
@@ -1663,7 +1645,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   z-index: 10;
 }
 
-/* title + subtitle */
+
 .ev-detail-top-left {
   display: flex;
   flex-direction: column;
@@ -1680,7 +1662,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   color: #6b7280;
 }
 
-/* close button */
+
 .ev-detail-close {
   width: 34px;
   height: 34px;
@@ -1712,16 +1694,16 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   z-index: 10;
 }
 
-/* title */
+
 .ev-detail-top-title {
-  font-size: 20px;   /* 🔥 bigger */
-  font-weight: 800;  /* 🔥 bold */
+  font-size: 20px;  
+  font-weight: 800; 
   color: #111827;
   display: flex;
   flex-direction: column;
 }
 
-/* subtitle */
+
 .ev-detail-top-sub {
   font-size: 12px;
   font-weight: 500;
@@ -1729,7 +1711,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   margin-top: 2px;
 }
 
-/* close button */
+
 .ev-detail-close {
   width: 38px;
   height: 38px;
@@ -1749,7 +1731,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   background: #e5e7eb;
   transform: rotate(90deg);
 }
-/* HEADER CONTAINER */
+
 .event-detail-header {
   display: flex;
   align-items: center;
@@ -1757,21 +1739,21 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   padding: 16px 20px 8px;
 }
 
-/* TITLE (increase size) */
+
 .event-detail-title {
-  font-size: 26px;   /* 🔥 increase here */
+  font-size: 26px;  
   font-weight: 700;
   margin: 0;
 }
 
-/* SUBTEXT */
+
 .event-detail-sub {
   font-size: 13px;
   color: #888;
   padding: 0 20px 10px;
 }
 
-/* CLOSE BUTTON */
+
 .event-close-btn {
   width: 36px;
   height: 36px;
@@ -1843,9 +1825,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
 #dashSelectedDatePanel {
   display: none !important;
 }
-/* ══════════════════════════════════════════════════════════════
-   FACULTY EVENT DETAIL DRAWER  (matches organizer portal style)
-══════════════════════════════════════════════════════════════ */
+
 #eventDetailOverlay {
   position: fixed; inset: 0; z-index: 9998;
   background: rgba(0,0,0,.55);
@@ -1902,14 +1882,14 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   transform: rotate(90deg);
 }
 
-/* ── Banner ── */
+
 .ed-banner {
   height: 200px; overflow: hidden;
   background: var(--g-violet); flex-shrink: 0;
 }
 .ed-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* ── Two-col body ── */
+
 .ed-body-layout {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
@@ -1926,13 +1906,13 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   overflow-y: auto; padding: 20px 20px;
 }
 
-/* Shared scrollbar style */
+
 .ed-main-col::-webkit-scrollbar,
 .ed-side-col::-webkit-scrollbar { width: 4px; }
 .ed-main-col::-webkit-scrollbar-thumb,
 .ed-side-col::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 99px; }
 
-/* ── Title block ── */
+
 .ed-title {
   font-size: 22px; font-weight: 800;
   color: var(--text); letter-spacing: -.3px;
@@ -1966,7 +1946,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   font-size: 13px; color: var(--text-2); font-weight: 500;
 }
 
-/* ── Tabs ── */
+
 .ed-tabs {
   display: flex; gap: 6px; flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
@@ -1996,7 +1976,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   font-size: 13.5px; color: var(--text-2); line-height: 1.8;
 }
 
-/* ── Participants table ── */
+
 .ed-ptable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ed-ptable th {
   padding: 8px 10px; text-align: left;
@@ -2013,7 +1993,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
 .ed-ptable td:nth-child(2) { font-weight: 700; color: var(--text); }
 .ed-ptable tr:last-child td { border-bottom: none; }
 
-/* ── Sidebar KPIs ── */
+
 .ed-kpi-grid {
   display: grid; grid-template-columns: 1fr 1fr;
   gap: 10px; margin-bottom: 16px;
@@ -2040,7 +2020,7 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
   text-transform: uppercase; letter-spacing: .4px;
 }
 
-/* ── Sidebar registration ── */
+
 .ed-reg-label {
   font-size: 13px; font-weight: 800;
   color: var(--text); margin-bottom: 8px;
@@ -2073,14 +2053,14 @@ body.light .back-btn .back-icon { background: var(--surface-3); }
 }
 .ed-detail-row b { color: var(--text-2); }
 
-/* ── Status pill on sidebar ── */
+
 .ed-status-pill {
   display: inline-block;
   padding: 4px 12px; border-radius: 999px;
   font-size: 11px; font-weight: 700;
 }
 
-/* ── Light mode ── */
+
 body.light #eventDetailDrawer { background: var(--bg-2); border-left-color: var(--border); }
 body.light .ed-drawer-topbar { background: var(--surface); }
 body.light .ed-main-col { border-right-color: var(--border); }
@@ -2093,7 +2073,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   .ed-body-layout { grid-template-columns: 1fr; }
   .ed-main-col { border-right: none; border-bottom: 1px solid var(--border); }
 }
-/* FULL PAGE EVENT DETAIL */
+
 .fed-page {
   display: flex;
   flex-direction: column;
@@ -2280,25 +2260,25 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   overflow: hidden;
 }
 
-/* ICON spacing fix */
+
 .btn-primary span,
 .btn-primary i {
   display: flex;
   align-items: center;
 }
 
-/* HOVER */
+
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 24px rgba(108, 99, 255, 0.35);
 }
 
-/* CLICK */
+
 .btn-primary:active {
   transform: scale(0.96);
 }
 
-/* SUBTLE SHINE EFFECT */
+
 .btn-primary::before {
   content: "";
   position: absolute;
@@ -2313,9 +2293,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
 .btn-primary:hover::before {
   left: 130%;
 }
-/* ══════════════════════════════════════════════════════════════
-   VENUES PAGE — MATCHES ORGANIZER PORTAL EXACTLY
-══════════════════════════════════════════════════════════════ */
+
 
 .venue-match-layout {
   display: grid;
@@ -2324,7 +2302,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   padding-top: 4px;
 }
 
-/* ── SIDEBAR ── */
+
 .venue-match-sidebar {
   background: var(--glass);
   backdrop-filter: var(--blur-sm);
@@ -2380,7 +2358,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   border-color: transparent;
 }
 
-/* ── CALENDAR WRAP ── */
+
 .venue-match-calendar-wrap {
   background: var(--glass);
   backdrop-filter: var(--blur-sm);
@@ -2389,7 +2367,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   padding: 20px;
 }
 
-/* ── TOPBAR ── */
+
 .venue-match-topbar {
   display: flex;
   align-items: center;
@@ -2427,7 +2405,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   color: var(--violet);
 }
 
-/* ── WEEKDAYS ── */
+
 .venue-match-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -2445,14 +2423,14 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   text-transform: uppercase;
 }
 
-/* ── GRID ── */
+
 .venue-match-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
 }
 
-/* ── CELLS — aspect ratio squares like organizer ── */
+
 .venue-day,
 .venue-day-empty {
   aspect-ratio: 1;
@@ -2475,7 +2453,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   position: relative;
 }
 
-/* Status colors — matching organizer exactly */
+
 .venue-day.available {
   background: rgba(16,185,129,.18);
   border: 1px solid rgba(16,185,129,.25);
@@ -2502,7 +2480,51 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   cursor: not-allowed;
 }
 
-/* Default (no class = available) */
+
+.venue-day.unavailable {
+  background: rgba(239,68,68,.18);
+  border: 1px solid rgba(239,68,68,.28);
+  color: #f87171;
+  cursor: pointer;
+}
+.venue-day.unavailable:hover {
+  background: rgba(239,68,68,.32);
+}
+
+
+.venue-day.partial {
+  background: rgba(245,158,11,.18);
+  border: 1px solid rgba(245,158,11,.3);
+  color: #fbbf24;
+  cursor: pointer;
+}
+.venue-day.partial:hover {
+  background: rgba(245,158,11,.32);
+}
+
+
+.venue-day.faculty-approved {
+  background: rgba(6,182,212,.18);
+  border: 1px solid rgba(6,182,212,.28);
+  color: #67e8f9;
+  cursor: pointer;
+}
+
+
+.slot-edit-hint {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 8px;
+  opacity: 0.5;
+  pointer-events: none;
+  line-height: 1;
+}
+.venue-day:hover .slot-edit-hint {
+  opacity: 0.9;
+}
+
+
 .venue-day:not(.available):not(.partial):not(.booked):not(.today) {
   background: rgba(16,185,129,.18);
   border: 1px solid rgba(16,185,129,.25);
@@ -2523,7 +2545,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   line-height: 1;
 }
 
-/* ── LEGEND — show it like organizer ── */
+
 .venue-match-legend {
   display: flex !important;
   gap: 16px;
@@ -2546,17 +2568,18 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   border-radius: 50%;
 }
 
-.vm-available { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,.6); }
-.vm-partial   { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,.6); }
-.vm-booked    { background: #ec4899; box-shadow: 0 0 6px rgba(236,72,153,.6); }
-.vm-today     { background: var(--violet); box-shadow: 0 0 6px rgba(139,92,246,.6); }
+.vm-available   { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,.6); }
+.vm-partial     { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,.6); }
+.vm-booked      { background: #ec4899; box-shadow: 0 0 6px rgba(236,72,153,.6); }
+.vm-today       { background: var(--violet); box-shadow: 0 0 6px rgba(139,92,246,.6); }
+.vm-unavailable { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,.6); }
 
-/* ── HIDE old dot elements ── */
+
 .venue-day .day-dot { display: none !important; }
 .venue-day::after   { display: none !important; }
 .venue-day::before  { display: none !important; }
 
-/* ── RESPONSIVE ── */
+
 @media (max-width: 1100px) {
   .venue-match-layout { grid-template-columns: 1fr; }
 }
@@ -2564,10 +2587,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
 @media (max-width: 768px) {
   .venue-match-grid { gap: 4px; }
 }
-/* ================================================================
-   ACCOUNT SETTINGS — inline page styles (merged from account-settings.css)
-   Uses dashboard CSS variables for full light/dark compatibility
-   ================================================================ */
+
 
 .as-card {
   max-width: 860px;
@@ -2683,14 +2703,14 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   .as-actions { flex-direction: column; }
   .as-actions .btn { width: 100%; }
 }
-/* ── HALL COORDINATOR — badge & status styles ─────────────────────────────── */
+
 .badge.faculty_approved {
   background: rgba(6, 182, 212, .18);
   color: #67e8f9;
   border: 1px solid rgba(6, 182, 212, .35);
 }
 
-/* Hall proposal quick-action buttons */
+
 .mini-btn.confirm {
   background: rgba(16, 185, 129, .18);
   color: #34d399;
@@ -2700,7 +2720,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   background: rgba(16, 185, 129, .32);
 }
 
-/* Venue availability card grid */
+
 .hall-venue-status-grid {
   display: flex;
   flex-wrap: wrap;
@@ -2708,7 +2728,7 @@ body.light .ed-ptable td { border-bottom-color: var(--border); }
   margin-top: 12px;
 }
 
-/* FC Coordinator info banner */
+
 #fcCoordinatorBanner > div {
   max-width: 720px;
 }

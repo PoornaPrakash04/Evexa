@@ -1,8 +1,8 @@
-// ============================================================
-// routes/certificates.js — EVEXA Certificate System (UPDATED)
-// Only organizer's COMPLETED events are returned in /events
-// Also fixes db.execute vs db.query mismatch (uses db.query everywhere)
-// ============================================================
+
+
+
+
+
 
 require("dotenv").config();
 const express = require("express");
@@ -18,9 +18,9 @@ const jwt = require("jsonwebtoken");
 
 const db = require("../db");
 
-// ─────────────────────────────────────────────────────────────
-// Auth middleware
-// ─────────────────────────────────────────────────────────────
+
+
+
 function authorize(roles = []) {
   return (req, res, next) => {
     const auth = req.headers.authorization;
@@ -37,16 +37,16 @@ function authorize(roles = []) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────
-// Ensure upload directories exist on startup
-// ─────────────────────────────────────────────────────────────
+
+
+
 ["uploads/templates", "uploads/excels", "generated_certificates"].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// ─────────────────────────────────────────────────────────────
-// Multer config
-// ─────────────────────────────────────────────────────────────
+
+
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === "template") cb(null, "uploads/templates");
@@ -62,12 +62,12 @@ const upload = multer({
       return cb(new Error("Template must be a PDF"));
     cb(null, true);
   },
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+  limits: { fileSize: 20 * 1024 * 1024 }, 
 });
 
-// ─────────────────────────────────────────────────────────────
-// Helper: parse hex color string to pdf-lib rgb()
-// ─────────────────────────────────────────────────────────────
+
+
+
 function hexToRgb(hex) {
   const clean = (hex || "").replace("#", "");
   if (clean.length !== 6) return rgb(0.1, 0.1, 0.1);
@@ -78,9 +78,9 @@ function hexToRgb(hex) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Helper: draw name centered at (xPct, yPct) of the page
-// ─────────────────────────────────────────────────────────────
+
+
+
 async function drawName(page, name, opts = {}) {
   const { width, height } = page.getSize();
   const font = opts.font;
@@ -96,11 +96,11 @@ async function drawName(page, name, opts = {}) {
   page.drawText(name, { x, y, size: fontSize, font, color });
 }
 
-// ─────────────────────────────────────────────────────────────
-// [ORGANIZER] GET /api/certificates/events
-// ✅ Only events owned by organizer AND status = 'Completed'
-// Includes registration count and certs issued.
-// ─────────────────────────────────────────────────────────────
+
+
+
+
+
 router.get("/events", authorize(["ORGANIZER"]), (req, res) => {
   const organizerId = req.user?.id;
   if (!organizerId) return res.status(401).json({ message: "Unauthorized" });
@@ -127,10 +127,10 @@ router.get("/events", authorize(["ORGANIZER"]), (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-// [ORGANIZER] GET /api/certificates/participants/:eventId
-// Returns all registered participants for a given event.
-// ─────────────────────────────────────────────────────────────
+
+
+
+
 router.get("/participants/:eventId", authorize(["ORGANIZER"]), (req, res) => {
   const eventId = Number(req.params.eventId);
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
@@ -152,10 +152,10 @@ ORDER BY s.name ASC
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-// [ORGANIZER] POST /api/certificates/preview
-// Renders a single preview PDF with a sample name.
-// ─────────────────────────────────────────────────────────────
+
+
+
+
 router.post(
   "/preview",
   authorize(["ORGANIZER"]),
@@ -199,10 +199,10 @@ router.post(
   }
 );
 
-// ─────────────────────────────────────────────────────────────
-// [ORGANIZER] POST /api/certificates/generate
-// Generates one PDF per participant, saves them, zips & sends.
-// ─────────────────────────────────────────────────────────────
+
+
+
+
 router.post(
   "/generate",
   authorize(["ORGANIZER"]),
@@ -271,14 +271,14 @@ ORDER BY s.name ASC
     if (!participants.length)
       return res.status(400).json({ message: "No participants found" });
 
-    // ── Create output folder ───────────────────────────────
+    
     const folderName = eventId ? String(eventId) : uuidv4();
     const outputFolder = path.join("generated_certificates", folderName);
     fs.mkdirSync(outputFolder, { recursive: true });
 
     const templateBytes = fs.readFileSync(templatePath);
 
-    // ── Generate PDFs ───────────────────────────────────────
+    
     for (const person of participants) {
       const pdfDoc = await PDFDocument.load(templateBytes);
       const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -303,7 +303,7 @@ ORDER BY s.name ASC
 
       fs.writeFileSync(filePath, pdfBytes);
 
-      // ── Save record to DB so student can download later ──
+      
       if (eventId && person.student_id) {
         await new Promise((resolve) => {
           db.query(
@@ -327,7 +327,7 @@ ORDER BY s.name ASC
       }
     }
 
-    // ── Update event cert count ────────────────────────────
+    
     if (eventId) {
       db.query(
         `UPDATE events SET certs_issued = ? WHERE id = ?`,
@@ -338,7 +338,7 @@ ORDER BY s.name ASC
       );
     }
 
-    // ── Zip and send ───────────────────────────────────────
+    
     const zipPath = `${outputFolder}.zip`;
     const output = fs.createWriteStream(zipPath);
     const archive = archiver("zip", { zlib: { level: 9 } });
@@ -364,9 +364,9 @@ ORDER BY s.name ASC
   }
 );
 
-// ─────────────────────────────────────────────────────────────
-// [STUDENT] GET /api/certificates/status/:eventId
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/status/:eventId", authorize(["STUDENT"]), (req, res) => {
   const eventId = Number(req.params.eventId);
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
@@ -398,9 +398,9 @@ router.get("/status/:eventId", authorize(["STUDENT"]), (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-// [STUDENT] GET /api/certificates/download/:eventId
-// ─────────────────────────────────────────────────────────────
+
+
+
 router.get("/download/:eventId", authorize(["STUDENT"]), (req, res) => {
   const eventId = Number(req.params.eventId);
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });

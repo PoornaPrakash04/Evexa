@@ -1,4 +1,4 @@
-// db.js
+
 require("dotenv").config();
 const mysql = require("mysql2");
 
@@ -9,6 +9,7 @@ const db = mysql.createConnection({
   database:       process.env.DB_NAME     || "evexa",
   port:           3306,
   connectTimeout: 10000,
+  dateStrings: true,
 });
 
 db.connect((err) => {

@@ -22,9 +22,7 @@ async function apiFetch(endpoint) {
   return res.json();
 }
 
-// ── IST-safe date helpers ─────────────────────────────────────
 function toISTDate(raw) {
-  // Returns a Date object interpreted in IST (Asia/Kolkata)
   return new Date(new Date(raw).toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
 }
 
@@ -38,9 +36,6 @@ document.getElementById("sidebarToggle").addEventListener("click", () => {
   else s.classList.toggle("collapsed");
 });
 
-/* ============================================================
-   DASHBOARD LOAD
-   ============================================================ */
 async function loadDashboard() {
   const profile = await apiFetch("/auth/me");
   if (!profile) return;
@@ -313,7 +308,7 @@ function renderCalendar() {
   calendarEvents
     .filter(e => e.status && e.status.toLowerCase() !== "pending")
     .forEach(e => {
-      // Use IST to get the correct local date
+     
       const d = toISTDate(e.date);
       if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
         const key = `${calYear}-${calMonth}-${d.getDate()}`;
@@ -366,7 +361,6 @@ function calDayClick(el) {
 
   if (!detail || !titleEl || !metaEl || !linkEl) return;
 
-  // IST-safe date display
   const date = formatDateIST(e.date, { dateStyle: "medium" });
   const fee  = e.registration_fee > 0 ? `₹${e.registration_fee}` : "Free";
 
@@ -378,7 +372,6 @@ function calDayClick(el) {
   detail.style.display = "block";
 }
 
-/* ── RECOMMENDED EVENTS ────────────────────────────────────── */
 async function loadRecommended() {
   try {
     const [eventsRes, profile, registered] = await Promise.all([
@@ -486,7 +479,7 @@ function logout() {
   document.addEventListener("keydown", onKey);
 }
 
-/* ── NOTIFICATIONS  (faculty-parity: dropdown + inline history page) ─── */
+
 const NOTIF_KEY    = "evexa_notifs";
 let localNotifs    = JSON.parse(localStorage.getItem(NOTIF_KEY) || "[]");
 
@@ -494,7 +487,6 @@ function saveNotifs() {
   localStorage.setItem(NOTIF_KEY, JSON.stringify(localNotifs.slice(0, 50)));
 }
 
-// ── addLocalNotif — mirrors faculty exactly ───────────────────
 function addLocalNotif(type, icon, title, sub, sourceId = null) {
   localNotifs.unshift({
     id:        `${Date.now()}-${Math.random()}`,
@@ -515,7 +507,7 @@ function addNotification(icon, title, message) {
   addLocalNotif("general", icon, title, message, null);
 }
 
-// ── Badge count (faculty-style numbered badge) ────────────────
+
 function updateNotifBadge() {
   const unread = localNotifs.filter(n => !n.read).length;
   const cnt    = document.getElementById("notifCount");
@@ -525,7 +517,6 @@ function updateNotifBadge() {
   }
 }
 
-// ── Sync from API (mirrors faculty syncNotifs) ────────────────
 async function syncNotifs() {
   try {
     const [ann, registered] = await Promise.all([
@@ -537,7 +528,7 @@ async function syncNotifs() {
     const ICONS    = { Urgent: "🚨", Event: "📅", Info: "ℹ️", General: "📣" };
     let added      = 0;
 
-    // Announcements
+  
     (Array.isArray(ann) ? ann : []).forEach(a => {
       const sid     = `announcement-${a.id}`;
       const existing = localNotifs.find(n => n.sourceId === sid);
@@ -560,7 +551,6 @@ async function syncNotifs() {
       added++;
     });
 
-    // Upcoming event reminders
     const now = new Date();
     (Array.isArray(registered) ? registered : []).forEach(r => {
       if (!r.date) return;
@@ -598,7 +588,6 @@ async function syncNotifs() {
   }
 }
 
-// ── timeAgo helper ────────────────────────────────────────────
 function timeAgo(iso) {
   if (!iso) return "";
   const diff  = Date.now() - new Date(iso).getTime();
@@ -611,7 +600,6 @@ function timeAgo(iso) {
   return `${days}d ago`;
 }
 
-// ── Render dropdown (mirrors faculty renderNotifDropdown) ─────
 function renderNotifDropdown() {
   const list = document.getElementById("notifDropList");
   if (!list) return;
@@ -632,14 +620,12 @@ function renderNotifDropdown() {
   `).join("");
 }
 
-// ── Open/close dropdown (bell click) ─────────────────────────
 function openNotifHistoryPage() {
-  // mark all read (like faculty does on open)
+
   localNotifs = localNotifs.map(n => ({ ...n, read: true }));
   saveNotifs();
   updateNotifBadge();
 
-  // hide dropdown, show history page, hide dashboard content
   document.getElementById("notifDropdown")?.classList.remove("open");
   document.getElementById("pg-notif-history").style.display  = "";
   document.getElementById("pg-dashboard-content").style.display = "none";
@@ -652,7 +638,6 @@ function closeNotifHistoryPage() {
   document.getElementById("pg-dashboard-content").style.display = "";
 }
 
-// ── Render history page ──
 function renderNotifHistory() {
   const filter  = document.getElementById("notifTypeFilter")?.value || "all";
   const list    = document.getElementById("notifHistoryList");
@@ -680,7 +665,7 @@ function renderNotifHistory() {
     : `<div class="nh-empty"><div style="font-size:36px;opacity:.4;">🔕</div><div style="margin-top:10px;font-size:14px;font-weight:600;">No notifications yet.</div></div>`;
 }
 
-// ── Mark all read ─────────────────────────────────────────────
+
 function markAllNotifsRead() {
   localNotifs = localNotifs.map(n => ({ ...n, read: true }));
   saveNotifs();
@@ -696,7 +681,6 @@ function markAllNotifsRead() {
   }
 }
 
-// ── Clear all (mirrors faculty clearAllNotifs) ────────────────
 function clearAllNotifs() {
   localNotifs = [];
   saveNotifs();
@@ -705,11 +689,9 @@ function clearAllNotifs() {
   renderNotifHistory();
 }
 
-// ── Init notifications ────────────────────────────────────────
 function initNotifications() {
   updateNotifBadge();
 
-  // Bell opens the full notification page directly
   const btn = document.getElementById("notifBtn");
   if (btn) {
     btn.addEventListener("click", e => {
@@ -725,7 +707,6 @@ function initNotifications() {
   syncNotifs();
 }
 
-/* ── UPCOMING REGISTERED MODAL ──────────────────────────────── */
 const ACCENT_CLASSES = ["accent-v", "accent-p", "accent-c", "accent-l"];
 const BADGE_ICONS    = ["🛡️", "🤖", "🎨", "💡", "🚀", "⚡", "🎯", "📡"];
 

@@ -1,4 +1,4 @@
-// admin-signin.js  —  EVEXA Admin Sign In
+// admin-signin.js
 
 document.getElementById("signinForm").addEventListener("submit", async function (e) {
   e.preventDefault();
@@ -29,7 +29,7 @@ document.getElementById("signinForm").addEventListener("submit", async function 
       return;
     }
 
-    // Store token and redirect
+  
     localStorage.setItem("adminToken", data.token);
     localStorage.setItem("adminName",  data.name || "Admin");
     window.location.href = "admin.html";
@@ -52,7 +52,6 @@ function showError(msg) {
   }
   el.textContent = msg;
 }
-// Password toggle
 const togglePassword = document.getElementById("togglePassword");
 const passwordInput  = document.getElementById("password");
 

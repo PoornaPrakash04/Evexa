@@ -1,11 +1,11 @@
-// routes/organizer.js
+
 const express  = require("express");
 const bcrypt   = require("bcrypt");
 const router   = express.Router();
 const db       = require("../db");
 const authorize = require("../middleware/authMiddleware");
 
-// ── Guard: organizer-only ────────────────────────────────────
+
 function organizerOnly(req, res, next) {
   if (req.user?.role !== "ORGANIZER") {
     return res.status(403).json({ message: "Organizer access only." });
@@ -13,7 +13,7 @@ function organizerOnly(req, res, next) {
   next();
 }
 
-// ── GET /api/organizer/me ─────────────────────────────────────
+
 router.get("/me", authorize(), organizerOnly, (req, res) => {
   db.query(
     "SELECT id, name, email, club, club_id, phone, roll_no, admission_no, class FROM organizers WHERE id = ?",
@@ -26,7 +26,7 @@ router.get("/me", authorize(), organizerOnly, (req, res) => {
   );
 });
 
-// ── PUT /api/organizer/profile ────────────────────────────────
+
 router.put("/profile", authorize(), organizerOnly, (req, res) => {
   const { name, email, phone } = req.body;
   if (!name || !email) {
@@ -49,7 +49,7 @@ router.put("/profile", authorize(), organizerOnly, (req, res) => {
   );
 });
 
-// ── PUT /api/organizer/change-password ────────────────────────
+
 router.put("/change-password", authorize(), organizerOnly, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
@@ -87,8 +87,8 @@ router.put("/change-password", authorize(), organizerOnly, async (req, res) => {
   );
 });
 
-// ── GET /api/organizer/dashboard ─────────────────────────────
-// Summary stats for the organizer's dashboard
+
+
 router.get("/dashboard", authorize(), organizerOnly, (req, res) => {
   const organizerId = req.user.id;
 
@@ -123,8 +123,8 @@ router.get("/dashboard", authorize(), organizerOnly, (req, res) => {
   );
 });
 
-// ── GET /api/organizer/clubs/:clubId/members ─────────────────
-// Full member list for a club (with student details) — for CSV download
+
+
 router.get("/clubs/:clubId/members", authorize(), organizerOnly, (req, res) => {
   const clubId = parseInt(req.params.clubId, 10);
   if (isNaN(clubId)) {

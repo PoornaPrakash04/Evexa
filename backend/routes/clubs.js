@@ -1,37 +1,59 @@
-//clubs.js
+
 const express  = require("express");
 const db       = require("../db");
 const authorize = require("../middleware/authMiddleware");
 const upload   = require("../middleware/upload");
 const router   = express.Router();
 
-// GET /api/clubs — all clubs (public)
 router.get("/", (req, res) => {
-  db.query("SELECT * FROM clubs", (err, result) => {
-    if (err) return res.status(500).json({ message: "Server error" });
-    res.json(result);
-  });
+  db.query(
+    `SELECT
+       c.*,
+       COUNT(DISTINCT cm.student_id) AS member_count,
+       f.name AS faculty_name
+     FROM clubs c
+     LEFT JOIN club_members cm ON cm.club_id = c.club_id
+     LEFT JOIN faculty f ON f.id = c.faculty_id
+     WHERE c.deleted_at IS NULL
+     GROUP BY c.club_id`,
+    (err, result) => {
+      if (err) return res.status(500).json({ message: "Server error" });
+      res.json(result);
+    }
+  );
 });
 
-// GET /api/clubs/my-clubs
-// STUDENT  → clubs the student has joined
-// FACULTY  → clubs where this faculty is incharge
+
+
+
 router.get("/my-clubs", authorize(), (req, res) => {
   if (req.user.role === "FACULTY") {
-    // Return clubs where faculty_id matches logged-in faculty
+    
+    
+    
+    
+    
+    
+    
+    
+    
     db.query(
       `SELECT
+         c.club_id,
          c.club_id           AS id,
+         c.club_name,
          c.club_name         AS name,
          c.club_category     AS category,
          c.club_logo         AS logo,
          c.short_description AS description,
          'Active'            AS status,
+         f.name              AS faculty_name,
          COUNT(DISTINCT cm.student_id) AS member_count
        FROM clubs c
        LEFT JOIN club_members cm ON cm.club_id = c.club_id
+       LEFT JOIN faculty f       ON f.id = c.faculty_id
        WHERE c.faculty_id = ?
-       GROUP BY c.club_id`,
+       GROUP BY c.club_id, c.club_name, c.club_category, c.club_logo, c.short_description, f.name`,
       [req.user.id],
       (err, result) => {
         if (err) {
@@ -57,7 +79,7 @@ router.get("/my-clubs", authorize(), (req, res) => {
   }
 });
 
-// GET /api/clubs/:id/members — member count
+
 router.get("/:id/members", (req, res) => {
   db.query(
     "SELECT COUNT(*) AS count FROM club_members WHERE club_id = ?",
@@ -69,7 +91,7 @@ router.get("/:id/members", (req, res) => {
   );
 });
 
-// GET /api/clubs/:id/events — upcoming events for a club
+
 router.get("/:id/events", (req, res) => {
   db.query(
     `SELECT events.*, clubs.club_name AS club, clubs.club_logo
@@ -85,7 +107,7 @@ router.get("/:id/events", (req, res) => {
   );
 });
 
-// POST /api/clubs/:id/join
+
 router.post("/:id/join", authorize(["STUDENT"]), (req, res) => {
   db.query(
     "INSERT IGNORE INTO club_members (student_id, club_id) VALUES (?, ?)",
@@ -97,7 +119,7 @@ router.post("/:id/join", authorize(["STUDENT"]), (req, res) => {
   );
 });
 
-// DELETE /api/clubs/:id/leave
+
 router.delete("/:id/leave", authorize(["STUDENT"]), (req, res) => {
   db.query(
     "DELETE FROM club_members WHERE student_id = ? AND club_id = ?",
@@ -109,7 +131,7 @@ router.delete("/:id/leave", authorize(["STUDENT"]), (req, res) => {
   );
 });
 
-// POST /api/clubs/:id/upload-logo
+
 router.post("/:id/upload-logo", authorize(["ADMIN"]), upload.single("logo"), (req, res) => {
   if (!req.file) return res.status(400).json({ message: "No file uploaded" });
   const logoPath = `uploads/logos/${req.file.filename}`;
@@ -123,7 +145,7 @@ router.post("/:id/upload-logo", authorize(["ADMIN"]), upload.single("logo"), (re
   );
 });
 
-// GET /api/clubs/:id — single club (keep LAST)
+
 router.get("/:id", (req, res) => {
   db.query(
     "SELECT * FROM clubs WHERE club_id = ?",

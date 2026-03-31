@@ -1,11 +1,4 @@
-/* ===========================
-   event-details.css
-   Styles for event-details.html and event-single.html
-   =========================== */
 
-/* ════════════════════════════════════════
-   SHARED — used on both pages
-   ════════════════════════════════════════ */
 
 .status-badge {
   flex-shrink: 0;

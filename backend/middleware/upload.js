@@ -4,12 +4,11 @@ const fs = require("fs");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = "uploads/logos/";  // ✅ save directly to logos folder
+    const dir = "uploads/logos/";  
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
   filename: function (req, file, cb) {
-    // ✅ Better naming — use original name or a clean unique name
     const uniqueName = Date.now() + path.extname(file.originalname);
     cb(null, uniqueName);
   }

@@ -1,24 +1,18 @@
-// ===========================
-//  event-details.js — connected to backend
-// ===========================
+
 
 let allEvents         = [];
 let registeredEventIds = [];
 let currentFilter     = "all";
 let currentSearch     = "";
 
-// ── IST-safe date formatter ───────────────────────────
 function formatDateIST(raw, opts) {
   return new Date(raw).toLocaleDateString("en-IN", { ...opts, timeZone: "Asia/Kolkata" });
 }
 
-// ── Detect filter from URL ────────────────────────────
 const urlFilter = new URLSearchParams(window.location.search).get("filter");
 if (urlFilter) {
   currentFilter = urlFilter;
 }
-
-// ── Update page title based on view ──────────────────
 if (currentFilter === "registered") {
   const title    = document.querySelector(".title");
   const subtitle = document.querySelector(".subtitle");

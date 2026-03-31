@@ -503,11 +503,10 @@
                   <th class="th">Date</th>
                   <th class="th">Time Slot</th>
                   <th class="th">Status</th>
-                  <th class="th">Actions</th>
                 </tr>
               </thead>
               <tbody id="myVenueBookingsBody">
-                <tr><td colspan="7" class="table-empty">Click the tab to load your bookings…</td></tr>
+                <tr><td colspan="6" class="table-empty">Click the tab to load your bookings…</td></tr>
               </tbody>
             </table>
           </div>
@@ -891,11 +890,12 @@
     </div>
     <form id="addAnnouncementForm" onsubmit="submitAnnouncement(event)" class="modal-form">
       <input id="annTitle" type="text" class="form-input" placeholder="Title *" required>
-      <select id="annType" class="form-select">
-        <option value="General">General</option>
-        <option value="Event">Event</option>
-        <option value="Urgent">Urgent</option>
-      </select>
+      <select id="annType">
+  <option value="General" selected>General</option>
+  <option value="Event">Event</option>
+  <option value="Notice">Notice</option>
+  <option value="Urgent">Urgent</option>
+</select>
       <textarea id="annMessage" class="form-textarea" placeholder="Message *" rows="4" required></textarea>
       <button type="submit" class="btn-primary btn-submit">Publish</button>
     </form>

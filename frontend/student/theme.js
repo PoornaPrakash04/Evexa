@@ -1,8 +1,3 @@
-// ================================================================
-//  theme.js — Shared theme manager for all EVEXA pages
-//  Include this as the FIRST script on every page
-// ================================================================
-
 function toggleTheme() {
   const isLight = document.body.classList.toggle("light");
   localStorage.setItem("theme", isLight ? "light" : "dark");
