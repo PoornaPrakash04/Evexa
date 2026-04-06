@@ -1,4 +1,3 @@
-
 var API = "http://localhost:5000/api";
 window.API = API;
 
@@ -40,7 +39,6 @@ function statusClass(status) {
     hall_approved:    "approved",
     rejected:         "rejected",
     draft:            "draft",
-    // legacy fallbacks
     pending:   "submitted",
     approved:  "approved",
     review:    "submitted",
@@ -48,13 +46,11 @@ function statusClass(status) {
   return map[s] || s;
 }
 
-// Display label for status badge
 function statusLabel(status) {
   const s = (status || "").toLowerCase().trim();
   return STATUS_LABEL[s] || cap(status) || "—";
 }
 
-// ── AUTH ──────────────────────────────────────────────────────────────────
 async function apiFetch(endpoint, opts = {}) {
   const token = localStorage.getItem("faculty_auth_token");
   if (!token) { window.location.href = "fcsignin.html"; return null; }
@@ -83,7 +79,7 @@ async function apiFetch(endpoint, opts = {}) {
       return null;
     }
 
-    // FIX: 204 No Content (DELETE success) has no body — don't call .json()
+    
     if (res.status === 204 || res.headers.get("content-length") === "0") return {};
     const ct = res.headers.get("content-type") || "";
     if (!ct.includes("application/json")) return {};
@@ -97,7 +93,6 @@ async function apiFetch(endpoint, opts = {}) {
   }
 }
 
-// ── STATE ─────────────────────────────────────────────────────────────────
 let currentPage    = "dashboard";
 let calYear        = new Date().getFullYear();
 let calMonth       = new Date().getMonth();
@@ -112,12 +107,9 @@ let cachedClubs         = [];
 let cachedFeedback      = [];
 let cachedRegistrations = [];
 
-// Hall Coordinator state
 let cachedHallProposals  = [];
 let cachedHallVenues     = [];
-let myRoleId             = null;   // set after /me resolves
-
-// Role IDs (mirrors backend ROLE constants)
+let myRoleId             = null;   
 const FACULTY_ROLE = {
   HOD:                 1,
   STAFF:               2,
@@ -129,8 +121,6 @@ const FACULTY_ROLE = {
 
 function isFacultyCoordinator() { return myRoleId === FACULTY_ROLE.FACULTY_COORDINATOR; }
 
-// Hall Coordinator = anyone whose venue list is non-empty.
-// We set this flag after loading hall venues.
 let isHallCoordinator = false;
 
 let localNotifs = JSON.parse(localStorage.getItem("evexa_faculty_notifs") || "[]");
@@ -140,7 +130,7 @@ function saveNotifs() {
 function addLocalNotif(type, icon, title, sub, sourceId = null) {
   localNotifs.unshift({
     id: `${Date.now()}-${Math.random()}`,
-    sourceId, // 🔥 VERY IMPORTANT
+    sourceId,
     type,
     icon,
     title,
@@ -152,7 +142,7 @@ function addLocalNotif(type, icon, title, sub, sourceId = null) {
   saveNotifs();
   updateNotifBadge();
 }
-// ── BOOT ──────────────────────────────────────────────────────────────────
+
 async function boot() {
   applyTheme();
 
@@ -217,11 +207,6 @@ async function boot() {
   cachedProfile = profile;
   myRoleId = profile.role_id ?? null;
 
-  // Primary source of truth for hall coordinator status comes directly from
-  // the /me endpoint (which applies role-exclusion rules server-side).
-  // The venue-list check in refreshAll() is kept as a secondary confirmation
-  // but this flag is set here, before nav injection, so the sidebar is correct
-  // from the very first render.
   isHallCoordinator = profile.is_hall_coordinator === true;
 
   const name = profile.name || "Faculty";
@@ -240,7 +225,7 @@ async function boot() {
   const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   el("heroGreeting")?.text(`${greet}, ${name.split(" ")[0]}`);
 
-  // Inject Hall nav items (will show only if this faculty manages venues)
+  
   await injectHallCoordinatorNav();
 
   await refreshAll();
@@ -259,8 +244,6 @@ async function boot() {
   }
   if (proposalDetail) proposalDetail.style.display = "none";
 
-  // Restore last visited page, but never land a non-hall-coordinator on a
-  // hall-management page (e.g. from a previous session as a different role).
   const HALL_PAGES_BOOT = ["hall-proposals", "hall-venues"];
   let savedPage = localStorage.getItem("facultyCurrentPage") || "dashboard";
   if (HALL_PAGES_BOOT.includes(savedPage) && !isHallCoordinator) {
@@ -326,9 +309,6 @@ function openNotifHistoryPage(e) {
 }
 
 async function refreshAll() {
-  // Only fetch hall routes if this faculty is a hall coordinator.
-  // For all other roles these endpoints return 403 — skip the calls entirely
-  // to avoid noisy console errors and unnecessary network requests.
   const hallProposalsPromise = isHallCoordinator
     ? apiFetch("/faculty/hall/proposals").catch(() => null)
     : Promise.resolve(null);
@@ -353,10 +333,6 @@ async function refreshAll() {
   cachedRegistrations = Array.isArray(registrations) ? registrations : [];
   cachedHallProposals = Array.isArray(hallProposals) ? hallProposals : [];
   cachedHallVenues    = Array.isArray(hallVenues)    ? hallVenues    : [];
-
-  // isHallCoordinator is set authoritatively in boot() from profile.is_hall_coordinator.
-  // Here we only keep it true if it was already true AND venues are actually returned.
-  // This prevents a stale `true` from persisting if venue assignment is revoked.
   if (isHallCoordinator && cachedHallVenues.length === 0) {
     isHallCoordinator = false;
   }
@@ -368,7 +344,6 @@ async function refreshAll() {
   updateHallNavVisibility();
 }
 
-// Show / hide Hall Coordinator nav items
 function updateHallNavVisibility() {
   const hallSection    = document.getElementById("nav-section-hall");
   const hallProposalNav = document.getElementById("nav-hall-proposals");
@@ -378,7 +353,6 @@ function updateHallNavVisibility() {
   if (hallVenueNav)     hallVenueNav.style.display     = isHallCoordinator ? "" : "none";
 }
 
-// Dynamically inject Hall Coordinator nav items (called once after profile loads)
 async function injectHallCoordinatorNav() {
   const navEl = document.querySelector(".nav");
   if (!navEl || document.getElementById("nav-section-hall")) return;
@@ -424,7 +398,6 @@ async function injectHallCoordinatorNav() {
   }
 }
 
-// ── NAVIGATION ────────────────────────────────────────────────────────────
 const PAGE_META = {
   "dashboard":        ["Dashboard",                 "Welcome back — here's your faculty overview."],
   "proposals":        ["Event Proposal Review",     "Review, approve or reject submitted proposals."],
@@ -443,18 +416,12 @@ const PAGE_META = {
 };
 
 async function navigateTo(page) {
-  // ── Hall-Management access guard ──────────────────────────────────────────
-  // Only faculty who are assigned as a hall coordinator (i.e. they manage at
-  // least one venue) may visit the hall-proposals / hall-venues pages.
-  // Any other role that somehow reaches these pages is silently redirected to
-  // the dashboard so the restriction is enforced on the client side too.
+
   const HALL_PAGES = ["hall-proposals", "hall-venues"];
   if (HALL_PAGES.includes(page) && !isHallCoordinator) {
     console.warn(`[navigateTo] Access denied to "${page}" — not a hall coordinator. Redirecting to dashboard.`);
     page = "dashboard";
   }
-
-  // Redirect unassigned faculty away from analytics (they have no data to see).
   if (page === "analytics" && !cachedClubs.length) {
     console.warn(`[navigateTo] Redirecting to dashboard — faculty has no club assignments.`);
     page = "dashboard";
@@ -517,17 +484,12 @@ if (backBtn) {
     },
   };
 
-  // Await the render so async pages (proposals, events, hall pages, etc.)
-  // finish fetching before the browser paints — fixes blank-on-first-load.
   await renders[page]?.();
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────────────────
 async function renderDashboard() {
-  // If the cache is empty (first load before refreshAll resolves), fetch now.
   if (!cachedEvents.length && !cachedProposals.length) await refreshAll();
 
-  // Faculty Coordinator sees submitted proposals; Hall Coordinator sees faculty_approved ones
   const pending = cachedProposals.filter(p => isActionableForMe(p.status));
   const now = new Date();
 
@@ -535,17 +497,12 @@ async function renderDashboard() {
     const dt = parseEventDate(e.date || e.event_date || e.start_date);
     return dt && dt >= now;
   });
-
-  // For Faculty Coordinators the hero shows proposals pending their review;
-  // for Hall Coordinators it also adds forwarded proposals awaiting their action.
   const totalPending = pending.length + (isHallCoordinator ? cachedHallProposals.length : 0);
 
   el("heroPending")?.text(totalPending);
   el("heroClubs")?.text(cachedClubs.length);
   el("heroEvents")?.text(activeEv.length);
   el("heroStudents")?.text(0);
-
-  // Show/hide hall quick card on dashboard
   renderHallQuickCard();
 
   renderDashboardCalendar();
@@ -553,7 +510,7 @@ async function renderDashboard() {
 }
 
 function renderHallQuickCard() {
-  // Remove existing if present
+  
   document.getElementById("dashHallCard")?.remove();
   if (!isHallCoordinator || !cachedHallProposals.length) return;
 
@@ -595,9 +552,9 @@ function renderDashboardCalendar() {
   const total = new Date(calYear, calMonth + 1, 0).getDate();
 
   const dayMap = {};
-  // Combine all sources: approved/published events + submitted proposals + hall proposals
+  
   const allCalEvents = [...cachedEvents, ...cachedProposals, ...cachedHallProposals];
-  // Deduplicate by id so the same event in multiple lists shows only once
+  
   const seen = new Set();
   allCalEvents.forEach(e => {
     if (!e || seen.has(e.id)) return;
@@ -623,7 +580,7 @@ function renderDashboardCalendar() {
     const hasAppr  = evs.some(e => (e.status || "").toLowerCase().trim() === STATUS.HALL_APPROVED || (e.status || "").toLowerCase() === "approved");
     const hasAny   = evs.length > 0;
 
-    // Priority: pending (orange) > approved (green) > any other status (muted dot)
+    
     const dayClass = hasPend ? "has-pending" : hasAppr ? "has-approved" : hasAny ? "has-event" : "";
     const cls = ["cal-day", isToday ? "today" : "", dayClass].filter(Boolean).join(" ");
     const enc = evs.length ? encodeURIComponent(JSON.stringify(evs)) : "";
@@ -798,9 +755,8 @@ function renderClubsQuick() {
   }).join("");
 }
 
-// ── PROPOSALS ─────────────────────────────────────────────────────────────
 async function renderProposals(filter = "all", search = "", category = "all") {
-  // Show Faculty Coordinator info banner if applicable
+
   const fcBanner = document.getElementById("fcCoordinatorBanner");
   if (fcBanner) fcBanner.style.display = isFacultyCoordinator() ? "" : "none";
 
@@ -816,14 +772,7 @@ async function renderProposals(filter = "all", search = "", category = "all") {
 
   if (Array.isArray(freshProposals)) cachedProposals = freshProposals;
   if (Array.isArray(freshEvents))    cachedEvents    = freshEvents;
-
-  // ── STATE-BASED FILTERING ─────────────────────────────────────────────
-  // Faculty Coordinator: only sees `submitted` proposals
-  // Hall Coordinator:    only sees `faculty_approved` proposals (via hall page)
-  // Generic faculty:     sees `submitted`
-  // NOTE: Hall coordinators should use the dedicated "Hall Proposals" page.
-  //       This proposals page is for Faculty Coordinator / generic faculty only.
-  const targetStatus = STATUS.SUBMITTED; // Faculty page always shows submitted
+  const targetStatus = STATUS.SUBMITTED; 
 
   const proposalItems = (Array.isArray(cachedProposals) ? cachedProposals : []).map(p => ({
     ...p,
@@ -857,8 +806,6 @@ async function renderProposals(filter = "all", search = "", category = "all") {
     seen.add(item._key);
     merged.push(item);
   });
-
-  // Faculty coordinator / generic faculty: show only `submitted`
   let list = merged.filter(p => {
     const s = (p.status || "").toLowerCase().trim();
     return s === STATUS.SUBMITTED;
@@ -918,28 +865,24 @@ async function renderProposals(filter = "all", search = "", category = "all") {
   updateBadges();
 }
 
-// ── PROPOSAL DETAIL ───────────────────────────────────────────────────────
+
 function showProposalDetail(key) {
   const p = (window.currentProposalList || []).find(x => x._key === key);
   if (!p) { console.warn("Proposal not found for key:", key); return; }
 
   el("detailName")?.text(p.title || p.name || "Event Details");
 
-  // Make the detail panel visible
   const panel = document.getElementById("proposalDetail");
   if (panel) {
     panel.style.display = "";
     setTimeout(() => panel.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
-  // Faculty coordinator sees `submitted` proposals → can approve (→ faculty_approved) or reject
-  // Guard: faculty coordinator cannot re-approve already faculty_approved proposals
   const s = (p.status || "").toLowerCase().trim();
   const canFacultyAct  = isFacultyCoordinator() && s === STATUS.SUBMITTED;
   const canGenericAct  = !isFacultyCoordinator() && !isHallCoordinator && s === STATUS.SUBMITTED;
   const isActionable   = canFacultyAct || canGenericAct;
 
-  // Timeline steps
   const steps = [
     { key: "submitted",        label: "Submitted",       icon: "📝" },
     { key: "faculty_approved", label: "Faculty Review",  icon: "👩‍🏫" },
@@ -1056,7 +999,7 @@ function formatTime(t) {
   return t;
 }
 
-// ── APPROVE / REJECT ──────────────────────────────────────────────────────
+
 function resolveApproveEndpoint(id, src) {
   return src === "event" ? `/events/${id}/approve` : `/faculty/proposals/${id}/approve`;
 }
@@ -1065,7 +1008,7 @@ function resolveRejectEndpoint(id, src) {
 }
 
 async function approveProposal(id, src = "proposal") {
-  // Guard: Faculty Coordinator can only approve `submitted` proposals
+
   const p = (window.currentProposalList || []).find(x => x.id === id && x._src === src);
   if (p && isFacultyCoordinator() && (p.status || "").toLowerCase() !== STATUS.SUBMITTED) {
     showToast("⚠️ This proposal is not in a state you can approve.", "error");
@@ -1105,7 +1048,7 @@ async function approveProposalWithRemark(id, src = "proposal") {
   const remark = document.getElementById("proposalRemark")?.value.trim() || "";
   const p = (window.currentProposalList || []).find(x => x.id === id && x._src === src);
 
-  // Guard: must be `submitted` to be approved by faculty
+
   if (p && isFacultyCoordinator() && (p.status || "").toLowerCase() !== STATUS.SUBMITTED) {
     showToast("⚠️ This proposal cannot be approved at this stage.", "error");
     return;
@@ -1157,7 +1100,6 @@ async function rejectProposalWithRemark(id, src = "proposal") {
 async function quickApprove(id, src) { await approveProposal(id, src); renderDashboard(); }
 async function quickReject(id, src)  { await rejectProposal(id, src);  renderDashboard(); }
 
-// ── EVENT LIST ────────────────────────────────────────────────────────────
 async function renderEventList(search = "", status = "all") {
   const fresh = await apiFetch("/events/all");
   cachedEvents = Array.isArray(fresh) ? fresh : [];
@@ -1251,7 +1193,7 @@ async function openFacultyEventDetailPage(eventId) {
 
     const data = { ...ev, ...(proposal || {}) };
 
-    // registration count fallback
+    
     let registered = Number(data.registered_count || data.registered || 0);
     try {
       const countRes = await apiFetch(`/faculty/registrations/count/${eventId}`);
@@ -1359,8 +1301,6 @@ async function openFacultyEventDetailPage(eventId) {
     body.innerHTML = `<div class="list-empty" style="padding:24px;">Failed to load event details.</div>`;
   }
 }
-
-// ── EVENT DETAIL DRAWER ───────────────────────────────────────────────────
 async function showEventDetail(eventId) {
   try {
     let ev = (window.currentEventList || []).find(e => String(e.id) === String(eventId));
@@ -1393,7 +1333,7 @@ async function showEventDetail(eventId) {
       return;
     }
 
-    // Update drawer header
+ 
     el("edDrawerTitle")?.text(data.title || "Event Details");
     el("edDrawerSub")?.text(
       `${data.club || data.organizer || "—"}  ·  ${fmtDate(data.date || data.event_date || data.start_date)}`
@@ -1549,7 +1489,6 @@ async function showEventDetail(eventId) {
       </div><!-- /ed-body-layout -->
     `;
 
-    // Wire tabs
     let participantsLoaded = false;
     body.querySelectorAll(".ed-tab").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1565,7 +1504,6 @@ async function showEventDetail(eventId) {
       });
     });
 
-    // Open drawer
     overlay.style.display = "block";
     drawer.style.display  = "flex";
     requestAnimationFrame(() => drawer.classList.add("open"));
@@ -1576,8 +1514,6 @@ async function showEventDetail(eventId) {
     showToast("Failed to open event details.", "error");
   }
 }
-
-// ── LOAD PARTICIPANTS INTO DRAWER TAB ─────────────────────────────────────
 async function edLoadParticipants(eventId) {
   const wrap = document.getElementById("edParticipantsWrap");
   if (!wrap) return;
@@ -1618,7 +1554,6 @@ async function edLoadParticipants(eventId) {
   }
 }
 
-// ── DOWNLOAD PARTICIPANTS FROM DRAWER ─────────────────────────────────────
 async function edDownloadParticipants(eventId, eventTitle) {
   try {
     const res  = await apiFetch(`/faculty/events/${eventId}/participants`);
@@ -1648,14 +1583,12 @@ async function edDownloadParticipants(eventId, eventTitle) {
   }
 }
 
-// ── CLOSE EVENT DETAIL ────────────────────────────────────────────────────
 function closeEventDetail() {
   const overlay = document.getElementById("eventDetailOverlay");
   const drawer  = document.getElementById("eventDetailDrawer");
 
   if (drawer) {
     drawer.classList.remove("open");
-    // Wait for CSS transition to finish before hiding
     setTimeout(() => {
       if (drawer) drawer.style.display = "none";
     }, 300);
@@ -1664,7 +1597,6 @@ function closeEventDetail() {
   document.body.style.overflow = "";
 }
 
-// ── ALL CLUBS PAGE ────────────────────────────────────────────────────────
 let allClubsData      = [];
 let currentClubDetail = null;
 let currentClubEvents = [];
@@ -1864,7 +1796,6 @@ function filterClubEvents() {
   : `<tr><td colspan="7" class="td-empty">No events match filter.</td></tr>`;
 }
 
-// ── CALENDAR NAV ──────────────────────────────────────────────────────────
 function initCalNav() {
   document.getElementById("dashCalPrev")?.addEventListener("click", () => {
     calMonth--;
@@ -1878,11 +1809,9 @@ function initCalNav() {
   });
 }
 
-// ── PENDING PAGE ──────────────────────────────────────────────────────────
 async function renderPendingPage() {
   await refreshAll();
   selectedClubId = "all";
-  // Show proposals actionable for this user's role
   const pending = cachedProposals.filter(p => matchesSelectedClub(p) && isActionableForMe(p.status));
   el("pendProposalCount")?.text(`${pending.length} pending`);
 
@@ -1906,10 +1835,8 @@ async function renderPendingPage() {
   }
 }
 
-// ── CLUBS ─────────────────────────────────────────────────────────────────
 async function renderClubs() {
-  // Refresh all cached data together so member counts, events, and proposals
-  // are all current — not just the clubs list.
+
   await refreshAll();
 
   const grid = document.getElementById("clubsGrid");
@@ -1983,7 +1910,6 @@ function openClubAnalytics(clubId) { setSelectedClub(clubId); chartsInited = fal
 function openAllClubProposals()    { setSelectedClub("all"); navigateTo("proposals"); renderProposals(); }
 function openAllClubAnalytics()    { setSelectedClub("all"); chartsInited = false; navigateTo("analytics"); }
 
-// ── ANALYTICS ─────────────────────────────────────────────────────────────
 function eventMatchesClub(event, club) {
   const cId   = String(club.id   ?? club.club_id  ?? "").trim();
   const cName = (club.club_name  ?? club.name     ?? "").trim().toLowerCase();
@@ -2009,10 +1935,6 @@ function eventMatchesClub(event, club) {
 async function initCharts() {
   chartsInited = true;
 
-  // ── No-clubs guard ────────────────────────────────────────────────────────
-  // Faculty not assigned to any club have nothing meaningful to show on the
-  // Analytics page. Replace the entire page content with a friendly empty
-  // state instead of rendering empty / zeroed-out charts.
   const analyticsPg = document.getElementById("pg-analytics");
   if (!cachedClubs.length) {
     if (analyticsPg) {
@@ -2040,14 +1962,13 @@ async function initCharts() {
     }
     return;
   }
+  const filteredProposals = selectedClubId === "all"
+    ? cachedProposals
+    : cachedProposals.filter(matchesSelectedClub);
 
-  const filteredProposals = cachedProposals.filter(matchesSelectedClub);
-  const filteredEvents    = cachedEvents.filter(matchesSelectedClub);
-  const filteredFeedback  = cachedFeedback.filter(f => {
-    if (selectedClubId === "all") return true;
-    const sc = getSelectedClub();
-    return sc ? eventMatchesClub(f, sc) : false;
-  });
+  const filteredEvents = selectedClubId === "all"
+    ? cachedEvents
+    : cachedEvents.filter(matchesSelectedClub);
 
   const filteredRegs = cachedRegistrations.filter(r => {
     if (selectedClubId === "all") return true;
@@ -2056,23 +1977,37 @@ async function initCharts() {
   });
 
   const regCountFromEvents = filteredEvents.reduce((sum, e) =>
-    sum + (e.registrations_count ?? e.registered_count ?? e.participant_count ?? 0), 0);
+    sum + Number(e.registered_count ?? e.registered ?? e.registrations_count ?? e.participant_count ?? 0), 0);
 
   const totalRegistrations = filteredRegs.length || regCountFromEvents;
 
+
+  const APPROVED_STATUSES = new Set(["hall_approved", "approved", "published"]);
+  const approvedCount = filteredEvents.filter(e =>
+    APPROVED_STATUSES.has((e.status || "").toLowerCase().trim())
+  ).length;
+
+
+  const totalProposals = filteredProposals.length + filteredEvents.filter(e => {
+    const s = (e.status || "").toLowerCase().trim();
+    
+    return s !== "";
+  }).length;
+  
+  const totalEventsInSystem = filteredEvents.length;
+
   console.log("📊 Analytics — filteredEvents:", filteredEvents.length,
     "filteredProposals:", filteredProposals.length,
-    "totalRegistrations:", totalRegistrations);
-
-  const now      = new Date();
-  const approved = filteredProposals.filter(p => (p.status || "").toLowerCase() === "approved").length;
+    "approvedCount:", approvedCount,
+    "totalRegistrations:", totalRegistrations,
+    "statuses:", [...new Set(filteredEvents.map(e => e.status))]);
 
   const kpi = document.getElementById("analyticsKpi");
   if (kpi) {
     kpi.innerHTML = [
-      { k: "kv", icon: "📋", val: filteredProposals.length, label: "Total Proposals"      },
-      { k: "kp", icon: "✅", val: approved,                 label: "Approved Events"       },
-      { k: "kc", icon: "👥", val: totalRegistrations,       label: "Student Registrations" },
+      { k: "kv", icon: "📋", val: totalEventsInSystem, label: "Total Events"          },
+      { k: "kp", icon: "✅", val: approvedCount,        label: "Approved Events"       },
+      { k: "kc", icon: "👥", val: totalRegistrations,   label: "Student Registrations" },
     ].map(d => `
       <div class="kpi-card ${d.k}">
         <div class="kpi-icon">${d.icon}</div>
@@ -2082,6 +2017,7 @@ async function initCharts() {
     `).join("");
   }
 
+  const now = new Date();
   const labels = [], evCounts = [], regCounts = [];
   const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -2094,9 +2030,8 @@ async function initCharts() {
       return ed && ed.getFullYear() === d.getFullYear() && ed.getMonth() === d.getMonth();
     });
     evCounts.push(monthEvs.length);
-
     const regsFromEvFields = monthEvs.reduce((sum, e) =>
-      sum + (e.registrations_count ?? e.registered_count ?? e.participant_count ?? 0), 0);
+      sum + Number(e.registered_count ?? e.registered ?? e.registrations_count ?? e.participant_count ?? 0), 0);
 
     const regsFromCache = filteredRegs.filter(r => {
       const rd = parseEventDate(r.created_at || r.date || r.registered_at);
@@ -2133,8 +2068,12 @@ async function initCharts() {
 
   const TECHNICAL_KEYWORDS = ["ieee","iedc","robotics","coding","tech","computer","ai","ml","cyber","hack","software","hardware"];
 
-  const technical    = filteredEvents.filter(e => {
-    const s = [e.category || "", e.type || "", e.club || "", e.club_name || "", e.title || ""].join(" ").toLowerCase();
+  const technical = filteredEvents.filter(e => {
+
+    const cat = (e.club_category || e.category || "").toLowerCase().trim();
+    if (cat === "technical") return true;
+    if (cat === "non-technical") return false;
+    const s = [e.type || "", e.club || "", e.club_name || "", e.title || ""].join(" ").toLowerCase();
     return TECHNICAL_KEYWORDS.some(kw => s.includes(kw));
   }).length;
   const nonTechnical = Math.max(0, filteredEvents.length - technical);
@@ -2166,32 +2105,48 @@ async function initCharts() {
   }
 
   const selectedClub = getSelectedClub();
-  const clubNames  = selectedClub
-    ? [selectedClub.club_name || selectedClub.name || "Club"]
-    : cachedClubs.map(c => c.club_name || c.name || "Club");
 
-  const clubCounts = selectedClub
-    ? [cachedEvents.filter(e => eventMatchesClub(e, selectedClub)).length]
-    : cachedClubs.map(c => cachedEvents.filter(e => eventMatchesClub(e, c)).length);
+  let clubNames, clubCounts;
+  if (selectedClub) {
+    clubNames  = [selectedClub.club_name || selectedClub.name || "Club"];
+    clubCounts = [cachedEvents.filter(e => eventMatchesClub(e, selectedClub)).length];
+  } else {
+    
+    const clubMap = {};
+    filteredEvents.forEach(e => {
+      const name = (e.club || e.club_name || "Unknown").trim();
+      clubMap[name] = (clubMap[name] || 0) + 1;
+    });
+  
+    const sorted = Object.entries(clubMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    clubNames  = sorted.map(([name]) => name);
+    clubCounts = sorted.map(([, count]) => count);
+  }
 
   console.log("🏛️ clubChart — labels:", clubNames, "counts:", clubCounts);
+
+  const BG_COLORS = [
+    "rgba(139,92,246,.7)","rgba(236,72,153,.7)","rgba(6,182,212,.7)",
+    "rgba(132,204,22,.7)","rgba(245,158,11,.7)","rgba(239,68,68,.7)",
+    "rgba(16,185,129,.7)","rgba(59,130,246,.7)","rgba(251,146,60,.7)",
+    "rgba(167,139,250,.7)",
+  ];
 
   tryChart("clubChart", {
     type: "bar",
     data: {
-      labels: clubNames.length ? clubNames : ["No clubs"],
+      labels: clubNames.length ? clubNames : ["No events"],
       datasets: [{
         data: clubCounts.length ? clubCounts : [0],
-        backgroundColor: ["rgba(139,92,246,.7)","rgba(236,72,153,.7)","rgba(6,182,212,.7)","rgba(132,204,22,.7)","rgba(245,158,11,.7)"],
+        backgroundColor: clubNames.map((_, i) => BG_COLORS[i % BG_COLORS.length]),
         borderRadius: 7,
-        borderSkipped: false
+        borderSkipped: false,
       }],
     },
     options: { ...chartDefaults, indexAxis: "y" },
   });
 }
 
-// ── FEEDBACK ──────────────────────────────────────────────────────────────
 async function renderFeedback(search = "") {
   const fresh = await apiFetch("/faculty/feedback");
   if (fresh) cachedFeedback = fresh;
@@ -2226,8 +2181,6 @@ async function renderFeedback(search = "") {
   }
 }
 
-// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────
-// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────
 async function renderAnnouncements() {
   const al = document.getElementById("announceList");
   if (!al) return;
@@ -2407,9 +2360,8 @@ async function deleteAnnouncement(id) {
     showToast("Failed to delete.", "error");
   }
 }
-// ── NOTIFICATIONS ─────────────────────────────────────────────────────────
 async function syncNotifs() {
-  if (!cachedClubs.length) return; // skip if faculty has no club assigned
+  if (!cachedClubs.length) return; 
   const ann = await apiFetch("/announcements/faculty");
   if (!Array.isArray(ann)) return;
 
@@ -2536,7 +2488,6 @@ function markAllNotifsRead() {
   showToast("All marked as read.", "success");
 }
 
-// ── PROFILE DRAWER ────────────────────────────────────────────────────────
 function openProfileDrawer() {
   document.getElementById("profileDrawer")?.classList.add("open");
   document.getElementById("overlay")?.classList.add("open");
@@ -2588,7 +2539,6 @@ function closeProfileDrawer() {
   document.getElementById("overlay")?.classList.remove("open");
 }
 
-// ── BULK HANDLERS ─────────────────────────────────────────────────────────
 function initBulk() {
   document.getElementById("chkAllCerts")?.addEventListener("change", e => {
     document.querySelectorAll(".cert-cb:not(:disabled)").forEach(cb => cb.checked = e.target.checked);
@@ -2606,14 +2556,11 @@ function initBulk() {
   });
 }
 
-// ── VENUES ────────────────────────────────────────────────────────────────
-// venues[] now stores full objects: { id, name, capacity, location }
-// currentVenueId is the authoritative key used for API calls and cache lookups.
-// currentVenue (name string) is kept only for display / legacy helpers.
+
 let venues = [];
 let currentVenueId = null;
-let currentVenue   = "";          // display name — kept in sync with currentVenueId
-const venueBookings = {};         // keyed by venueId (number)
+let currentVenue   = "";         
+const venueBookings = {};         
 let currentMonth = new Date().getMonth();
 let currentYear  = new Date().getFullYear();
 
@@ -2621,7 +2568,7 @@ async function loadVenues() {
   try {
     const data = await apiFetch("/venues");
     if (Array.isArray(data) && data.length) {
-      venues        = data;                   // full objects
+      venues        = data;                  
       currentVenueId = data[0].id;
       currentVenue   = data[0].name || "";
     }
@@ -2662,8 +2609,6 @@ async function loadVenueBookings() {
       `/venues/calendar?venue_id=${currentVenueId}&month=${currentMonth + 1}&year=${currentYear}`
     );
 
-    // Only overwrite the cache after a successful (array) response so a failed
-    // fetch doesn't wipe out previously loaded booking data.
     if (!Array.isArray(data)) return;
 
     venueBookings[currentVenueId] = {};
@@ -2676,7 +2621,7 @@ async function loadVenueBookings() {
       if (!existing || (PRIORITY[s] ?? 0) > (PRIORITY[existing] ?? 0)) {
         venueBookings[currentVenueId][item.day] = s;
       }
-      // Populate per-slot unavailability if the API ever returns that detail
+    
       if (Array.isArray(item.unavail_slots) && item.unavail_slots.length) {
         const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(item.day).padStart(2, "0")}`;
         const idxSet  = new Set();
@@ -2720,8 +2665,6 @@ function renderCalendar() {
     if (d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
       cell.classList.add("today");
     }
-    // Hall coordinators can click to manage slot availability
-    // Read-only statuses (booked = event approved) cannot be toggled manually
     const isManageable = isHallCoordinator && status !== "booked" && status !== "faculty-approved";
     if (isHallCoordinator) {
       cell.style.cursor = "pointer";
@@ -2743,8 +2686,6 @@ function renderCalendar() {
     })()}`;
     grid.appendChild(cell);
   }
-
-  // Update legend to show editable hint for hall coordinators
   const legend = document.querySelector(".venue-match-legend");
   if (legend && isHallCoordinator) {
     const existingHint = legend.querySelector(".hc-edit-hint");
@@ -2758,8 +2699,6 @@ function renderCalendar() {
   }
 }
 
-// ── TIME SLOTS CONFIG ─────────────────────────────────────────────────────────
-// All 1-hour slots from 08:00 to 21:00
 const TIME_SLOTS = (() => {
   const slots = [];
   for (let h = 8; h < 21; h++) {
@@ -2769,12 +2708,9 @@ const TIME_SLOTS = (() => {
   return slots;
 })();
 
-// Per-date, per-slot unavailability: venueSlotStatus[venue][dateStr] = Set of unavailable slot indices
+
 const venueSlotStatus = {};
 
-// ── SLOT MANAGEMENT MODAL (Hall Coordinator) ──────────────────────────────────
-// Opens when clicking an available/unavailable date — shows all time slots
-// so the coordinator can mark individual hours unavailable or re-open them.
 function openSlotToggleModal(day, currentDayStatus) {
   document.getElementById("slotToggleModal")?.remove();
 
@@ -2782,10 +2718,9 @@ function openSlotToggleModal(day, currentDayStatus) {
   const months      = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const displayDate = `${day} ${months[currentMonth]} ${currentYear}`;
 
-  // Get which slots are already marked unavailable for this date/venue
+  
   const unavailSet  = (venueSlotStatus[currentVenue] || {})[dateStr] || new Set();
 
-  // Find booked slots from cachedEvents / cachedHallProposals for this date
   const bookedSlotIndices = new Set();
   [...cachedEvents, ...cachedHallProposals].forEach(e => {
     const d = parseEventDate(e.date || e.event_date || e.start_date);
@@ -2928,7 +2863,6 @@ function openSlotToggleModal(day, currentDayStatus) {
 
   document.body.appendChild(modal);
 
-  // Attach click handlers to slot pills
   document.querySelectorAll(".slot-pill:not(.slot-booked)").forEach(btn => {
     btn.addEventListener("click", () => {
       btn.classList.toggle("slot-avail");
@@ -2936,8 +2870,6 @@ function openSlotToggleModal(day, currentDayStatus) {
     });
   });
 }
-
-// Helper: block or open all non-booked slots
 function slotSelectAll(markUnavailable) {
   document.querySelectorAll(".slot-pill:not(.slot-booked)").forEach(btn => {
     btn.classList.toggle("slot-unavail", markUnavailable);
@@ -2948,7 +2880,6 @@ function slotSelectAll(markUnavailable) {
 async function confirmSlotToggle(dateStr) {
   const note = document.getElementById("slotToggleNote")?.value.trim() || null;
 
-  // Collect which slots are now marked unavailable
   const unavailIndices = [];
   const availIndices   = [];
   document.querySelectorAll(".slot-pill:not(.slot-booked)").forEach(btn => {
@@ -2957,24 +2888,21 @@ async function confirmSlotToggle(dateStr) {
     else availIndices.push(idx);
   });
 
-  // Map indices → slot time strings
   const unavailSlots = unavailIndices.map(i => TIME_SLOTS[i]);
   const availSlots   = availIndices.map(i => TIME_SLOTS[i]);
 
-  // Determine overall day status for the calendar cell:
-  // all unavail → "unavailable", any unavail → "unavailable" (partial maps to unavailable
-  // because the backend only accepts: available | unavailable | maintenance), else → "available"
+  
   const totalManageable = unavailIndices.length + availIndices.length;
   const newDayStatus = unavailIndices.length === 0 ? "available" : "unavailable";
 
-  // For the local calendar display we still use "partial" when only some slots are blocked
+  
   const localDayStatus = unavailIndices.length === 0
     ? "available"
     : unavailIndices.length === totalManageable
       ? "unavailable"
       : "partial";
 
-  // Find venue id from cached hall venues
+
   const venueObj = cachedHallVenues.find(v =>
     (v.name || "").toLowerCase().trim() === (currentVenue || "").toLowerCase().trim()
   );
@@ -2982,7 +2910,7 @@ async function confirmSlotToggle(dateStr) {
 
   const day = parseInt(dateStr.split("-")[2], 10);
 
-  // Persist to server — use /availability directly (no /slots route exists on backend)
+  
   let success = false;
   if (venueId) {
     const res = await apiFetch(`/faculty/hall/venues/${venueId}/availability`, {
@@ -2991,12 +2919,11 @@ async function confirmSlotToggle(dateStr) {
     });
     success = res !== null;
   }
-  // If no venueId, we can't persist (non-hall-coordinator venue), just update locally
+  
 
   document.getElementById("slotToggleModal")?.remove();
 
-  // Always update local cache so UI reflects changes immediately
-  // (use localDayStatus which can be "partial" for the calendar cell colour)
+  
   if (!venueBookings[currentVenueId]) venueBookings[currentVenueId] = {};
   venueBookings[currentVenueId][day] = localDayStatus;
 
@@ -3019,14 +2946,12 @@ async function confirmSlotToggle(dateStr) {
   }
 }
 
-// Modal showing info for booked/pending slots (read-only for hall coordinator)
 function openSlotInfoModal(day, status, events) {
   document.getElementById("slotInfoModal")?.remove();
   const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const displayDate = `${day} ${months[currentMonth]} ${currentYear}`;
   const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
 
-  // Find events for this date from cachedEvents and cachedHallProposals
   const allBookedEvents = [...cachedEvents, ...cachedHallProposals].filter(e => {
     const d = parseEventDate(e.date || e.event_date || e.start_date);
     if (!d) return false;
@@ -3094,7 +3019,6 @@ document.getElementById("nextMonth")?.addEventListener("click", async () => {
   renderCalendar();
 });
 
-// ── SEARCH & FILTER ───────────────────────────────────────────────────────
 function initSearchFilters() {
   document.getElementById("proposalSearch")?.addEventListener("input", debounce(e =>
     renderProposals(document.getElementById("proposalFilter")?.value, e.target.value.toLowerCase(), document.getElementById("proposalCategoryFilter")?.value)
@@ -3118,7 +3042,7 @@ function initSearchFilters() {
   );
 }
 
-// ── ALL CLUBS FILTERS ─────────────────────────────────────────────────────
+
 function initAllClubsFilters() {
   const searchInput = document.getElementById("allClubsSearch");
   const categorySelect = document.getElementById("allClubsCategory");
@@ -3136,7 +3060,6 @@ function initAllClubsFilters() {
   }
 }
 
-// ── THEME ─────────────────────────────────────────────────────────────────
 function applyTheme() {
   const saved = localStorage.getItem("evexa_theme");
   if (saved === "light") document.body.classList.add("light");
@@ -3152,7 +3075,6 @@ function updateThemeBtn() {
   if (btn) btn.textContent = document.body.classList.contains("light") ? "🌙" : "☀️";
 }
 
-// ── LOGOUT ────────────────────────────────────────────────────────────────
 function logout() {
   const modal = document.createElement("div");
   modal.innerHTML = `
@@ -3171,24 +3093,17 @@ function logout() {
   document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { modal.remove(); document.removeEventListener("keydown", esc); } });
 }
 
-// ── BADGES ────────────────────────────────────────────────────────────────
 function updateBadges() {
-  // Faculty Coordinator badge: proposals waiting for their review (status = submitted)
+  
   const facultyPending = cachedProposals.filter(p => {
     const s = (p.status || "").toLowerCase().trim();
     return s === STATUS.SUBMITTED;
   }).length;
-
-  // Hall Coordinator badge: faculty_approved proposals waiting for venue confirm
   const hallPending = cachedHallProposals.length;
 
   updateBadge("badge-proposals", facultyPending);
   updateBadge("badge-pending",   facultyPending);
   updateBadge("badge-hall-proposals", hallPending);
-
-  // Hide Analytics nav item for faculty with no club assignments —
-  // they have no data to view so the page would just show an empty state.
-  // The item is restored automatically when clubs are assigned (on next refresh).
   const analyticsNavItem = document.querySelector(".nav-item[data-page='analytics']");
   if (analyticsNavItem) {
     analyticsNavItem.style.display = cachedClubs.length ? "" : "none";
@@ -3199,7 +3114,6 @@ function updateBadge(id, count) {
   if (el2) { el2.textContent = count > 0 ? count : "–"; el2.style.opacity = count > 0 ? "1" : "0.4"; }
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────────
 function el(id) {
   const e = document.getElementById(id);
   if (!e) return null;
@@ -3211,20 +3125,18 @@ function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : "—"; }
 function parseEventDate(value) {
   if (!value) return null;
 
-  // mysql2 returns DATE columns as JS Date objects already converted to UTC midnight.
-  // In IST (UTC+5:30) that shifts the date one day back when using getDate()/getMonth().
-  // Re-extract via UTC methods and build a local-timezone date to keep the correct day.
+ 
   if (value instanceof Date) {
     return new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
   }
 
-  // Plain date string "YYYY-MM-DD" — construct in local time (no UTC shift)
+ 
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const [y, m, d] = value.split("-").map(Number);
     return new Date(y, m - 1, d);
   }
 
-  // ISO datetime string — strip to date part and build locally to avoid UTC shift
+ 
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
     const [y, m, d] = value.slice(0, 10).split("-").map(Number);
     return new Date(y, m - 1, d);
@@ -3278,7 +3190,7 @@ function tryChart(id, config) {
   new Chart(canvas, config);
 }
 
-// ── CLUB FILTER HELPERS ───────────────────────────────────────────────────
+
 function setSelectedClub(clubId) { selectedClubId = clubId ?? "all"; }
 function getSelectedClub() {
   if (selectedClubId === "all") return null;
@@ -3291,8 +3203,6 @@ function matchesSelectedClub(item) {
   if (!sc) return false;
   return eventMatchesClub(item, sc);
 }
-
-// ── PARTICIPANT DOWNLOAD (event list table button) ────────────────────────
 async function downloadParticipants(eventId) {
   try {
     const data = await apiFetch(`/faculty/events/${eventId}/participants`);
@@ -3314,8 +3224,6 @@ async function downloadParticipants(eventId) {
     showToast("Download failed.", "error");
   }
 }
-
-// ── ACCOUNT SETTINGS (merged from account-settings.js) ───────────────────
 
 function asSetMsg(text, isError = false) {
   const el = document.getElementById("asFormMsg");
@@ -3345,7 +3253,6 @@ function asUpdatePreviewName() {
 }
 
 function asLoadProfile() {
-  // Re-use already-cached profile from the dashboard boot
   const p = cachedProfile;
   if (!p) { asSetMsg("Failed to load profile.", true); return; }
 
@@ -3407,12 +3314,11 @@ async function asSaveProfile(e) {
 
   if (!res) { asSetMsg("Failed to update profile.", true); return; }
 
-  // Clear password fields
+
   ["asCurrentPassword", "asNewPassword", "asConfirmPassword"].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = "";
   });
 
-  // Update cached profile and topbar/sidebar UI
   cachedProfile = { ...cachedProfile, name, email, department, phone_no: phone };
   const initials = asGetInitials(name);
   document.getElementById("miniName")?.replaceChildren
@@ -3428,26 +3334,21 @@ async function asSaveProfile(e) {
 function initAccountSettings() {
   const form = document.getElementById("asAccountForm");
   if (!form) return;
-  // Guard: only bind once
+
   if (form.dataset.asBound) return;
   form.dataset.asBound = "1";
   form.addEventListener("submit", asSaveProfile);
   document.getElementById("asName")?.addEventListener("input", asUpdatePreviewName);
 }
 
-// ── HALL COORDINATOR — render functions ══════════════════════════════════════════════════════════════════════════════
 
-// ── HALL PROPOSALS ────────────────────────────────────────────────────────────
 async function renderHallProposals() {
-  // ── Role guard ─────────────────────────────────────────────────────────────
-  // Only faculty assigned to at least one venue (hall coordinators) may use this
-  // page. All other roles are silently bounced to the dashboard.
   if (!isHallCoordinator) {
     console.warn("[renderHallProposals] Access denied — not a hall coordinator.");
     navigateTo("dashboard");
     return;
   }
-  // Guard: Hall coordinator should NOT see `submitted` proposals — only `faculty_approved`
+  
   ensureHallPages();
 
   const tbody = document.getElementById("hallProposalsBody");
@@ -3455,10 +3356,9 @@ async function renderHallProposals() {
   tbody.innerHTML = `<tr><td colspan="8" class="td-empty">Loading…</td></tr>`;
 
   const fresh = await apiFetch("/faculty/hall/proposals");
-  // Backend must return only `faculty_approved` proposals — enforce client-side guard too
+  
   cachedHallProposals = (Array.isArray(fresh) ? fresh : []).filter(p => {
     const s = (p.status || "").toLowerCase().trim();
-    // Accept faculty_approved; also accept legacy "forwarded" from older backends
     return s === STATUS.FACULTY_APPROVED || s === "forwarded";
   });
   updateBadges();
@@ -3498,7 +3398,6 @@ function showHallProposalDetail(id) {
   const p = cachedHallProposals.find(x => x.id === id);
   if (!p) return;
 
-  // Remove any existing modal
   document.getElementById("hallDetailModal")?.remove();
 
   const modal = document.createElement("div");
@@ -3571,14 +3470,12 @@ function showHallProposalDetail(id) {
 async function approveHallProposal(id) {
   const res = await apiFetch(`/faculty/hall/proposals/${id}/approve`, { method: "PATCH" });
   if (res !== null) {
-    // Update local cache to hall_approved
     const p = cachedHallProposals.find(x => x.id === id);
     if (p) p.status = STATUS.HALL_APPROVED;
     addLocalNotif("event", "✅", "Venue Confirmed — Event Fully Approved", `Hall approval granted for "${p?.title || `event #${id}`}". Organizer has been notified.`, id);
     showToast("✅ Venue confirmed — event fully approved!", "success");
     renderHallProposals();
     renderDashboard();
-    // Refresh venue calendar so the approved date shows as booked
     await syncApprovedEventToVenueCalendar(p);
   } else {
     showToast("Failed to confirm venue.", "error");
@@ -3598,7 +3495,7 @@ async function approveHallProposalFromModal(id) {
     addLocalNotif("event", "✅", "Venue Confirmed — Event Fully Approved", `Hall approval granted for "${p?.title || `event #${id}`}". Organizer has been notified.`, id);
     showToast("✅ Venue confirmed — event fully approved!", "success");
     renderHallProposals();
-    // Refresh venue calendar so the approved date shows as booked
+  
     await syncApprovedEventToVenueCalendar(p);
   } else {
     showToast("Failed to confirm venue.", "error");
@@ -3692,11 +3589,6 @@ async function rejectHallProposalFromModal(id) {
     showToast("Failed to reject.", "error");
   }
 }
-
-// ── SYNC APPROVED EVENT TO VENUE CALENDAR ─────────────────────────────────────
-// Called after a hall proposal is approved. Updates the in-memory venueBookings
-// cache for the event's venue+date so the Venue Management calendar immediately
-// reflects the new booking without requiring a manual refresh.
 async function syncApprovedEventToVenueCalendar(proposal) {
   if (!proposal) return;
 
@@ -3709,14 +3601,11 @@ async function syncApprovedEventToVenueCalendar(proposal) {
   const evMonth = eventDate.getMonth();
   const evDay   = eventDate.getDate();
 
-  // Always update the venueBookings in-memory cache so the calendar
-  // shows "booked" if it happens to be the currently displayed month/venue.
+
   const venueObj2 = venues.find(v => (v.name || "").toLowerCase().trim() === venueName.toLowerCase().trim());
-  const cacheKey  = venueObj2?.id ?? venueName;   // fall back to name if id not found
+  const cacheKey  = venueObj2?.id ?? venueName;   
   if (!venueBookings[cacheKey]) venueBookings[cacheKey] = {};
   venueBookings[cacheKey][evDay] = "booked";
-
-  // Also add to cachedEvents so renderVenueUpcomingBookings picks it up
   const alreadyCached = cachedEvents.find(e => e.id === proposal.id);
   if (!alreadyCached) {
     cachedEvents.push({ ...proposal, status: STATUS.HALL_APPROVED });
@@ -3724,30 +3613,22 @@ async function syncApprovedEventToVenueCalendar(proposal) {
     alreadyCached.status = STATUS.HALL_APPROVED;
   }
 
-  // If the Venue Management page is currently open and showing the same venue/month,
-  // re-render the calendar live so the coordinator sees the update immediately.
   if (currentPage === "venues") {
     if (
       currentVenue.toLowerCase().trim() === venueName.toLowerCase().trim() &&
       currentMonth === evMonth &&
       currentYear  === evYear
     ) {
-      // Reload from server to get the authoritative state, then re-render
       await loadVenueBookings();
       renderCalendar();
     }
   }
-
-  // Also refresh the My Venues page (hall-venues) upcoming bookings table if open
   if (currentPage === "hall-venues") {
     renderHallVenues();
   }
 }
-
-// ── HALL VENUES ───────────────────────────────────────────────────────────────
 async function renderHallVenues() {
-  // ── Role guard ─────────────────────────────────────────────────────────────
-  // Only hall coordinators (faculty with assigned venues) may manage venues.
+
   if (!isHallCoordinator) {
     console.warn("[renderHallVenues] Access denied — not a hall coordinator.");
     navigateTo("dashboard");
@@ -3914,8 +3795,6 @@ async function saveVenueAvailability(venueId) {
   }
 }
 
-// ── ENSURE HALL PAGES EXIST IN DOM ───────────────────────────────────────────
-// Creates pg-hall-proposals and pg-hall-venues if not already present.
 function ensureHallPages() {
   const content = document.getElementById("content");
   if (!content) return;

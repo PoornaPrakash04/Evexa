@@ -962,7 +962,11 @@ document.getElementById("nextMonth")?.addEventListener("click", async () => {
 async function loadAnnouncements() {
   try {
     const res = await apiFetch("/announcements");
-    announcements = res.ok ? await res.json() : [];
+    const orgData = window.__currentOrganizer || {};
+    announcements = res.ok ? (await res.json()).map(a => ({
+      ...a,
+      club: a.club || orgData.club || "—"   // ← fallback for old records
+    })) : [];
   } catch { announcements = []; }
   renderAnnouncements();
 }
@@ -1020,7 +1024,8 @@ async function submitAnnouncement(e) {
     return;
   }
 
-  const payload = { title, type, message };
+  const orgData = window.__currentOrganizer || {};
+  const payload = { title, type, message, club: orgData.club || "" };
 
   try {
     const url    = editId ? `/announcements/${editId}` : `/announcements`;

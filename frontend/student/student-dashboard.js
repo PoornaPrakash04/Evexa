@@ -265,8 +265,6 @@ async function loadProgress() {
     console.error("Progress load error:", err);
   }
 }
-
-/* ── MINI CALENDAR ─────────────────────────────────────────── */
 let calendarEvents = [];
 let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
@@ -792,10 +790,9 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") closeUpcomingModal();
 });
 
-/* ── Boot ───────────────────────────────────────────────────── */
 loadDashboard();
 
-/* ── Theme toggle (inlined from theme.js) ───────────────────── */
+
 (function initTheme() {
   if (localStorage.getItem("evexa_theme") === "light") document.body.classList.add("light");
   const btn = document.getElementById("themeToggle");
@@ -814,7 +811,6 @@ function toggleTheme() {
   if (btn) { btn.textContent = isLight ? "☀️" : "🌙"; btn.title = isLight ? "Switch to Dark Mode" : "Switch to Light Mode"; }
 }
 
-/* ── Profile Drawer ─────────────────────────────────────────── */
 function openProfileDrawer() {
   document.getElementById("profileDrawer")?.classList.add("open");
   document.getElementById("profileDrawer")?.setAttribute("aria-hidden", "false");

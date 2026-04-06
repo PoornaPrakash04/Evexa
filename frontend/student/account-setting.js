@@ -28,7 +28,7 @@ async function loadUserProfile() {
 
     const user = await res.json();
 
-    // ── Avatar image ──────────────────────────────────────────────────────
+ 
 const avatarImg = document.getElementById("avatarImg");
 if (avatarImg && user.avatar) {
   avatarImg.src = `http://localhost:5000${user.avatar}`;

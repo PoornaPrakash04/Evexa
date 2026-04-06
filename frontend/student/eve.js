@@ -1,7 +1,4 @@
 
-const GEMINI_API_KEY = "AIzaSyBx1cmV1fbge0vXVAMY4_DEjsYCZ2nTp2k";
-const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-
 const messagesEl = document.getElementById("eveMessages");
 const inputEl    = document.getElementById("eveInput");
 const sendBtn    = document.getElementById("eveSendBtn");
@@ -11,7 +8,6 @@ const clearBtn   = document.getElementById("clearBtn");
 let history        = [];
 let lastFAQContext = null;
 
-// ── Real-time cache (refreshed each session) ──────────────────────────────
 let DB = {
   events:       null,   // raw array from /api/events
   clubs:        null,   // raw array from /api/clubs/my-clubs + /api/clubs
@@ -671,11 +667,11 @@ async function callGemini(userText) {
     { role: "user",  parts: [{ text: userText }] }
   ];
 
-  const res = await fetch(GEMINI_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 400 } })
-  });
+  const res = await fetch(`${API_BASE}/eve/chat`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getToken()}` },
+  body: JSON.stringify({ contents })
+});
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

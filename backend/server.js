@@ -72,7 +72,7 @@ app.use("/api/registrations",   registrationsRoute);
 app.use("/api/faculty",         facultyRoutes);
 app.use("/api/forgot-password", forgotPasswordRoutes);
 app.use("/api/admin",           adminRoutes);
-
+app.use("/api/eve", require("./routes/eve-proxy"));
 app.get("/", (req, res) => res.send("EVEXA Backend is running"));
 
 app.listen(5000, () => {
