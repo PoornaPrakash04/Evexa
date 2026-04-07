@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
@@ -586,22 +585,44 @@ body.light .rb-sql         { background: rgba(255,255,255,.60); border-color: rg
 .back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   margin-bottom: 16px;
-  padding: 8px 16px;
-  border-radius: 10px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
   border: 1px solid var(--border-2);
   background: var(--surface-2);
   color: var(--text-2);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: all .18s ease;
   font-family: inherit;
+  width: fit-content;
 }
 .back-btn:hover {
   background: var(--surface-3);
   color: var(--text);
   border-color: rgba(139,92,246,.4);
   transform: translateX(-2px);
+}
+
+/* Event / Club detail info cards */
+.ed-info-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border-2);
+  background: var(--surface-2);
+}
+.ed-info-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
+}
+.ed-info-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
 }

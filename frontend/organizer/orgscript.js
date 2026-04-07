@@ -369,6 +369,7 @@ function switchPage(name) {
         "club-single":    "Club Details",
         "settings":       "Profile & Settings",
         "event-detail":   "Event Detail",
+        "notifications":  "Notifications",
       };
       titleEl.textContent = fallbackTitles[name] || "Dashboard";
     }
@@ -1165,6 +1166,30 @@ function renderNotifications() {
   const items = [...(notificationsData.history || []), ...(notificationsData.schedule || []), ...(notificationsData.requests || [])];
   if (!items.length) { body.innerHTML = `<div class="empty-state"><span>🔕</span><p>No notifications</p></div>`; return; }
   body.innerHTML = items.map(n => `
+    <div class="notif-item">
+      <div class="notif-dot" style="background:${n.color}"></div>
+      <div class="notif-text"><p>${n.text}</p><span>${n.time}</span></div>
+    </div>`).join("");
+}
+
+function filterNotifTab(tab) {
+  // Update active chip
+  ["all","history","schedule","requests"].forEach(t => {
+    document.getElementById(`ntab-${t}`)?.classList.toggle("selected", t === tab);
+  });
+
+  const body = document.getElementById("notifBody");
+  if (!body) return;
+
+  const src = tab === "all"
+    ? [...(notificationsData.history||[]), ...(notificationsData.schedule||[]), ...(notificationsData.requests||[])]
+    : (notificationsData[tab] || []);
+
+  if (!src.length) {
+    body.innerHTML = `<div class="empty-state"><span>🔕</span><p>No notifications</p></div>`;
+    return;
+  }
+  body.innerHTML = src.map(n => `
     <div class="notif-item">
       <div class="notif-dot" style="background:${n.color}"></div>
       <div class="notif-text"><p>${n.text}</p><span>${n.time}</span></div>
@@ -2677,7 +2702,6 @@ function renderEventView(container, eData, id) {
         <div class="ed-tabs">
           <button class="ed-tab active" data-panel="info">Description</button>
           <button class="ed-tab" data-panel="participants">Participants</button>
-          <button class="ed-tab" data-panel="qr">QR / Attendance</button>
           <button class="ed-tab" data-panel="report">📋 Report</button>
         </div>
 
@@ -2691,10 +2715,6 @@ function renderEventView(container, eData, id) {
             <button class="btn-ghost" id="edDownloadBtn" style="font-size:12px;">⬇️ Download CSV</button>
           </div>
           <div id="edParticipantsWrap"><p class="ed-desc">Click tab to load…</p></div>
-        </div>
-
-        <div class="ed-panel" id="edp-qr">
-          <p class="ed-desc">Use the QR scanner in the <b>QR &amp; Tickets</b> section of the sidebar to scan tickets for this event.</p>
         </div>
 
         <div class="ed-panel" id="edp-report">
@@ -2730,7 +2750,6 @@ function renderEventView(container, eData, id) {
       </aside>
     </div>`;
 
- 
   let participantsLoaded = false;
   container.querySelectorAll(".ed-tab").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -2791,8 +2810,9 @@ async function edLoadParticipants(id) {
   wrap.innerHTML = `<p class="ed-desc">Loading…</p>`;
   try {
     const res  = await apiFetch(`/registrations/event/${id}`);
-    const data = res.ok ? await res.json() : [];
-    if (!data.length) { wrap.innerHTML = `<p class="ed-desc">No registrations yet.</p>`; return; }
+    if (!res.ok) { wrap.innerHTML = `<p class="ed-desc">Failed to load participants (${res.status}).</p>`; return; }
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) { wrap.innerHTML = `<p class="ed-desc">No registrations yet.</p>`; return; }
     wrap.innerHTML = `
       <table class="ed-table">
         <thead><tr>
@@ -2802,15 +2822,15 @@ async function edLoadParticipants(id) {
           ${data.map((p, i) => `
             <tr>
               <td>${i+1}</td>
-              <td>${p.name || "—"}</td>
-              <td>${p.email || "—"}</td>
-              <td>${p.department || "—"}</td>
-              <td>${p.class || "—"}</td>
+              <td>${p.name || p.participant_name || p.student_name || "—"}</td>
+              <td>${p.email || p.participant_email || "—"}</td>
+              <td>${p.department || p.dept || "—"}</td>
+              <td>${p.class || p.class_name || "—"}</td>
               <td>${p.registered_at ? edFormatDate(p.registered_at) : "—"}</td>
             </tr>`).join("")}
         </tbody>
       </table>`;
-  } catch { wrap.innerHTML = `<p class="ed-desc">Failed to load participants.</p>`; }
+  } catch (err) { console.error("edLoadParticipants error:", err); wrap.innerHTML = `<p class="ed-desc">Failed to load participants.</p>`; }
 }
 
 async function edDownloadCSV(id) {

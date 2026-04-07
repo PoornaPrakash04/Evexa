@@ -503,10 +503,11 @@
                   <th class="th">Date</th>
                   <th class="th">Time Slot</th>
                   <th class="th">Status</th>
+                  <th class="th">Actions</th>
                 </tr>
               </thead>
               <tbody id="myVenueBookingsBody">
-                <tr><td colspan="6" class="table-empty">Click the tab to load your bookings…</td></tr>
+                <tr><td colspan="7" class="table-empty">Click the tab to load your bookings…</td></tr>
               </tbody>
             </table>
           </div>
@@ -793,6 +794,39 @@
             <div class="account-field"><span class="field-label">Admission No</span><span id="pfAdmissionNo">—</span></div>
             <div class="account-field account-field--last"><span class="field-label">Class</span><span id="pfClass">—</span></div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE: NOTIFICATIONS
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-notifications">
+    <div class="content">
+      <div class="section-title">
+        <div class="title-left">
+          <button class="btn-back" onclick="switchPage('dashboard')">←</button>
+          Notifications
+        </div>
+        <button class="btn-ghost" style="font-size:13px;" onclick="
+          document.querySelectorAll('.notif-item').forEach(el => el.style.opacity = '0.45');
+          document.getElementById('notifDot').style.display = 'none';
+        ">Mark all read</button>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden;">
+        <!-- Tab row -->
+        <div class="notif-tabs">
+          <button class="slot-chip selected" id="ntab-all"      onclick="filterNotifTab('all')">All</button>
+          <button class="slot-chip"          id="ntab-history"  onclick="filterNotifTab('history')">Updates</button>
+          <button class="slot-chip"          id="ntab-schedule" onclick="filterNotifTab('schedule')">Reminders</button>
+          <button class="slot-chip"          id="ntab-requests" onclick="filterNotifTab('requests')">Requests</button>
+        </div>
+
+        <!-- Notification list -->
+        <div class="notif-body" id="notifBody">
+          <div class="empty-state"><span>🔕</span><p>No notifications</p></div>
         </div>
       </div>
     </div>

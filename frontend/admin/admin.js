@@ -1,4 +1,3 @@
-
 const API       = "http://localhost:5000/api/admin";
 const EVENTS_API = "http://localhost:5000/api/events";
 
@@ -76,14 +75,16 @@ function navigateTo(page) {
   );
 
   const meta = {
-    dashboard: ["Dashboard",            "System overview — EVEXA Admin Portal"],
-    events:    ["Manage All Events",    "Create, edit, approve and delete events."],
-    clubs:     ["Club Performance",     "Attendance, feedback ratings and growth trends."],
-    users:     ["User Role Management", "Assign and manage roles for all users."],
-    analytics: ["Analytics & Reports",  "Platform statistics and downloadable reports."],
-    activity:  ["Activity Logs",        "Monitor all user and system actions."],
-    backup:    ["Backup & Restore",     "Create backups and restore data."],
-    profile:   ["Admin Profile",        "Manage your account and security settings."],
+    dashboard:     ["Dashboard",            "System overview — EVEXA Admin Portal"],
+    events:        ["Manage All Events",    "Create, edit, approve and delete events."],
+    clubs:         ["Club Performance",     "Attendance, feedback ratings and growth trends."],
+    users:         ["User Role Management", "Assign and manage roles for all users."],
+    analytics:     ["Analytics & Reports",  "Platform statistics and downloadable reports."],
+    activity:      ["Activity Logs",        "Monitor all user and system actions."],
+    backup:        ["Backup & Restore",     "Create backups and restore data."],
+    profile:       ["Admin Profile",        "Manage your account and security settings."],
+    "event-detail":["Event Details",        "Full information and participants for this event."],
+    "club-detail": ["Club Details",         "Performance metrics and events for this club."],
   };
   const [t, s] = meta[page] || ["Dashboard", ""];
   const titleEl = document.getElementById("pageTitle");
@@ -342,7 +343,7 @@ function renderEventsTable() {
     const safeClub  = (e.club || e.club_name || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     return `
     <tr>
-      <td style="font-weight:800;">${safeTitle || "—"}</td>
+      <td style="font-weight:800;"><span class="ev-name-link" style="cursor:pointer;color:var(--violet-2);text-decoration:underline;text-underline-offset:3px;" data-id="${e.id}">${safeTitle || "—"}</span></td>
       <td>${safeClub || safeOrg || "—"}</td>
       <td><span class="tag">${e.category || "—"}</span></td>
       <td>${fmtDate(e.date)}</td>
@@ -358,6 +359,9 @@ function renderEventsTable() {
     || `<tr><td colspan="6" style="padding:24px;text-align:center;opacity:.5;font-weight:700;">No events found.</td></tr>`;
 
   
+  tbody.querySelectorAll(".ev-name-link").forEach(btn => {
+    btn.addEventListener("click", () => openEventDetail(Number(btn.dataset.id)));
+  });
   tbody.querySelectorAll(".ev-participants-btn").forEach(btn => {
     btn.addEventListener("click", () => viewParticipants(Number(btn.dataset.id), btn.dataset.name));
   });
@@ -646,18 +650,150 @@ async function loadClubs() {
     const clubs = await apiFetch(`/clubs/performance?academic_year=${year}`) || [];
     const tbody = document.getElementById("clubsBody");
     if (tbody) {
-      tbody.innerHTML = clubs.map(c => `
+      tbody.innerHTML = clubs.map(c => {
+        const safeName = (c.club || "").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        return `
         <tr>
-          <td style="font-weight:900;">${c.club || "—"}</td>
+          <td style="font-weight:900;">
+            <span class="club-name-link" style="cursor:pointer;color:var(--violet-2);text-decoration:underline;text-underline-offset:3px;"
+              data-club='${JSON.stringify(c).replace(/'/g,"&#39;")}'>${safeName || "—"}</span>
+          </td>
           <td>${c.events_conducted ?? "—"}</td>
           <td>${c.avg_attendance ?? "—"}</td>
           <td>${Number(c.total_participants || 0).toLocaleString()}</td>
           <td style="color:#9ca3af;">${c.last_event ? new Date(c.last_event).toLocaleDateString("en-IN", {day:"numeric",month:"short",year:"numeric"}) : "—"}</td>
-        </tr>`).join("")
+        </tr>`;
+      }).join("")
         || `<tr><td colspan="6" style="padding:24px;text-align:center;color:#9ca3af;font-weight:700;">No club data found.</td></tr>`;
+
+      tbody.querySelectorAll(".club-name-link").forEach(el => {
+        el.addEventListener("click", () => {
+          try { openClubDetail(JSON.parse(el.dataset.club)); } catch(_) {}
+        });
+      });
     }
   } catch (err) {
     showToast("Failed to load club data: " + err.message, "error");
+  }
+}
+
+/* ── Event Detail page ── */
+async function openEventDetail(eventId) {
+  const e = events.find(x => x.id === eventId);
+  if (!e) return showToast("Event not found.", "error");
+
+  navigateTo("event-detail");
+
+  function fmtDate(raw) {
+    if (!raw) return "—";
+    const d = new Date(raw);
+    return isNaN(d) ? raw : d.toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
+  }
+
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || "—"; };
+  setText("edTitle",       e.title || e.name || "Untitled Event");
+  setText("edSub",         e.organizer_label || e.organizer || "—");
+  setText("edDate",        fmtDate(e.date));
+  setText("edClub",        e.club || e.club_name || e.organizer_label || "—");
+  setText("edParticipants", Number(e.participants || 0).toLocaleString());
+  setText("edStatus",      e.status ? (e.status[0].toUpperCase() + e.status.slice(1)) : "—");
+  setText("edYear",        e.academic_year || "—");
+  setText("edEmail",       e.organizer_email || "—");
+
+  const catEl = document.getElementById("edCategory");
+  if (catEl) catEl.textContent = e.category || "";
+
+  const descEl = document.getElementById("edDescription");
+  if (descEl) {
+    if (e.description) { descEl.textContent = e.description; descEl.style.display = ""; }
+    else descEl.style.display = "none";
+  }
+
+  // Load participants
+  const wrap = document.getElementById("edParticipantsWrap");
+  const countEl = document.getElementById("edPartCount");
+  const dlBtn = document.getElementById("edDownloadCsvBtn");
+  if (wrap) wrap.innerHTML = '<div style="padding:24px;text-align:center;color:#9ca3af;font-weight:700;">Loading…</div>';
+  if (countEl) countEl.textContent = "Loading…";
+
+  try {
+    const rows = await apiFetch("/events/" + eventId + "/participants") || [];
+    if (countEl) countEl.textContent = rows.length + " participant" + (rows.length !== 1 ? "s" : "") + " registered";
+    if (dlBtn) {
+      dlBtn.onclick = () => downloadParticipantsFromRows(rows, e.title || e.name || "event");
+    }
+    if (!rows.length) {
+      if (wrap) wrap.innerHTML = '<div style="padding:24px;text-align:center;color:#9ca3af;font-weight:700;">No participants yet.</div>';
+      return;
+    }
+    const thS = "padding:10px 12px;text-align:left;font-weight:900;font-size:11px;color:#374151;background:rgba(109,94,252,.06);border-bottom:1px solid rgba(229,231,235,.8);white-space:nowrap;";
+    const tdS = (x="") => `padding:10px 12px;${x}`;
+    const tbody = rows.map((r,i) => {
+      const certStyle = r.certificate_issued === "Yes"
+        ? "background:rgba(34,197,94,.12);color:#16a34a;border:1px solid rgba(34,197,94,.3);"
+        : "background:rgba(229,231,235,.5);color:#6b7280;border:1px solid rgba(229,231,235,.8);";
+      const rowBg = i%2===1 ? "background:rgba(109,94,252,.02);" : "";
+      return `<tr style="border-bottom:1px solid rgba(229,231,235,.5);${rowBg}">
+        <td style="${tdS("font-weight:800;")}">${r.student_name||"—"}</td>
+        <td style="${tdS("color:#6b7280;")}">${r.roll_no||"—"}</td>
+        <td style="${tdS("color:#6b7280;")}">${r.email||"—"}</td>
+        <td style="${tdS()}">${r.department||"—"}</td>
+        <td style="${tdS("color:#6b7280;")}">${r.phone||"—"}</td>
+        <td style="${tdS()}"><span style="padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;${certStyle}">${r.certificate_issued||"No"}</span></td>
+      </tr>`;
+    }).join("");
+    if (wrap) wrap.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr>
+        <th style="${thS}">Name</th><th style="${thS}">Roll No</th><th style="${thS}">Email</th>
+        <th style="${thS}">Department</th><th style="${thS}">Phone</th><th style="${thS}">Cert Issued</th>
+      </tr></thead><tbody>${tbody}</tbody></table></div>`;
+  } catch(err) {
+    if (wrap) wrap.innerHTML = `<div style="padding:24px;text-align:center;color:#ef4444;font-weight:700;">Failed to load: ${err.message}</div>`;
+  }
+}
+
+/* ── Club Detail page ── */
+async function openClubDetail(club) {
+  navigateTo("club-detail");
+
+  function fmtDate(raw) {
+    if (!raw) return "—";
+    const d = new Date(raw);
+    return isNaN(d) ? raw : d.toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
+  }
+
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? "—"; };
+  setText("cdTitle",        club.club || "Club Details");
+  setText("cdSub",          `Performance overview for ${club.club || "this club"}`);
+  setText("cdEvents",       club.events_conducted ?? "—");
+  setText("cdParticipants", Number(club.total_participants || 0).toLocaleString());
+  setText("cdAvgAttendance",club.avg_attendance ?? "—");
+  setText("cdLastEvent",    fmtDate(club.last_event));
+
+  // Load club's events from the main events list
+  const cdBody = document.getElementById("cdEventsBody");
+  const cdCount = document.getElementById("cdEventsCount");
+  if (cdBody) cdBody.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;opacity:.5;font-weight:700;">Loading…</td></tr>';
+
+  try {
+    const allEvs = await eventsFetch("/all") || [];
+    const clubEvs = allEvs.filter(e =>
+      (e.club || e.club_name || e.organizer_label || "").toLowerCase() === (club.club || "").toLowerCase()
+    );
+    if (cdCount) cdCount.textContent = clubEvs.length + " event" + (clubEvs.length !== 1 ? "s" : "") + " found";
+    if (cdBody) {
+      cdBody.innerHTML = clubEvs.map(e => `
+        <tr>
+          <td style="font-weight:800;">${(e.title || e.name || "—").replace(/</g,"&lt;")}</td>
+          <td><span class="tag">${e.category || "—"}</span></td>
+          <td>${fmtDate(e.date)}</td>
+          <td>${Number(e.participants || 0).toLocaleString()}</td>
+          <td><span class="badge ${(e.status||"").toLowerCase()}">${e.status ? e.status[0].toUpperCase()+e.status.slice(1) : "—"}</span></td>
+        </tr>`).join("")
+        || '<tr><td colspan="5" style="padding:24px;text-align:center;opacity:.5;font-weight:700;">No events found for this club.</td></tr>';
+    }
+  } catch(err) {
+    if (cdBody) cdBody.innerHTML = `<tr><td colspan="5" style="padding:24px;text-align:center;color:#ef4444;font-weight:700;">${err.message}</td></tr>`;
   }
 }
 
@@ -919,7 +1055,7 @@ function addUserStep2(role) {
 
     admin: `
       <label class="field-label">Full Name *</label>
-      <input class="field-input" id="newUName" placeholder="e.g. Super Admin" style="margin-bottom:12px;"/>
+      <input class="field-input" id="newUName" placeholder="e.g. Admin" style="margin-bottom:12px;"/>
       <label class="field-label">Email *</label>
       <input class="field-input" id="newUEmail" type="email" placeholder="admin@college.edu" style="margin-bottom:12px;"/>
       <label class="field-label">Password *</label>

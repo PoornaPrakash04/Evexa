@@ -72,7 +72,7 @@
       <div class="mini-user" id="sidebarUserBtn" title="View Profile" style="cursor:pointer;">
         <div class="mini-avatar" id="sidebarAvatar">SA</div>
         <div class="mini-meta">
-          <div class="mini-name" id="sidebarName">Super Admin</div>
+          <div class="mini-name" id="sidebarName">Admin</div>
           <div class="mini-role">Administrator</div>
         </div>
       </div>
@@ -92,7 +92,7 @@
         </div>
       </div>
       <div class="topbar-right">
-        <span class="role-pill">🛡️ Super Admin</span>
+        <span class="role-pill">🛡️ Admin</span>
         <button class="icon-btn" id="notifBtn" title="Notifications" style="position:relative;">
           🔔
           <div class="notif-dot" id="notifDot"></div>
@@ -418,6 +418,82 @@
 
 
 
+      </div>
+
+      <!-- ═══ EVENT DETAIL ═══ -->
+      <div id="pg-event-detail" style="display:none">
+        <button class="back-btn" onclick="navigateTo('events')">&#8592; Back</button>
+        <div class="panel" id="eventDetailPanel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title" id="edTitle">Event Details</div>
+              <div class="panel-sub" id="edSub">Loading…</div>
+            </div>
+            <span class="tag" id="edCategory"></span>
+          </div>
+          <div class="panel-body">
+            <div class="two-col" style="gap:18px;margin-bottom:18px;">
+              <div class="ed-info-card"><div class="ed-info-label">📅 Date</div><div class="ed-info-val" id="edDate">—</div></div>
+              <div class="ed-info-card"><div class="ed-info-label">🏷️ Club / Organizer</div><div class="ed-info-val" id="edClub">—</div></div>
+              <div class="ed-info-card"><div class="ed-info-label">👥 Participants</div><div class="ed-info-val" id="edParticipants">—</div></div>
+              <div class="ed-info-card"><div class="ed-info-label">📊 Status</div><div class="ed-info-val" id="edStatus">—</div></div>
+              <div class="ed-info-card"><div class="ed-info-label">🎓 Academic Year</div><div class="ed-info-val" id="edYear">—</div></div>
+              <div class="ed-info-card"><div class="ed-info-label">📧 Organizer Email</div><div class="ed-info-val" id="edEmail">—</div></div>
+            </div>
+            <div id="edDescription" style="font-size:14px;color:var(--text-2);line-height:1.7;margin-bottom:18px;padding:14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border-2);display:none;"></div>
+          </div>
+        </div>
+        <!-- Participants sub-table -->
+        <div class="panel" style="margin-top:18px;">
+          <div class="panel-header">
+            <div><div class="panel-title">👥 Registered Participants</div><div class="panel-sub" id="edPartCount">Loading…</div></div>
+            <button class="btn ghost sm" id="edDownloadCsvBtn">📥 Download CSV</button>
+          </div>
+          <div id="edParticipantsWrap" class="table-wrap">
+            <div style="padding:24px;text-align:center;color:#9ca3af;font-weight:700;">Loading…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ CLUB DETAIL ═══ -->
+      <div id="pg-club-detail" style="display:none">
+        <button class="back-btn" onclick="navigateTo('clubs')">&#8592; Back</button>
+        <div class="panel" id="clubDetailPanel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title" id="cdTitle">Club Details</div>
+              <div class="panel-sub" id="cdSub">Performance overview</div>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="two-col" style="gap:18px;margin-bottom:0;">
+              <div class="ed-info-card"><div class="ed-info-label">📅 Events Conducted</div><div class="ed-info-val" id="cdEvents">—</div></div>
+              <div class="ed-info-card"><div class="ed-info-label">👥 Total Participants</div><div class="ed-info-val" id="cdParticipants">—</div></div>
+              <div class="ed-info-card"><div class="ed-info-label">📊 Avg Attendance</div><div class="ed-info-val" id="cdAvgAttendance">—</div></div>
+              <div class="ed-info-card"><div class="ed-info-label">🗓️ Last Event</div><div class="ed-info-val" id="cdLastEvent">—</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Club events list -->
+        <div class="panel" style="margin-top:18px;">
+          <div class="panel-header">
+            <div><div class="panel-title">📋 Events by this Club</div><div class="panel-sub" id="cdEventsCount"></div></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event Name</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th>Participants</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="cdEventsBody"><tr><td colspan="5" style="padding:24px;text-align:center;opacity:.5;font-weight:700;">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- ═══ ADMIN PROFILE ═══ -->
