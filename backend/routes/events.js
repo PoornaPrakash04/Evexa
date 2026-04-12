@@ -1,4 +1,3 @@
-
 const express    = require("express");
 const db         = require("../db");
 const authorize  = require("../middleware/authMiddleware");
@@ -608,6 +607,49 @@ router.delete("/:id", authorize(), (req, res) => {
   });
 });
 
+
+
+router.post("/:id/report", authorize(), upload.single("report"), (req, res) => {
+  const report = req.file ? req.file.filename : null;
+  if (!report) return res.status(400).json({ message: "No PDF file uploaded." });
+
+  const whereClause = isAdmin(req) ? "WHERE id = ?" : "WHERE id = ? AND organizer_id = ?";
+  const whereParams = isAdmin(req) ? [req.params.id] : [req.params.id, req.user.id];
+
+  db.query(
+    `UPDATE events SET report = ? ${whereClause}`,
+    [report, ...whereParams],
+    (err, result) => {
+      if (err) {
+        console.error("Report upload error:", err);
+        return res.status(500).json({ message: "Server error", error: err.message });
+      }
+      if (result.affectedRows === 0)
+        return res.status(404).json({ message: "Event not found or unauthorized." });
+      res.json({ message: "Report uploaded successfully", filename: report });
+    }
+  );
+});
+
+
+router.delete("/:id/report", authorize(), (req, res) => {
+  const whereClause = isAdmin(req) ? "WHERE id = ?" : "WHERE id = ? AND organizer_id = ?";
+  const whereParams = isAdmin(req) ? [req.params.id] : [req.params.id, req.user.id];
+
+  db.query(
+    `UPDATE events SET report = NULL ${whereClause}`,
+    whereParams,
+    (err, result) => {
+      if (err) {
+        console.error("Report delete error:", err);
+        return res.status(500).json({ message: "Server error", error: err.message });
+      }
+      if (result.affectedRows === 0)
+        return res.status(404).json({ message: "Event not found or unauthorized." });
+      res.json({ message: "Report deleted successfully" });
+    }
+  );
+});
 
 
 router.get("/:id", (req, res) => {

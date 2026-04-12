@@ -2,9 +2,14 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
+const ALLOWED_IMAGES = /jpeg|jpg|png|gif|webp/;
+const ALLOWED_DOCS   = /pdf/;
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = "uploads/logos/";  
+    // PDFs (reports) go to uploads/reports/, images go to uploads/logos/
+    const isPdf = file.mimetype === "application/pdf";
+    const dir   = isPdf ? "uploads/reports/" : "uploads/logos/";
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
@@ -17,13 +22,13 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|gif|webp/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    const mime = allowed.test(file.mimetype);
-    if (ext && mime) return cb(null, true);
-    cb(new Error("Only image files are allowed"));
+    const ext  = path.extname(file.originalname).toLowerCase();
+    const isPdf   = ALLOWED_DOCS.test(ext)   && file.mimetype === "application/pdf";
+    const isImage = ALLOWED_IMAGES.test(ext) && ALLOWED_IMAGES.test(file.mimetype);
+    if (isPdf || isImage) return cb(null, true);
+    cb(new Error("Only image files (jpeg, jpg, png, gif, webp) or PDF files are allowed"));
   },
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB to accommodate PDFs
 });
 
 module.exports = upload;

@@ -703,9 +703,9 @@ function populateFilterDropdowns() {
   venueSels.forEach(sel => {
     if (!sel) return;
     venues.forEach(v => {
-      if (!sel.querySelector(`option[value="${v}"]`))
-        sel.insertAdjacentHTML("beforeend", `<option value="${v}">${v}</option>`);
-    });
+  if (!sel.querySelector(`option[value="${v.name}"]`))
+    sel.insertAdjacentHTML("beforeend", `<option value="${v.name}">${v.name}</option>`);
+  });
   });
   ["eventSearch","filterType","filterClub","filterVenue","filterDate"].forEach(id => {
     document.getElementById(id)?.addEventListener("input",  filterEvents);
@@ -718,8 +718,8 @@ async function loadVenues() {
     const res = await apiFetch("/venues");
     if (res.ok) {
       const data   = await res.json();
-      venues       = data.map(v => v.name);
-      currentVenue = venues[0] || "";
+      venues = data;  // keep full objects [{id, name, capacity, location}, ...]
+currentVenue = venues[0]?.name || "";
       renderDashVenueStatus(data);
     }
   } catch (err) { console.error("Venue load error:", err); }
@@ -732,7 +732,8 @@ function renderVenueSidebar() {
   const list = document.getElementById("venueList");
   if (!list) return;
   list.innerHTML = venues.map(v => `
-    <div class="venue-list-item ${v === currentVenue ? "active" : ""}" onclick="selectVenue('${v}')">${v}</div>
+    <div class="venue-list-item ${v.name === currentVenue ? "active" : ""}"
+         onclick="selectVenue('${v.name}')">${v.name}</div>
   `).join("");
 }
 
@@ -776,7 +777,7 @@ function renderCalendar() {
     const cell = document.createElement("div");
     cell.className = "calendar-day"; cell.textContent = day;
     const status = bookings[day];
-    if (status === "booked" || status === "approved")  { cell.classList.add("booked");    cell.title = `Day ${day} — Fully Booked`; }
+    if (status === "booked" || status === "faculty-approved")  { cell.classList.add("booked");    cell.title = `Day ${day} — Fully Booked`; }
     else if (status === "pending") { cell.classList.add("pending");   cell.title = `Day ${day} — Pending Approval`; }
     else                           { cell.classList.add("available"); cell.title = `Day ${day} — Available (click to book)`; cell.addEventListener("click", () => openVenueSlots(day)); }
     grid.appendChild(cell);
@@ -800,12 +801,12 @@ async function openVenueSlots(day) {
 
 const evSel = document.getElementById("vbEventId");
 evSel.innerHTML = `<option value="">— Select an event (optional) —</option>`;
-const pendingEvents = events.filter(e => e.status === "Pending");
-if (!pendingEvents.length) {
+const bookableEvents = events.filter(e => !["Rejected","Completed"].includes(e.status));
+if (!bookableEvents.length) {
   evSel.insertAdjacentHTML("beforeend",
     `<option disabled>No pending events available</option>`);
 }
-pendingEvents.forEach(e => {
+bookableEvents.forEach(e => {
   evSel.insertAdjacentHTML("beforeend",
     `<option value="${e.id}">${e.title} (${formatEventDate(e.date)})</option>`);
 });
@@ -846,7 +847,7 @@ function selectSlotChip(el, start, end) {
 async function submitVenueBooking(e) {
   e.preventDefault();
   const raw = document.getElementById("vbSlotStart").value;
-  if (!raw) { showToast("⚠️ Please select at least one time slot"); return; }
+  if (!raw || raw === "[]") { showToast("⚠️ Please select at least one time slot"); return; }
 
   let selectedSlots;
   try { selectedSlots = JSON.parse(raw); } catch { selectedSlots = []; }
@@ -856,6 +857,8 @@ async function submitVenueBooking(e) {
   btn.disabled = true; btn.textContent = "Submitting…";
 
   const venueName = document.getElementById("vbVenueName").value;
+const venueObj  = venues.find(v => v.name === venueName);
+const venueId   = venueObj?.id || "";
   const date      = document.getElementById("vbDate").value;
   const purpose   = document.getElementById("vbPurpose").value;
   const eventId   = document.getElementById("vbEventId").value;
@@ -864,6 +867,7 @@ async function submitVenueBooking(e) {
   let successCount = 0;
   for (const slot of selectedSlots) {
     const formData = new FormData();
+    formData.append("venue_id",   venueId);
     formData.append("venue_name", venueName);
     formData.append("date",       date);
     formData.append("slot_start", slot.start);
@@ -966,7 +970,7 @@ async function loadAnnouncements() {
     const orgData = window.__currentOrganizer || {};
     announcements = res.ok ? (await res.json()).map(a => ({
       ...a,
-      club: a.club || orgData.club || "—"   // ← fallback for old records
+      club: a.club || orgData.club || "—"
     })) : [];
   } catch { announcements = []; }
   renderAnnouncements();
@@ -1173,7 +1177,6 @@ function renderNotifications() {
 }
 
 function filterNotifTab(tab) {
-  // Update active chip
   ["all","history","schedule","requests"].forEach(t => {
     document.getElementById(`ntab-${t}`)?.classList.toggle("selected", t === tab);
   });
@@ -2044,9 +2047,7 @@ async function _scanFrameWithBoost(html5QrInstance, videoEl, canvasEl) {
   const H = canvasEl.height = videoEl.videoHeight || 480;
   const ctx = canvasEl.getContext("2d", { willReadFrequently: true });
 
- 
   ctx.drawImage(videoEl, 0, 0, W, H);
-
 
   const imgData = ctx.getImageData(0, 0, W, H);
   const d = imgData.data;
@@ -2117,7 +2118,6 @@ function initTicketScanner() {
       };
       const onDecodeError = (_) => {};
 
-  
       let nativeStarted = false;
       try {
         await html5Qr.start({ facingMode: "environment" }, scanConfig, onDecodeSuccess, onDecodeError);
@@ -2297,8 +2297,6 @@ function renderOrgClubsGrid() {
   });
 }
 
-
-
 function openOrgClubSingle(clubId) {
   switchPage("club-single");
   loadOrgClubSingle(clubId);
@@ -2326,7 +2324,6 @@ async function loadOrgClubSingle(clubId) {
     let memberCount = "—";
     try { const mRes = await apiFetch(`/clubs/${clubId}/members`); if (mRes.ok) { const mData = await mRes.json(); memberCount = mData.count ?? mData.length ?? "—"; } } catch (_) {}
 
-  
     let clubEvents = [];
     try { const evRes = await apiFetch(`/clubs/${clubId}/events`); if (evRes.ok) clubEvents = await evRes.json(); } catch (_) {}
 
@@ -2525,8 +2522,9 @@ function downloadClubExecomCSV(execomData, clubName) {
 let _edCurrentId   = null;
 let _edCurrentData = null;
 
-async function openEventDetail(id, mode = "view") {
+async function openEventDetail(id, mode = "view", forceRefresh = false) {
   _edCurrentId = id;
+  localStorage.setItem("currentEventId", id);
   switchPage("event-detail");
 
   const container = document.getElementById("edContainer");
@@ -2534,19 +2532,11 @@ async function openEventDetail(id, mode = "view") {
   container.innerHTML = `<div class="empty-state"><span>⏳</span><p>Loading event…</p></div>`;
   let eData = null;
   try {
-    if (Array.isArray(events) && events.length) {
+    const singleRes = await apiFetch(`/events/${id}`);
+    if (singleRes.ok) eData = await singleRes.json();
+
+    if (!eData && Array.isArray(events) && events.length) {
       eData = events.find(e => String(e.id) === String(id)) || null;
-    }
-    if (!eData) {
-      const myRes = await apiFetch("/events/my");
-      if (myRes.ok) {
-        const myList = await myRes.json();
-        eData = myList.find(e => String(e.id) === String(id)) || null;
-      }
-    }
-    if (!eData) {
-      const singleRes = await apiFetch(`/events/${id}`);
-      if (singleRes.ok) eData = await singleRes.json();
     }
   } catch (err) { console.error("Event fetch:", err); }
 
@@ -2574,6 +2564,7 @@ function edFormatTime(t) {
   return `${h > 12 ? h - 12 : h || 12}:${String(m).padStart(2,"0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 function edCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
+
 function renderEventView(container, eData, id) {
   const posterBg = { Workshop:"#6c63ff", Seminar:"#ff6584", Hackathon:"#43d9a2", Cultural:"#f4a261", Sports:"#ffd166" };
   const bg       = posterBg[eData.type] || "#6c63ff";
@@ -2581,6 +2572,18 @@ function renderEventView(container, eData, id) {
   const seatsLeft = Math.max((Number(eData.capacity)||0) - (Number(eData.registered)||0), 0);
   const pct       = Number(eData.capacity) > 0 ? Math.min(100, Math.round((Number(eData.registered||0)/Number(eData.capacity))*100)) : 0;
   const statusCls = { open:"", draft:"draft", closed:"closed" }[eData.status] || "";
+
+  // Determine ownership — used to gate Edit button, Participants tab, and Report tab
+  const myClubId  = window.__currentOrganizer?.club_id;
+  const myClub    = (window.__currentOrganizer?.club || "").toLowerCase().trim();
+  const evClub    = (eData.club || "").toLowerCase().trim();
+
+  const canEdit = myClubId && eData.club_id
+    ? String(myClubId) === String(eData.club_id)
+    : myClub && evClub
+      ? myClub === evClub
+      : false; // default DENY when ownership cannot be determined
+
   const statusBanners = {
     Pending: `
       <div style="margin-bottom:18px;padding:14px 18px;border-radius:14px;
@@ -2659,20 +2662,20 @@ function renderEventView(container, eData, id) {
   const statusBanner = statusBanners[eData.status] || "";
 
   container.innerHTML = `
-    <div class="ed-banner">
-      ${bannerImg
-        ? `<img src="${bannerImg}" alt="${eData.title}" />`
-        : `<div style="height:100%;background:linear-gradient(135deg,${bg},#ff6584);"></div>`}
-    </div>
-
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
       <div style="display:flex;gap:10px;">
         <button class="btn-ghost" onclick="switchPage('events')" style="font-size:13px;">← Back</button>
       </div>
       <div style="display:flex;gap:10px;">
         <button class="btn-ghost" id="edShareBtn" style="font-size:13px;">🔗 Share</button>
-        <button class="btn-primary" id="edEditBtn" style="font-size:13px;">✏️ Edit</button>
+        ${canEdit ? `<button class="btn-primary" id="edEditBtn" style="font-size:13px;">✏️ Edit</button>` : ""}
       </div>
+    </div>
+
+    <div class="ed-banner">
+      ${bannerImg
+        ? `<img src="${bannerImg}" alt="${eData.title}" />`
+        : `<div style="height:100%;background:linear-gradient(135deg,${bg},#ff6584);"></div>`}
     </div>
 
     ${statusBanner}
@@ -2701,14 +2704,15 @@ function renderEventView(container, eData, id) {
 
         <div class="ed-tabs">
           <button class="ed-tab active" data-panel="info">Description</button>
-          <button class="ed-tab" data-panel="participants">Participants</button>
-          <button class="ed-tab" data-panel="report">📋 Report</button>
+          ${canEdit ? `<button class="ed-tab" data-panel="participants">Participants</button>` : ""}
+          ${canEdit ? `<button class="ed-tab" data-panel="report">📋 Report</button>` : ""}
         </div>
 
         <div class="ed-panel active" id="edp-info">
           <p class="ed-desc">${eData.description || "No description added."}</p>
         </div>
 
+        ${canEdit ? `
         <div class="ed-panel" id="edp-participants">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <b style="color:var(--ink);">Registered Participants</b>
@@ -2718,13 +2722,33 @@ function renderEventView(container, eData, id) {
         </div>
 
         <div class="ed-panel" id="edp-report">
-          <p class="ed-desc" style="margin-bottom:16px;">Upload a PDF report for this event.</p>
+          ${eData.report ? `
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);">
+            <span style="font-size:24px;">📄</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;color:var(--ink);font-size:13px;margin-bottom:2px;">Event Report</div>
+              <div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${eData.report}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0;">
+              <a href="http://localhost:5000/uploads/reports/${eData.report}" target="_blank"
+                 style="padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--ink2);font-size:12px;font-weight:600;text-decoration:none;">
+                👁 View
+              </a>
+              <button id="edDeleteReportBtn"
+                style="padding:7px 14px;border-radius:8px;border:1px solid rgba(244,63,94,.3);background:rgba(244,63,94,.08);color:#f43f5e;font-size:12px;font-weight:600;cursor:pointer;">
+                🗑 Delete
+              </button>
+            </div>
+          </div>
+          ` : `<p class="ed-desc" style="margin-bottom:16px;">No report uploaded yet.</p>`}
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <input type="file" id="edReportFile" accept=".pdf" style="font-size:13px;color:var(--ink2);background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.15);border-radius:10px;padding:10px;flex:1;min-width:180px;" />
-            <button class="btn-primary" id="edUploadReportBtn" style="font-size:13px;white-space:nowrap;">📤 Upload Report</button>
+            <button class="btn-primary" id="edUploadReportBtn" style="font-size:13px;white-space:nowrap;">📤 ${eData.report ? "Replace Report" : "Upload Report"}</button>
           </div>
           <div id="edReportStatus" style="margin-top:14px;"></div>
         </div>
+        ` : ""}
+
       </div>
 
       <!-- RIGHT: Sidebar -->
@@ -2764,7 +2788,6 @@ function renderEventView(container, eData, id) {
     });
   });
 
- 
   document.getElementById("edEditBtn")?.addEventListener("click", () => openEventDetail(id, "edit"));
   document.getElementById("edShareBtn")?.addEventListener("click", async () => {
     const url = `${location.origin}${location.pathname}?eventId=${id}`;
@@ -2773,6 +2796,19 @@ function renderEventView(container, eData, id) {
   });
   document.getElementById("edDownloadBtn")?.addEventListener("click", () => edDownloadCSV(id));
   document.getElementById("edUploadReportBtn")?.addEventListener("click", () => edUploadReport(id));
+  document.getElementById("edDeleteReportBtn")?.addEventListener("click", async () => {
+    if (!confirm("Delete this report? This cannot be undone.")) return;
+    try {
+      const res = await apiFetch(`/events/${id}/report`, { method: "DELETE" });
+      if (res.ok) {
+        showToast("🗑 Report deleted.");
+        await openEventDetail(id);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast("❌ " + (err.message || "Delete failed."));
+      }
+    } catch { showToast("❌ Network error."); }
+  });
   document.getElementById("edPublishBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("edPublishBtn");
     if (!btn) return;
@@ -2804,15 +2840,22 @@ function renderEventView(container, eData, id) {
     }
   });
 }
+
 async function edLoadParticipants(id) {
   const wrap = document.getElementById("edParticipantsWrap");
   if (!wrap) return;
   wrap.innerHTML = `<p class="ed-desc">Loading…</p>`;
   try {
-    const res  = await apiFetch(`/registrations/event/${id}`);
+    const res = await apiFetch(`/registrations/event/${id}`);
     if (!res.ok) { wrap.innerHTML = `<p class="ed-desc">Failed to load participants (${res.status}).</p>`; return; }
-    const data = await res.json();
-    if (!Array.isArray(data) || !data.length) { wrap.innerHTML = `<p class="ed-desc">No registrations yet.</p>`; return; }
+    const raw  = await res.json();
+    const data = Array.isArray(raw)                ? raw
+               : Array.isArray(raw.registrations)  ? raw.registrations
+               : Array.isArray(raw.data)            ? raw.data
+               : Array.isArray(raw.participants)    ? raw.participants
+               : [];
+    console.log(`edLoadParticipants: event ${id} → ${data.length} registrations`, raw);
+    if (!data.length) { wrap.innerHTML = `<p class="ed-desc">No registrations yet.</p>`; return; }
     wrap.innerHTML = `
       <table class="ed-table">
         <thead><tr>
@@ -2836,7 +2879,12 @@ async function edLoadParticipants(id) {
 async function edDownloadCSV(id) {
   try {
     const res  = await apiFetch(`/registrations/event/${id}`);
-    const data = res.ok ? await res.json() : [];
+    const raw  = res.ok ? await res.json() : [];
+    const data = Array.isArray(raw)                ? raw
+               : Array.isArray(raw.registrations)  ? raw.registrations
+               : Array.isArray(raw.data)            ? raw.data
+               : Array.isArray(raw.participants)    ? raw.participants
+               : [];
     if (!data.length) { showToast("No participants to export."); return; }
     const headers = ["#","Name","Email","Phone","Class","Department","Registered At"];
     const rows    = data.map((p, i) => [i+1, p.name||"", p.email||"", p.phone||"", p.class||"", p.department||"", p.registered_at ? edFormatDate(p.registered_at) : ""]);
@@ -2866,18 +2914,17 @@ async function edUploadReport(id) {
     const res = await apiFetch(`/events/${id}/report`, { method: "POST", body: fd });
     if (res.ok) {
       showToast("✅ Report uploaded!");
-      if (status) status.innerHTML = `<span style="font-size:13px;color:var(--emerald,#10b981);">✅ <b>${file.name}</b> uploaded successfully.</span>`;
+      await openEventDetail(id);
     } else {
       const err = await res.json().catch(() => ({}));
       showToast("❌ " + (err.message || "Upload failed."));
+      if (btn) { btn.disabled = false; btn.textContent = "📤 Upload Report"; }
     }
   } catch {
     showToast("❌ Network error.");
-  } finally {
     if (btn) { btn.disabled = false; btn.textContent = "📤 Upload Report"; }
   }
 }
-
 
 function renderEventEdit(container, eData, id) {
   container.innerHTML = `

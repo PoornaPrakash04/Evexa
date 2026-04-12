@@ -1,4 +1,3 @@
-
 const express = require("express");
 const db = require("../db");
 const authorize = require("../middleware/authMiddleware");
@@ -137,7 +136,9 @@ router.get("/event/:eventId", authorize(["organizer", "admin"]), (req, res) => {
   const params     = [eventId];
 
   if (userRole !== "admin") {
-    conditions.push("e.organizer_id = ?");
+    // Allow any organizer within the same club to view registrations,
+    // not just the one who created the event
+    conditions.push("e.club_id = (SELECT club_id FROM organizers WHERE id = ?)");
     params.push(organizerId);
   }
 

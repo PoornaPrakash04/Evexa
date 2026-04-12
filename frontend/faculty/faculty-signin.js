@@ -64,15 +64,40 @@ form.addEventListener("submit", async (e) => {
       return;
     }
     if (!data.accessToken) {
-      showError("Login failed. Please try again.");
-      btn.textContent = "Sign In";
-      btn.disabled    = false;
-      return;
-    }
+  showError("Login failed. Please try again.");
+  btn.textContent = "Sign In";
+  btn.disabled    = false;
+  return;
+}
 
-    localStorage.setItem("faculty_auth_token",   data.accessToken);
-    localStorage.setItem("faculty_refresh_token", data.refreshToken);
-    window.location.href = "faculty-dashboard.html";
+localStorage.setItem("faculty_auth_token",   data.accessToken);
+localStorage.setItem("faculty_refresh_token", data.refreshToken);
+
+// ── Fetch role then redirect ──────────────────────────────
+const meRes = await fetch(`${API_BASE}/faculty/me`, {
+  headers: { Authorization: `Bearer ${data.accessToken}` }
+});
+
+if (!meRes.ok) {
+  showError("Failed to load faculty profile. Please try again.");
+  btn.textContent = "Sign In";
+  btn.disabled    = false;
+  return;
+}
+
+const me = await meRes.json();
+
+const roleRedirects = {
+  4: "/faculty/faculty-coordinator/faculty-dashboard.html",
+  6: "/faculty/hall-coordinator/hall-dashboard.html",
+  1: "/faculty/hod/hod-dashboard.html",
+  2: "/faculty/faculty-dashboard.html",
+  3: "/faculty/faculty-dashboard.html",
+  5: "/faculty/dean/dean-dashboard.html",
+};
+
+const destination = roleRedirects[me.role_id] || "/faculty/faculty-dashboard.html";
+window.location.href = destination;
 
   } catch (err) {
     console.error("Login error:", err);

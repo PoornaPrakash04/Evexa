@@ -1,0 +1,302 @@
+/* ═══════════════════════════════════════════════════════════════
+   hall-dashboard.css  —  Full violet theme matching faculty
+   ═══════════════════════════════════════════════════════════════ */
+@import url('faculty-dashboard.css');
+
+/* ── Override hero gradient to pure violet (faculty --g-hero is pink→cyan) ── */
+:root {
+  --g-hero: linear-gradient(135deg,#8b5cf6 0%,#a855f7 50%,#7c3aed 100%);
+}
+body.light {
+  --g-hero: linear-gradient(135deg,#8b5cf6 0%,#a855f7 50%,#7c3aed 100%);
+}
+
+/* ── Brand logo — force violet over any inline cyan/teal style ── */
+.brand-logo,
+.brand .brand-logo,
+.sidebar .brand .brand-logo,
+div.brand-logo,
+.app .sidebar .brand .brand-logo,
+[class*="brand-logo"] {
+  background: var(--g-violet) !important;
+  background-color: #8b5cf6 !important;
+  background-image: var(--g-violet) !important;
+  box-shadow: var(--glow-v) !important;
+  color: white !important;
+}
+/* Catch inline style attribute containing cyan hex values */
+.brand-logo[style],
+div.brand-logo[style] {
+  background: var(--g-violet) !important;
+  background-color: #8b5cf6 !important;
+  background-image: var(--g-violet) !important;
+  box-shadow: var(--glow-v) !important;
+}
+
+/* ── Brand name ── */
+.brand-name {
+  background: var(--g-violet) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* ── Sidebar orb ── */
+.sidebar::before {
+  background: radial-gradient(circle, rgba(139,92,246,.18) 0%, transparent 60%) !important;
+}
+
+/* ── Active nav item ── */
+.nav-item.active,
+button.nav-item.active {
+  background: rgba(139,92,246,.18) !important;
+  border-color: rgba(139,92,246,.38) !important;
+  color: var(--text) !important;
+}
+.nav-item.active::before,
+button.nav-item.active::before {
+  background: var(--g-violet) !important;
+  box-shadow: 0 0 10px rgba(139,92,246,.9) !important;
+}
+
+/* ── Nav item hover ── */
+.nav-item:hover,
+button.nav-item:hover {
+  background: rgba(139,92,246,.12) !important;
+  border-color: rgba(139,92,246,.22) !important;
+  color: var(--text) !important;
+}
+
+/* ── Nav badge ── */
+.nav-badge {
+  background: rgba(139,92,246,.18) !important;
+  border-color: rgba(139,92,246,.32) !important;
+  color: var(--violet-2) !important;
+}
+
+/* ── Mini avatar & user ── */
+.mini-avatar {
+  background: var(--g-violet) !important;
+  box-shadow: var(--glow-v) !important;
+  color: white !important;
+}
+.mini-user:hover { border-color: rgba(139,92,246,.28) !important; }
+.mini-user::after { color: var(--violet-2) !important; }
+
+/* ── Role pill ── */
+.role-pill {
+  background: rgba(139,92,246,.14) !important;
+  border-color: rgba(139,92,246,.28) !important;
+  color: var(--violet-2) !important;
+}
+body.light .role-pill {
+  background: rgba(139,92,246,.10) !important;
+  border-color: rgba(139,92,246,.22) !important;
+  color: #6d28d9 !important;
+}
+
+/* ── Profile / top avatar ── */
+.profile-avatar {
+  background: var(--g-violet) !important;
+  box-shadow: var(--glow-v) !important;
+  border-color: rgba(139,92,246,.4) !important;
+  color: white !important;
+}
+.profile-avatar:hover { box-shadow: 0 0 20px rgba(139,92,246,.5) !important; }
+
+/* ── Account settings avatar ── */
+.as-avatar {
+  background: var(--g-violet) !important;
+  box-shadow: var(--glow-v) !important;
+  color: white !important;
+}
+
+/* ── Hero strip — pure violet, no pink/cyan bleed ── */
+.hero-strip::before {
+  background: linear-gradient(135deg,#8b5cf6 0%,#a855f7 50%,#7c3aed 100%) !important;
+  box-shadow: 0 0 20px rgba(139,92,246,.6), 0 0 40px rgba(139,92,246,.3) !important;
+}
+.hero-strip::after {
+  background: radial-gradient(circle, rgba(139,92,246,.12), transparent 65%) !important;
+}
+.hero-accent {
+  background: var(--g-violet) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* ── Notif count — violet instead of pink ── */
+.notif-count {
+  background: var(--violet) !important;
+  box-shadow: 0 0 8px rgba(139,92,246,.8) !important;
+  color: white !important;
+}
+
+/* ── Search / select focus ── */
+.search-input:focus,
+.filter-select:focus {
+  border-color: rgba(139,92,246,.5) !important;
+  box-shadow: 0 0 0 3px rgba(139,92,246,.12) !important;
+}
+
+/* ── Calendar ── */
+.cal-nav-btn:hover {
+  background: rgba(139,92,246,.15) !important;
+  border-color: rgba(139,92,246,.3) !important;
+  color: var(--violet) !important;
+}
+.cal-day.today {
+  background: rgba(139,92,246,.2) !important;
+  color: var(--violet) !important;
+  border-color: rgba(139,92,246,.38) !important;
+  box-shadow: 0 0 14px rgba(139,92,246,.18) !important;
+}
+.today-dot {
+  background: var(--violet) !important;
+  box-shadow: 0 0 6px rgba(139,92,246,.6) !important;
+}
+.cal-day.selected {
+  background: var(--g-violet) !important;
+  color: white !important;
+  box-shadow: var(--glow-v) !important;
+}
+.cal-event-detail { border-color: rgba(139,92,246,.22) !important; }
+.cal-detail-actions .mini-btn {
+  color: var(--violet) !important;
+  background: rgba(139,92,246,.12) !important;
+  border-color: rgba(139,92,246,.22) !important;
+}
+.cal-detail-actions .mini-btn:hover { background: rgba(139,92,246,.22) !important; }
+
+/* ── Club cards ── */
+.club-card:hover { box-shadow: 0 12px 36px rgba(139,92,246,.10) !important; }
+.club-card::before      { background: var(--g-violet) !important; }
+.club-quick-card::before { background: var(--g-violet) !important; }
+
+/* ── All clubs grid ── */
+.ac-card:hover {
+  border-color: var(--violet) !important;
+  box-shadow: var(--glow-v) !important;
+}
+.ac-card::before { background: var(--g-violet) !important; }
+.ac-emoji { background: rgba(139,92,246,.15) !important; }
+.ac-incharge-badge {
+  background: rgba(139,92,246,.18) !important;
+  color: var(--violet) !important;
+  border-color: rgba(139,92,246,.3) !important;
+}
+
+/* ── Club detail drawer ── */
+.club-detail-emoji { background: rgba(139,92,246,.18) !important; }
+.club-tab.active {
+  color: var(--violet) !important;
+  border-bottom-color: var(--violet) !important;
+}
+
+/* ── Buttons ── */
+.btn.primary {
+  background: var(--g-violet) !important;
+  color: white !important;
+  box-shadow: 0 4px 18px rgba(139,92,246,.32) !important;
+}
+.btn.primary:hover { box-shadow: 0 6px 26px rgba(139,92,246,.48) !important; }
+
+/* ── Mini btn ── */
+.mini-btn {
+  color: var(--violet) !important;
+  background: rgba(139,92,246,.12) !important;
+  border-color: rgba(139,92,246,.22) !important;
+}
+.mini-btn:hover { background: rgba(139,92,246,.22) !important; }
+.mini-btn.approve { color: #15803d !important; background: rgba(34,197,94,.10) !important; border-color: rgba(34,197,94,.25) !important; }
+.mini-btn.approve:hover { background: rgba(34,197,94,.20) !important; }
+.mini-btn.reject  { color: #b91c1c !important; background: rgba(239,68,68,.10) !important; border-color: rgba(239,68,68,.25) !important; }
+.mini-btn.reject:hover  { background: rgba(239,68,68,.20) !important; }
+
+/* ── Tags ── */
+.tag {
+  background: rgba(139,92,246,.14) !important;
+  border-color: rgba(139,92,246,.28) !important;
+  color: var(--violet) !important;
+}
+
+/* ── Event detail drawer tabs ── */
+.ed-tab.active {
+  border-color: rgba(139,92,246,.45) !important;
+  background: rgba(139,92,246,.15) !important;
+  color: var(--violet-2) !important;
+}
+.ed-tab:hover {
+  border-color: rgba(139,92,246,.4) !important;
+  color: var(--violet-2) !important;
+}
+.ed-badge.primary {
+  background: rgba(139,92,246,.15) !important;
+  border-color: rgba(139,92,246,.35) !important;
+  color: var(--violet-2) !important;
+}
+.ed-progress-fill,
+.fed-progress-fill { background: var(--g-violet) !important; }
+
+/* ── Back btn ── */
+.back-btn::before { background: var(--g-violet) !important; }
+.back-btn:hover {
+  background: rgba(139,92,246,.14) !important;
+  border-color: rgba(139,92,246,.38) !important;
+  box-shadow: 0 0 18px rgba(139,92,246,.15) !important;
+}
+
+/* ── Venue match ── */
+.venue-match-list .venue-list-item.active {
+  background: var(--g-violet) !important;
+  color: white !important;
+  box-shadow: 0 6px 20px rgba(139,92,246,.3) !important;
+}
+.venue-match-list .venue-list-item:hover {
+  background: rgba(139,92,246,.12) !important;
+  border-color: rgba(139,92,246,.2) !important;
+}
+.venue-match-nav:hover {
+  background: rgba(139,92,246,.15) !important;
+  border-color: rgba(139,92,246,.3) !important;
+  color: var(--violet) !important;
+}
+
+/* ── Notifications ── */
+.notif-unread-dot {
+  background: var(--violet) !important;
+  box-shadow: 0 0 6px rgba(139,92,246,.7) !important;
+}
+.notif-clear-btn { color: var(--violet-2) !important; }
+
+/* ── KPI card ── */
+.kpi-card.kv::before { background: var(--g-violet) !important; box-shadow: var(--glow-v) !important; }
+.kpi-card.kg::before { background: var(--g-violet) !important; box-shadow: var(--glow-v) !important; }
+
+/* ── Toast ── */
+.toast.info {
+  background: rgba(139,92,246,.18) !important;
+  border-color: rgba(139,92,246,.4) !important;
+  color: var(--violet) !important;
+}
+body.light .toast.info { color: #6d28d9 !important; }
+
+/* ── Announce card ── */
+.announce-card:hover { border-color: rgba(139,92,246,.32) !important; }
+
+/* ── Form input focus ── */
+.as-form-group input:focus { border-color: var(--violet) !important; }
+
+/* ── EV name link color ── */
+.ev-name:hover { color: var(--violet-2) !important; }
+
+/* ── Hall info banners with inline cyan styles ── */
+#pg-hall-proposals div[style*="6,182,212"],
+#pg-hall-proposals div[style*="67e8f9"],
+#pg-hall-venues    div[style*="6,182,212"],
+#pg-hall-venues    div[style*="67e8f9"] {
+  background: rgba(139,92,246,.1) !important;
+  border-color: rgba(139,92,246,.25) !important;
+  color: var(--violet-2) !important;
+}

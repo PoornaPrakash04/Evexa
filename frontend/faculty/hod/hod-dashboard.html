@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>HOD Coordinator Dashboard | EVEXA</title>
+  <link rel="stylesheet" href="hod-dashboard.css"/>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">H</div>
+      <div class="brand-text">
+        <div class="brand-name">EVEXA</div>
+        <div class="brand-sub">HOD Coordinator</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-page="dashboard" data-tooltip="Dashboard">
+        <span class="icon">🏠</span><span class="nav-label">Dashboard</span>
+      </button>
+
+      <div class="section-label">Classroom Requests</div>
+      <button class="nav-item" data-page="classroom-requests" data-tooltip="Classroom Requests">
+        <span class="icon">🏫</span><span class="nav-label">Classroom Requests</span>
+        <span class="nav-badge orange" id="badge-classroom-requests">–</span>
+      </button>
+      <button class="nav-item" data-page="my-classrooms" data-tooltip="My Classrooms">
+        <span class="icon">🚪</span><span class="nav-label">My Classrooms</span>
+      </button>
+
+      <div class="section-label">Events</div>
+      <button class="nav-item" data-page="event-list" data-tooltip="All Events">
+        <span class="icon">📅</span><span class="nav-label">Event List</span>
+      </button>
+
+      <div class="section-label">Clubs</div>
+      <button class="nav-item" data-page="all-clubs" data-tooltip="All Clubs">
+        <span class="icon">🌐</span><span class="nav-label">All Clubs</span>
+      </button>
+
+      
+
+      <div class="section-label">Analytics</div>
+      <button class="nav-item" data-page="analytics" data-tooltip="Analytics">
+        <span class="icon">📊</span><span class="nav-label">Analytics</span>
+      </button>
+
+      <div class="section-label">Communication</div>
+      <button class="nav-item" data-page="announcements" data-tooltip="Announcements">
+        <span class="icon">📢</span><span class="nav-label">Announcements</span>
+      </button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="mini-user" id="miniUser">
+        <div class="mini-avatar" id="miniAvatar">HD</div>
+        <div class="mini-meta">
+          <div class="mini-name" id="miniName">Loading…</div>
+          <div class="mini-role" id="miniRole">HOD Coordinator</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="sidebarToggle" aria-label="Menu">☰</button>
+        <button class="back-btn" id="backBtn" onclick="navigateTo('dashboard')" title="Back to Dashboard" style="display:none;">
+          <span class="back-arrow">←</span> Back
+        </button>
+        <div class="page-title">
+          <div class="title" id="pageTitle">Dashboard</div>
+          <div class="subtitle" id="pageSub">Welcome back — here's your HOD coordinator overview.</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="role-pill" id="rolePill">HOD Coordinator</span>
+        <button class="icon-btn theme-btn" id="themeToggle" title="Toggle Theme">🌙</button>
+        <div class="notif-wrap">
+          <button class="icon-btn notif-bell" id="notifBtn" title="Notifications">
+            🔔
+            <span class="notif-count" id="notifCount" style="display:none">0</span>
+          </button>
+          <div class="notif-dropdown" id="notifDropdown">
+            <div class="notif-drop-head">
+              <span class="notif-drop-title">Notifications</span>
+              <button class="notif-clear-btn" id="notifClearAll">Clear all</button>
+            </div>
+            <div class="notif-drop-list" id="notifDropList"></div>
+          </div>
+        </div>
+        <button class="profile-btn" id="profileBtn" title="Profile">
+          <div class="profile-avatar" id="topAvatar">HD</div>
+        </button>
+        <button class="top-link danger" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <section class="content" id="content">
+
+      <!-- DASHBOARD -->
+      <div id="pg-dashboard" class="page-section">
+        <div class="hero-strip" id="heroStrip">
+          <div class="hero-left">
+            <div class="hero-greeting" id="heroGreeting">Good Morning! HOD</div>
+            <div class="hero-sub">
+              You have <span id="heroPending" class="hero-accent">–</span> classroom requests awaiting your confirmation.
+            </div>
+          </div>
+          <div class="hero-right">
+            <div class="hero-stat">
+              <div class="hero-stat-val" id="heroClassrooms">–</div>
+              <div class="hero-stat-label">My Classrooms</div>
+            </div>
+            <div class="hero-divider"></div>
+            <div class="hero-stat">
+              <div class="hero-stat-val" id="heroDeptEvents">–</div>
+              <div class="hero-stat-label">Dept Events</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="dashClassroomSummary">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">🏫 Classroom Requests — Awaiting Your Confirmation</div>
+              <div class="panel-sub">Event proposals that require classroom allocation from your department</div>
+            </div>
+            <button class="btn ghost sm" onclick="navigateTo('classroom-requests')">View All →</button>
+          </div>
+          <div class="panel-body" id="dashClassroomSummaryBody">
+            <div class="list-empty">Loading…</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">🗓️ Classroom Booking Calendar</div>
+              <div class="panel-sub">Classroom bookings by date for your department</div>
+            </div>
+            <div class="cal-controls">
+              <button class="cal-nav-btn" id="dashCalPrev">‹</button>
+              <span class="cal-month-label" id="dashCalMonthLabel"></span>
+              <button class="cal-nav-btn" id="dashCalNext">›</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="cal-legend">
+              <span class="leg-item"><span class="leg-dot pending-dot"></span>Pending</span>
+              <span class="leg-item"><span class="leg-dot approved-dot"></span>Approved</span>
+              <span class="leg-item"><span class="leg-dot today-dot"></span>Today</span>
+            </div>
+            <div class="mini-calendar" id="dashMiniCalendar"></div>
+            <div class="cal-event-detail" id="dashCalEventDetail" style="display:none">
+              <div class="cal-detail-title" id="dashCalDetailTitle"></div>
+              <div class="cal-detail-meta" id="dashCalDetailMeta"></div>
+              <div class="cal-detail-actions" id="dashCalDetailActions"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLASSROOM REQUESTS -->
+      <div id="pg-classroom-requests" class="page-section" style="display:none">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">🏫 Classroom Requests — Awaiting HOD Confirmation</div>
+              <div class="panel-sub">Event proposals requesting classrooms from your department. Approve to allocate, reject to decline.</div>
+            </div>
+            <button class="btn ghost sm" onclick="renderClassroomRequests()">🔄 Refresh</button>
+          </div>
+          <div style="padding:10px 16px 0;">
+            <div class="info-banner teal">
+              🏫 <span>As HOD Coordinator, you confirm classroom availability for events in your department.
+              Approval here allocates the classroom and sets the event to <strong>HOD Approved</strong>.</span>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event</th><th>Club</th><th>Organizer</th><th>Date</th>
+                  <th>Classroom</th><th>Capacity</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="classroomRequestsBody">
+                <tr><td colspan="8" class="td-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- MY CLASSROOMS -->
+      <div id="pg-my-classrooms" class="page-section" style="display:none">
+        <div style="margin-bottom:20px;">
+          <div class="info-banner teal">
+            🚪 <span>Manage classroom availability for your department. Changes are immediately visible to all organizers.</span>
+          </div>
+        </div>
+        <div id="myClassroomsContainer">
+          <div class="list-empty" style="padding:20px;">Loading classrooms…</div>
+        </div>
+      </div>
+
+      <!-- DEPT EVENTS -->
+      <div id="pg-dept-events" class="page-section" style="display:none">
+        <div class="filter-bar">
+          <input class="search-input" id="deptEventSearch" placeholder="🔍  Search department events…"/>
+          <select class="filter-select" id="deptEventStatus">
+            <option value="all">All Status</option>
+            <option value="approved">Approved</option>
+            <option value="pending">Pending</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event Name</th><th>Organizer</th><th>Date</th><th>Venue</th>
+                  <th>Category</th><th>Capacity</th><th>Fee</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="deptEventListBody">
+                <tr><td colspan="8" class="td-loading">Loading events…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEPT CLUBS -->
+      <div id="pg-dept-clubs" class="page-section" style="display:none">
+        <div class="filter-bar">
+          <input class="search-input" id="deptClubsSearch" placeholder="🔍  Search department clubs…"/>
+          <select class="filter-select" id="deptClubsCategory">
+            <option value="all">All Categories</option>
+            <option value="technical">Technical</option>
+            <option value="non-technical">Non-Technical</option>
+          </select>
+        </div>
+        <div class="all-clubs-grid" id="deptClubsGrid">
+          <div class="list-empty" style="padding:20px;">Loading clubs…</div>
+        </div>
+        <div class="club-detail-overlay" id="clubDetailOverlay" style="display:none" onclick="closeClubDetail()"></div>
+        <div class="club-detail-drawer" id="clubDetailDrawer" style="display:none">
+          <div class="club-detail-head">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div class="club-detail-emoji" id="clubDetailEmoji">🏛️</div>
+              <div>
+                <div class="club-detail-name" id="clubDetailName">Club Name</div>
+                <div class="club-detail-cat" id="clubDetailCat">Category</div>
+              </div>
+            </div>
+            <button class="icon-btn" onclick="closeClubDetail()">✕</button>
+          </div>
+          <div class="club-detail-stats" id="clubDetailStats"></div>
+          <div class="club-detail-tabs">
+            <button class="club-tab active" onclick="switchClubTab('events',this)">📅 Events</button>
+            <button class="club-tab" onclick="switchClubTab('info',this)">ℹ️ Info</button>
+          </div>
+          <div id="clubTabEvents" class="club-tab-panel">
+            <div class="filter-bar" style="margin-bottom:12px;">
+              <select class="filter-select" id="clubEventStatusFilter" onchange="filterClubEvents()">
+                <option value="all">All Status</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <input class="search-input" id="clubEventSearch" placeholder="🔍 Search events…"
+                oninput="filterClubEvents()" style="flex:1;max-width:220px;"/>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Event</th><th>Date</th><th>Venue</th><th>Category</th><th>Capacity</th><th>Fee</th><th>Status</th></tr>
+                </thead>
+                <tbody id="clubDetailEventsBody">
+                  <tr><td colspan="7" class="td-empty">No events found.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div id="clubTabInfo" class="club-tab-panel" style="display:none">
+            <div id="clubDetailInfo"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVENT PROPOSALS -->
+      <div id="pg-proposals" class="page-section" style="display:none">
+        <div style="margin-bottom:14px;">
+          <div class="info-banner purple">
+            📋 <span>Review event proposals from clubs in your department. Approving forwards the proposal for classroom/venue confirmation.</span>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <input class="search-input" id="proposalSearch" placeholder="🔍  Search proposals…"/>
+        </div>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event Name</th><th>Organizer / Club</th><th>Date</th>
+                  <th>Category</th><th>Participants</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="proposalsBody">
+                <tr><td colspan="7" class="td-loading">Loading proposals…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel detail-panel" id="proposalDetail" style="display:none">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title" id="detailName">Event Details</div>
+              <div class="panel-sub">Full proposal information</div>
+            </div>
+            <button class="icon-btn" id="closeDetail">✕</button>
+          </div>
+          <div class="panel-body" id="detailBody"></div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div id="pg-analytics" class="page-section" style="display:none">
+        <div class="analytics-kpi-row" id="analyticsKpi"></div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header"><div>
+              <div class="panel-title">📊 Events Per Month</div>
+              <div class="panel-sub">Last 8 months — department events</div>
+            </div></div>
+            <div class="panel-body chart-box"><canvas id="eventsChart" height="200"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div>
+              <div class="panel-title">👥 Student Participation</div>
+              <div class="panel-sub">Registrations per month</div>
+            </div></div>
+            <div class="panel-body chart-box"><canvas id="participationChart" height="200"></canvas></div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header"><div>
+              <div class="panel-title">🎓 Technical vs Non-Technical</div>
+              <div class="panel-sub">Event distribution</div>
+            </div></div>
+            <div class="panel-body donut-row">
+              <canvas id="typeChart" width="180" height="180"></canvas>
+              <div id="typeChartLegend" class="donut-legend"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div>
+              <div class="panel-title">🚪 Events By Classroom</div>
+              <div class="panel-sub">Bookings across your classrooms</div>
+            </div></div>
+            <div class="panel-body chart-box"><canvas id="classroomChart" height="200"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANNOUNCEMENTS -->
+      <div id="pg-announcements" class="page-section" style="display:none">
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">✏️ Post Announcement</div>
+                <div class="panel-sub">Notify students &amp; clubs in your department</div>
+              </div>
+            </div>
+            <div class="panel-body" style="display:flex;flex-direction:column;gap:12px;">
+              <input class="search-input" id="announceTitle" placeholder="Announcement title..."/>
+              <textarea class="search-input" id="announceBody"
+                placeholder="Write your message..." style="min-height:120px;resize:vertical;"></textarea>
+              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                <select class="filter-select" id="announceType">
+                  <option value="General">📣 General</option>
+                  <option value="Info">ℹ️ Info</option>
+                  <option value="Event">📅 Event</option>
+                  <option value="Urgent">🚨 Urgent</option>
+                </select>
+                <button class="btn primary" id="postAnnounceBtn">📢 Post Announcement</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">📋 Posted Announcements</div>
+                <div class="panel-sub">Your recent department posts</div>
+              </div>
+            </div>
+            <div class="panel-body" id="announceList">
+              <div class="list-empty">Loading…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NOTIFICATION HISTORY -->
+      <div id="pg-notif-history" class="page-section" style="display:none">
+        <div class="filter-bar">
+          <button class="btn ghost sm" id="backToDashboardBtn">← Back</button>
+        </div>
+        <div class="panel">
+          <div class="notif-hist-list" id="notifHistoryList">
+            <div class="list-empty" style="padding:24px;">Loading…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCOUNT SETTINGS -->
+      <div id="pg-account-settings" class="page-section" style="display:none">
+        <div class="as-card">
+          <div class="as-avatar-box">
+            <div class="as-avatar" id="asProfileAvatar">HD</div>
+            <div>
+              <div class="as-avatar-name" id="asProfileNamePreview">HOD Coordinator</div>
+              <div class="as-avatar-sub">HOD Coordinator Account</div>
+            </div>
+          </div>
+          <form id="asAccountForm">
+            <div class="form-grid">
+              <div class="as-form-group"><label>Faculty No</label><input type="text" id="asFacultyNo" disabled/></div>
+              <div class="as-form-group"><label>Department</label><input type="text" id="asDepartment"/></div>
+              <div class="as-form-group"><label>Full Name</label><input type="text" id="asName"/></div>
+              <div class="as-form-group"><label>Email</label><input type="email" id="asEmail"/></div>
+              <div class="as-form-group"><label>Phone</label><input type="text" id="asPhone"/></div>
+            </div>
+            <div class="as-section-title">Change Password</div>
+            <div class="form-grid">
+              <div class="as-form-group"><label>Current Password</label><input type="password" id="asCurrentPassword" placeholder="Enter current password"/></div>
+              <div class="as-form-group"><label>New Password</label><input type="password" id="asNewPassword" placeholder="Enter new password"/></div>
+              <div class="as-form-group"><label>Confirm New Password</label><input type="password" id="asConfirmPassword" placeholder="Confirm new password"/></div>
+            </div>
+            <div class="as-actions">
+              <button type="button" class="btn ghost" onclick="navigateTo('dashboard')">Cancel</button>
+              <button type="submit" class="btn primary">Save Changes</button>
+            </div>
+            <div class="as-msg" id="asFormMsg"></div>
+          </form>
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<!-- Profile Overlay & Drawer -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="profileDrawer">
+  <div class="drawer-head">
+    <div>
+      <div class="drawer-title">HOD Coordinator Profile</div>
+      <div class="drawer-sub">Your account details</div>
+    </div>
+    <button class="icon-btn" id="closeProfileBtn">✕</button>
+  </div>
+  <div class="drawer-body" id="profileDrawerBody">Loading…</div>
+</aside>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="hod-dashboard.js"></script>
+</body>
+</html>
