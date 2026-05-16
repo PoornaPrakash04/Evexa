@@ -1,6 +1,6 @@
 
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://evexa-production.up.railway.app/api";
 
 const form = document.getElementById("loginForm");
 

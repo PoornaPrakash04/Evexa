@@ -1,11 +1,4 @@
-/* ============================================================
-   dean-dashboard.js  —  Dean Dashboard
-   Key addition: Dean Approval flow — events reach the Dean
-   only after BOTH faculty_approved AND hall_approved.
-   Status after Dean action: "dean_approved" or "dean_rejected"
-   ============================================================ */
-
-var API = "http://localhost:5000/api";
+var API = "https://evexa-production.up.railway.app/api";
 window.API = API;
 
 const STATUS = {
@@ -60,7 +53,7 @@ async function apiFetch(endpoint, opts = {}) {
   if (!token) { window.location.href = "fcsignin.html"; return null; }
 
   try {
-    const base = window.API || "http://localhost:5000/api";
+    const base = window.API || "https://evexa-production.up.railway.app/api";
     const res = await fetch(`${base}${endpoint}`, {
       ...opts,
       headers: {

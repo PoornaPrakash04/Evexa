@@ -1,10 +1,4 @@
-/* ============================================================
-   hod-dashboard.js  —  HOD Coordinator Dashboard
-   Handles: Classroom Requests, My Classrooms, Dept Events,
-            Dept Clubs, Event Proposals, Analytics, Announcements
-   ============================================================ */
-
-var API = "http://localhost:5000/api";
+var API = "https://evexa-production.up.railway.app/api";
 window.API = API;
 
 const STATUS = {
@@ -50,7 +44,7 @@ async function apiFetch(endpoint, opts = {}) {
   if (!token) { window.location.href = "fcsignin.html"; return null; }
 
   try {
-    const base = window.API || "http://localhost:5000/api";
+    const base = window.API || "https://evexa-production.up.railway.app/api";
     const res = await fetch(`${base}${endpoint}`, {
       ...opts,
       headers: {

@@ -1,12 +1,4 @@
-/* ============================================================
-   faculty-dashboard.js  —  Faculty Coordinator Dashboard
-   All functions are preserved exactly as-is from the original.
-   Only hall-coordinator-specific logic is excluded.
-   CHANGE: initCharts() now also renders venue usage analytics
-           (ported from hall-dashboard.js) — no other changes.
-   ============================================================ */
-
-var API = "http://localhost:5000/api";
+var API = "https://evexa-production.up.railway.app/api";
 window.API = API;
 
 const STATUS = {
@@ -61,7 +53,7 @@ async function apiFetch(endpoint, opts = {}) {
   if (!token) { window.location.href = "fcsignin.html"; return null; }
 
   try {
-    const base = (typeof API !== "undefined" ? API : window.API) || "http://localhost:5000/api";
+    const base = (typeof API !== "undefined" ? API : window.API) || "https://evexa-production.up.railway.app/api";
     const res = await fetch(`${base}${endpoint}`, {
       ...opts,
       headers: {
@@ -959,7 +951,7 @@ async function openFacultyEventDetailPage(eventId) {
     const pct       = capacity > 0 ? Math.min(100, Math.round((registered / capacity) * 100)) : 0;
 
     const posterUrl = data.poster || data.posterUrl
-      ? `http://localhost:5000/uploads/${data.poster || data.posterUrl}` : "";
+      ? `https://evexa-production.up.railway.app/uploads/${data.poster || data.posterUrl}` : "";
 
     body.innerHTML = `
       <div class="fed-page">
@@ -1116,7 +1108,7 @@ async function showEventDetail(eventId) {
     const seatsLeft  = Math.max(0, capacity - registered);
     const pct        = capacity > 0 ? Math.min(100, Math.round((registered / capacity) * 100)) : 0;
 
-    const posterUrl = data.posterUrl ? `http://localhost:5000/uploads/${data.posterUrl}` : null;
+    const posterUrl = data.posterUrl ? `https://evexa-production.up.railway.app/uploads/${data.posterUrl}` : null;
 
     body.innerHTML = `
       ${posterUrl

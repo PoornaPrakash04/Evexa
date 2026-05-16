@@ -1,10 +1,4 @@
-/* ============================================================
-   hall-dashboard.js  —  Hall Coordinator Dashboard
-   Added: Event Proposals, Venues (read-only), Announcements
-   All added functions are copied exactly from faculty-dashboard.js.
-   ============================================================ */
-
-var API = "http://localhost:5000/api";
+var API = "https://evexa-production.up.railway.app/api";
 window.API = API;
 
 const STATUS = {
@@ -55,7 +49,7 @@ async function apiFetch(endpoint, opts = {}) {
   if (!token) { window.location.href = "fcsignin.html"; return null; }
 
   try {
-    const base = (typeof API !== "undefined" ? API : window.API) || "http://localhost:5000/api";
+    const base = (typeof API !== "undefined" ? API : window.API) || "https://evexa-production.up.railway.app/api";
     const res = await fetch(`${base}${endpoint}`, {
       ...opts,
       headers: {
@@ -1619,7 +1613,7 @@ async function openFacultyEventDetailPage(eventId) {
     const capacity  = Number(ev.capacity || ev.expected_participants || 0);
     const seatsLeft = Math.max(0, capacity - registered);
     const pct       = capacity > 0 ? Math.min(100, Math.round((registered / capacity) * 100)) : 0;
-    const posterUrl = (ev.poster || ev.posterUrl) ? `http://localhost:5000/uploads/${ev.poster || ev.posterUrl}` : "";
+    const posterUrl = (ev.poster || ev.posterUrl) ? `https://evexa-production.up.railway.app/uploads/${ev.poster || ev.posterUrl}` : "";
 
     body.innerHTML = `
       <div class="fed-page">

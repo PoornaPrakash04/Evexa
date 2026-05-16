@@ -66,7 +66,7 @@ async function renderEvent(event) {
     document.getElementById("topbarTitle").textContent = event.title;
 
   const poster = event.poster
-    ? `http://localhost:5000/uploads/${event.poster}`
+    ? `https://evexa-production.up.railway.app/uploads/${event.poster}`
     : "https://placehold.co/360x640/6d5efc/ffffff?text=No+Poster";
 
   const eventDate = event.date

@@ -1,5 +1,4 @@
-var API = "http://localhost:5000/api";
-
+var API = "https://evexa-production.up.railway.app/api";
 function applyTheme() {
   const saved = localStorage.getItem("evexa_theme");
   document.body.classList.toggle("dark", saved === "dark");

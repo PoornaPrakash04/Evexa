@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://evexa-production.up.railway.app/api";
 
 async function apiFetch(endpoint) {
   const token = localStorage.getItem("student_auth_token");
@@ -45,12 +45,12 @@ async function loadDashboard() {
 
   const studentPhoto = document.getElementById("studentPhoto");
   if (studentPhoto && profile.avatar) {
-    studentPhoto.src = `http://localhost:5000${profile.avatar}`;
+    studentPhoto.src = `https://evexa-production.up.railway.app${profile.avatar}`;
   }
 
   const profilePhoto = document.getElementById("profilePhoto");
   if (profilePhoto && profile.avatar) {
-    profilePhoto.src = `http://localhost:5000${profile.avatar}`;
+    profilePhoto.src = `https://evexa-production.up.railway.app${profile.avatar}`;
   }
 
   const studentName = document.getElementById("studentName");

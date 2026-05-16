@@ -1,10 +1,4 @@
-/* ============================================================
-   staff-advisor-dashboard.js  —  Staff Advisor Dashboard
-   Main feature: Excel/CSV bulk student upload with preview,
-   column mapping, validation, and upload history.
-   ============================================================ */
-
-var API = "http://localhost:5000/api";
+var API = "https://evexa-production.up.railway.app/api";
 window.API = API;
 
 /* ── helpers ── */
@@ -43,7 +37,7 @@ async function apiFetch(endpoint, opts = {}) {
   if (!token) { window.location.href = '../faculty/fcsignin.html'; return null; }
 
   try {
-    const base = (typeof API !== 'undefined' ? API : window.API) || 'http://localhost:5000/api';
+    const base = (typeof API !== 'undefined' ? API : window.API) || 'https://evexa-production.up.railway.app/api';
     const res = await fetch(`${base}${endpoint}`, {
       ...opts,
       headers: {

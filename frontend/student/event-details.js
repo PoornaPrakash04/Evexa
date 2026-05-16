@@ -85,7 +85,7 @@ function getStatus(event) {
 // ── Build one event card ──────────────────────────────
 function renderCard(e) {
   const poster = (e.poster && e.poster !== "default.jpg")
-    ? `http://localhost:5000/uploads/${e.poster}`
+    ? `https://evexa-production.up.railway.app/uploads/${e.poster}`
     : `https://placehold.co/600x200/6d5efc/ffffff?text=${encodeURIComponent(e.title)}`;
 
   // ✅ IST-safe date display

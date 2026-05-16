@@ -1,4 +1,4 @@
-var API = "http://localhost:5000/api";
+var API = "https://evexa-production.up.railway.app/api";
 window.API = API;
 let execomMembersCache = [];
 
@@ -2568,7 +2568,7 @@ function edCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
 function renderEventView(container, eData, id) {
   const posterBg = { Workshop:"#6c63ff", Seminar:"#ff6584", Hackathon:"#43d9a2", Cultural:"#f4a261", Sports:"#ffd166" };
   const bg       = posterBg[eData.type] || "#6c63ff";
-  const bannerImg = eData.poster ? `http://localhost:5000/uploads/${eData.poster}` : null;
+  const bannerImg = eData.poster ? `https://evexa-production.up.railway.app/uploads/${eData.poster}` : null;
   const seatsLeft = Math.max((Number(eData.capacity)||0) - (Number(eData.registered)||0), 0);
   const pct       = Number(eData.capacity) > 0 ? Math.min(100, Math.round((Number(eData.registered||0)/Number(eData.capacity))*100)) : 0;
   const statusCls = { open:"", draft:"draft", closed:"closed" }[eData.status] || "";
@@ -2730,7 +2730,7 @@ function renderEventView(container, eData, id) {
               <div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${eData.report}</div>
             </div>
             <div style="display:flex;gap:8px;flex-shrink:0;">
-              <a href="http://localhost:5000/uploads/reports/${eData.report}" target="_blank"
+              <a href="https://evexa-production.up.railway.app/uploads/reports/${eData.report}" target="_blank"
                  style="padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--ink2);font-size:12px;font-weight:600;text-decoration:none;">
                 👁 View
               </a>

@@ -78,6 +78,6 @@ app.use("/api/eve", require("./routes/eve-proxy"));
 app.get("/", (req, res) => res.send("EVEXA Backend is running"));
 
 app.listen(5000, () => {
-  console.log("🚀 Server running on http://localhost:5000");
+  console.log("🚀 Server running on https://evexa-production.up.railway.app");
   console.log("📁 Serving frontend from:", path.join(__dirname, "../frontend"));
 });

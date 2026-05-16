@@ -16,7 +16,7 @@ document.getElementById("signinForm").addEventListener("submit", async function 
   btn.disabled    = true;
 
   try {
-    const res = await fetch("http://localhost:5000/api/admin/login", {
+    const res = await fetch("https://evexa-production.up.railway.app/api/admin/login", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ email: adminId, password }),

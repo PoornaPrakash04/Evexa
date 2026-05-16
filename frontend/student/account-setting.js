@@ -31,7 +31,7 @@ async function loadUserProfile() {
  
 const avatarImg = document.getElementById("avatarImg");
 if (avatarImg && user.avatar) {
-  avatarImg.src = `http://localhost:5000${user.avatar}`;
+  avatarImg.src = `https://evexa-production.up.railway.app${user.avatar}`;
 }
 
     // ── Sidebar mini-user ─────────────────────────────────────────────
@@ -177,7 +177,7 @@ if (nameEl) nameEl.value = user.name || "";
           const data = await res.json();
           // Update img.src from server path so it survives refresh
           const img = document.getElementById("avatarImg");
-          if (img && data.avatar) img.src = `http://localhost:5000${data.avatar}`;
+          if (img && data.avatar) img.src = `https://evexa-production.up.railway.app${data.avatar}`;
           showToast("📸 Photo saved!", "success");
         } else {
           showToast("❌ Failed to upload photo.", "error");

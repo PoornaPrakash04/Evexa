@@ -1,7 +1,5 @@
-const API       = "http://localhost:5000/api/admin";
-const EVENTS_API = "http://localhost:5000/api/events";
-
-
+const API = "https://evexa-production.up.railway.app/api/admin";
+const EVENTS_API = "https://evexa-production.up.railway.app/api/events";
 function token() { return localStorage.getItem("adminToken") || ""; }
 
 
