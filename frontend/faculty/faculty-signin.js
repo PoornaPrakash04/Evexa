@@ -92,7 +92,7 @@ const roleRedirects = {
   6: "/faculty/hall-coordinator/hall-dashboard.html",
   1: "/faculty/hod/hod-dashboard.html",
   2: "/faculty/faculty-dashboard.html",
-  3: "/faculty/faculty-dashboard.html",
+  3: "/faculty/staff-advisor/staff-advisor-dashboard.html",
   5: "/faculty/dean/dean-dashboard.html",
 };
 

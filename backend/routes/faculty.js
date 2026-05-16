@@ -1,4 +1,3 @@
-
 const express   = require("express");
 const router    = express.Router();
 const db        = require("../db");
@@ -205,7 +204,7 @@ async function rejectFacultyProposal(eventId, facultyId, remark) {
 
 
 
-router.get("/me", authorize(), facultyOnly, loadFacultyContext, async (req, res) => {
+router.get("/me", authorize(["FACULTY"]), facultyOnly, loadFacultyContext, async (req, res) => {
   try {
     const [result] = await db.promise().query(
       `SELECT f.id, f.faculty_no, f.name, f.email, f.department, f.phone_no,
@@ -232,7 +231,7 @@ router.get("/me", authorize(), facultyOnly, loadFacultyContext, async (req, res)
 
 
 
-router.put("/me", authorize(), facultyOnly, async (req, res) => {
+router.put("/me", authorize(["FACULTY"]), facultyOnly, async (req, res) => {
   const { name, email, department, phone_no, current_password, new_password } = req.body;
 
   if (!name || !email || !department || !phone_no) {
@@ -278,7 +277,7 @@ router.put("/me", authorize(), facultyOnly, async (req, res) => {
 
 
 
-router.get("/proposals", authorize(), facultyOnly, (req, res) => {
+router.get("/proposals", authorize(["FACULTY"]), facultyOnly, (req, res) => {
   const sql = `
     SELECT
       e.id,
@@ -334,8 +333,8 @@ async function handleFacultyApprove(req, res) {
   }
 }
 
-router.patch("/proposals/:id/approve", authorize(), facultyOnly, loadFacultyContext, handleFacultyApprove);
-router.patch("/events/:id/approve",    authorize(), facultyOnly, loadFacultyContext, handleFacultyApprove);
+router.patch("/proposals/:id/approve", authorize(["FACULTY"]), facultyOnly, loadFacultyContext, handleFacultyApprove);
+router.patch("/events/:id/approve",    authorize(["FACULTY"]), facultyOnly, loadFacultyContext, handleFacultyApprove);
 
 
 
@@ -355,8 +354,8 @@ async function handleFacultyReject(req, res) {
   }
 }
 
-router.patch("/proposals/:id/reject", authorize(), facultyOnly, handleFacultyReject);
-router.patch("/events/:id/reject",    authorize(), facultyOnly, handleFacultyReject);
+router.patch("/proposals/:id/reject", authorize(["FACULTY"]), facultyOnly, handleFacultyReject);
+router.patch("/events/:id/reject",    authorize(["FACULTY"]), facultyOnly, handleFacultyReject);
 
 
 
@@ -369,7 +368,7 @@ router.patch("/events/:id/reject",    authorize(), facultyOnly, handleFacultyRej
 
 
 
-const hallChain = [authorize(), facultyOnly, loadFacultyContext, hallCoordinatorOnly];
+const hallChain = [authorize(["FACULTY"]), facultyOnly, loadFacultyContext, hallCoordinatorOnly];
 
 
 
@@ -573,7 +572,7 @@ router.patch("/hall/venues/:id/availability", ...hallChain, async (req, res) => 
 
 
 
-router.get("/certificates", authorize(), facultyOnly, (req, res) => {
+router.get("/certificates", authorize(["FACULTY"]), facultyOnly, (req, res) => {
   const sql = `
     SELECT
       cr.id,
@@ -607,7 +606,7 @@ router.get("/certificates", authorize(), facultyOnly, (req, res) => {
 
 
 
-router.patch("/certificates/:id/approve", authorize(), facultyOnly, (req, res) => {
+router.patch("/certificates/:id/approve", authorize(["FACULTY"]), facultyOnly, (req, res) => {
   db.query(
     "UPDATE certificates SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
     [req.user.id, req.params.id],
@@ -622,7 +621,7 @@ router.patch("/certificates/:id/approve", authorize(), facultyOnly, (req, res) =
 
 
 
-router.patch("/certificates/:id/reject", authorize(), facultyOnly, (req, res) => {
+router.patch("/certificates/:id/reject", authorize(["FACULTY"]), facultyOnly, (req, res) => {
   db.query(
     "UPDATE certificates SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
     [req.user.id, req.params.id],
@@ -637,7 +636,7 @@ router.patch("/certificates/:id/reject", authorize(), facultyOnly, (req, res) =>
 
 
 
-router.get("/feedback", authorize(), facultyOnly, (req, res) => {
+router.get("/feedback", authorize(["FACULTY"]), facultyOnly, (req, res) => {
   const sql = `
     SELECT
       f.feedback_id       AS id,
@@ -668,7 +667,7 @@ router.get("/feedback", authorize(), facultyOnly, (req, res) => {
 
 
 
-router.get("/registrations/count/:eventId", authorize(), facultyOnly, (req, res) => {
+router.get("/registrations/count/:eventId", authorize(["FACULTY"]), facultyOnly, (req, res) => {
   db.query(
     "SELECT COUNT(*) AS count FROM registrations WHERE event_id = ?",
     [req.params.eventId],
@@ -685,7 +684,7 @@ router.get("/registrations/count/:eventId", authorize(), facultyOnly, (req, res)
 
 
 
-router.get("/registrations", authorize(), facultyOnly, (req, res) => {
+router.get("/registrations", authorize(["FACULTY"]), facultyOnly, (req, res) => {
   const sql = `
     SELECT
       r.id, r.student_id, r.event_id,
@@ -711,9 +710,17 @@ router.get("/registrations", authorize(), facultyOnly, (req, res) => {
 
 
 
-router.get("/events/:id/participants", authorize(), facultyOnly, (req, res) => {
+router.get("/events/:id/participants", authorize(["FACULTY"]), facultyOnly, (req, res) => {
   const sql = `
-    SELECT s.name, s.email, s.department, s.phone_no, s.phone
+    SELECT
+      s.name,
+      s.roll_no,
+      s.admission_no,
+      s.email,
+      s.class,
+      s.department,
+      s.phone,
+      r.registered_at
     FROM registrations r
     JOIN students s ON s.id = r.student_id
     WHERE r.event_id = ?
@@ -726,6 +733,369 @@ router.get("/events/:id/participants", authorize(), facultyOnly, (req, res) => {
     }
     res.json(result);
   });
+});
+
+/* ══════════════════════════════════════════════════════════
+   STAFF ADVISOR — Student Management
+   Role check: role_id === ROLE.STAFF_ADVISOR (3)
+   Students are resolved via the `advisor_classes` table which
+   maps a staff advisor (faculty.id) to one or more class strings
+   (e.g. "S6 IT A").  If that table does not exist the fallback
+   resolves by matching faculty.department against students.department.
+   ══════════════════════════════════════════════════════════ */
+
+function staffAdvisorOnly(req, res, next) {
+  if (req.user?.role !== "FACULTY") {
+    return res.status(403).json({ message: "Faculty access only." });
+  }
+  next();
+}
+
+/**
+ * Build the WHERE clause that limits rows to students advised by
+ * the current staff advisor.  We try the advisor_classes table
+ * first; if it has no rows for this advisor we fall back to
+ * matching on department (so the UI always has data to show).
+ */
+async function advisorStudentFilter(facultyId) {
+  // 1. Try advisor_classes join
+  try {
+    const [classes] = await db.promise().query(
+      `SELECT class_name FROM advisor_classes WHERE faculty_id = ?`,
+      [facultyId]
+    );
+    if (classes.length) {
+      const names = classes.map(r => r.class_name);
+      const ph    = names.map(() => "?").join(",");
+      return { clause: `s.class IN (${ph})`, params: names };
+    }
+  } catch (_) {
+    // advisor_classes table may not exist — fall through
+  }
+
+  // 2. Fallback: match department of the advisor
+  const [fac] = await db.promise().query(
+    `SELECT department FROM faculty WHERE id = ? AND deleted_at IS NULL`,
+    [facultyId]
+  );
+  if (fac.length && fac[0].department) {
+    return { clause: `s.department = ?`, params: [fac[0].department] };
+  }
+
+  // 3. Last resort: return all students (admin-like view)
+  return { clause: "1=1", params: [] };
+}
+
+/* ── GET /faculty/advisor/students ── */
+router.get("/advisor/students", authorize(["FACULTY"]), staffAdvisorOnly, async (req, res) => {
+  try {
+    const { clause, params } = await advisorStudentFilter(req.user.id);
+    const sql = `
+      SELECT
+        s.id,
+        s.name,
+        s.email,
+        s.roll_no,
+        s.class,
+        s.department,
+        s.phone         AS phone,
+        s.admission_no,
+        s.avatar
+      FROM students s
+      WHERE ${clause}
+        AND s.deleted_at IS NULL
+      ORDER BY s.name ASC
+    `;
+    const [rows] = await db.promise().query(sql, params);
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /faculty/advisor/students error:", err);
+    res.status(500).json({ message: "Server error", detail: err.message });
+  }
+});
+
+/* ── PUT /faculty/advisor/students/:id ── */
+router.put("/advisor/students/:id", authorize(["FACULTY"]), staffAdvisorOnly, async (req, res) => {
+  const { roll_no, admission_no, name, email, class: cls, department, phone } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ message: "name and email are required." });
+  }
+  try {
+    const { clause, params } = await advisorStudentFilter(req.user.id);
+    // Confirm the student belongs to this advisor before updating
+    const [check] = await db.promise().query(
+      `SELECT id FROM students s WHERE s.id = ? AND s.deleted_at IS NULL AND (${clause})`,
+      [req.params.id, ...params]
+    );
+    if (!check.length) {
+      return res.status(404).json({ message: "Student not found or not in your assigned classes." });
+    }
+    await db.promise().query(
+      `UPDATE students
+       SET roll_no = ?, admission_no = ?, name = ?, email = ?,
+           class = ?, department = ?, phone = ?
+       WHERE id = ?`,
+      [roll_no || null, admission_no || null, name, email,
+       cls || null, department || null, phone || null, req.params.id]
+    );
+    res.json({ message: "Student updated successfully." });
+  } catch (err) {
+    console.error("PUT /faculty/advisor/students/:id error:", err);
+    res.status(500).json({ message: "Server error", detail: err.message });
+  }
+});
+
+/* ── DELETE /faculty/advisor/students/:id ── */
+router.delete("/advisor/students/:id", authorize(["FACULTY"]), staffAdvisorOnly, async (req, res) => {
+  try {
+    const { clause, params } = await advisorStudentFilter(req.user.id);
+    const [check] = await db.promise().query(
+      `SELECT id FROM students s WHERE s.id = ? AND s.deleted_at IS NULL AND (${clause})`,
+      [req.params.id, ...params]
+    );
+    if (!check.length) {
+      return res.status(404).json({ message: "Student not found or not in your assigned classes." });
+    }
+    // Soft-delete
+    await db.promise().query(
+      `UPDATE students SET deleted_at = NOW() WHERE id = ?`,
+      [req.params.id]
+    );
+    res.json({ message: "Student removed." });
+  } catch (err) {
+    console.error("DELETE /faculty/advisor/students/:id error:", err);
+    res.status(500).json({ message: "Server error", detail: err.message });
+  }
+});
+
+/* ── POST /faculty/advisor/students (bulk upsert from upload) ── */
+router.post("/advisor/students", authorize(["FACULTY"]), staffAdvisorOnly, async (req, res) => {
+  // Accept plain array OR { students: [...], skip_duplicates: bool }
+  let students, skipDuplicates;
+  if (Array.isArray(req.body)) {
+    students = req.body;
+    skipDuplicates = false;
+  } else {
+    students = req.body.students || [];
+    skipDuplicates = !!req.body.skip_duplicates;
+  }
+
+  if (!Array.isArray(students) || !students.length) {
+    return res.status(400).json({ message: "Expected a non-empty array of students." });
+  }
+
+  let inserted = 0, updated = 0, errors = [];
+
+  for (const s of students) {
+    const { roll_no, admission_no, name, email, class: cls, department, phone } = s;
+    if (!roll_no || !name || !email) {
+      errors.push({ roll_no, reason: "Missing required fields (roll_no, name, email)" });
+      continue;
+    }
+    try {
+      const [existing] = await db.promise().query(
+        `SELECT id FROM students WHERE roll_no = ? AND deleted_at IS NULL`,
+        [roll_no]
+      );
+      if (existing.length) {
+        if (!skipDuplicates) {
+          await db.promise().query(
+            `UPDATE students SET admission_no=?, name=?, email=?, class=?, department=?, phone=?
+             WHERE roll_no = ? AND deleted_at IS NULL`,
+            [admission_no||null, name, email, cls||null, department||null, phone||null, roll_no]
+          );
+          updated++;
+        }
+        // skipDuplicates=true → leave existing record untouched
+      } else {
+        const hashed = await bcrypt.hash(roll_no, 10);
+        await db.promise().query(
+          `INSERT INTO students (roll_no, admission_no, name, email, class, department, phone, password)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [roll_no, admission_no||null, name, email, cls||null, department||null, phone||null, hashed]
+        );
+        inserted++;
+      }
+    } catch (err) {
+      errors.push({ roll_no, reason: err.message });
+    }
+  }
+
+  res.json({ inserted, updated, errors });
+});
+
+/* ══════════════════════════════════════════════════════════
+   STAFF ADVISOR — Announcements
+   Stored in a generic `announcements` table.  We tag rows
+   with posted_by = faculty.id so each advisor sees only their own.
+   ══════════════════════════════════════════════════════════ */
+
+/* ── GET /faculty/advisor/announcements ── */
+router.get("/advisor/announcements", authorize(["FACULTY"]), staffAdvisorOnly, async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT id, title, body, type, created_at
+       FROM announcements
+       WHERE posted_by = ? AND deleted_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [req.user.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    // If the announcements table doesn't exist yet, return empty array gracefully
+    console.error("GET /faculty/advisor/announcements error:", err);
+    res.json([]);
+  }
+});
+
+/* ── POST /faculty/advisor/announcements ── */
+router.post("/advisor/announcements", authorize(["FACULTY"]), staffAdvisorOnly, async (req, res) => {
+  const { title, body, type } = req.body || {};
+  if (!title || !body) {
+    return res.status(400).json({ message: "title and body are required." });
+  }
+  try {
+    const [result] = await db.promise().query(
+      `INSERT INTO announcements (title, body, type, posted_by, created_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [title, body, type || "General", req.user.id]
+    );
+    res.status(201).json({ id: result.insertId, message: "Announcement posted." });
+  } catch (err) {
+    console.error("POST /faculty/advisor/announcements error:", err);
+    res.status(500).json({ message: "Server error", detail: err.message });
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   VENUE BOOKING  (Staff Advisor / any Faculty can request a venue)
+   POST /faculty/venues/book  — creates a venue_bookings row with
+   status = 'pending' for the hall coordinator to approve.
+
+   Body: venue_id, title, date, start_time (HH:MM or HH:MM:SS),
+         end_time (HH:MM or HH:MM:SS), expected_participants, purpose
+   ══════════════════════════════════════════════════════════ */
+
+/** Normalise "HH:MM" → "HH:MM:00" so MySQL TIME columns are happy. */
+function normaliseTime(t) {
+  if (!t) return null;
+  return /^\d{2}:\d{2}$/.test(t) ? `${t}:00` : t;
+}
+
+router.post("/venues/book", authorize(["FACULTY"]), facultyOnly, async (req, res) => {
+  const {
+    venue_id,
+    title,                 // event / purpose title
+    date,
+    start_time,
+    end_time,
+    expected_participants,
+    purpose,
+  } = req.body || {};
+
+  if (!venue_id || !title || !date || !start_time || !end_time) {
+    return res.status(400).json({
+      message: "venue_id, title, date, start_time, and end_time are required.",
+    });
+  }
+
+  const slotStart = normaliseTime(start_time);
+  const slotEnd   = normaliseTime(end_time);
+
+  try {
+    // 1. Verify the venue exists
+    const [venueRows] = await db.promise().query(
+      `SELECT id, name FROM venues WHERE id = ? LIMIT 1`,
+      [venue_id]
+    );
+    if (!venueRows.length) {
+      return res.status(404).json({ message: "Venue not found." });
+    }
+
+    // 2. Check for conflicting bookings on the same venue / date / start-slot
+    //    (mirrors the check in venue.js so both code-paths stay consistent)
+    const [conflicts] = await db.promise().query(
+      `SELECT id FROM venue_bookings
+       WHERE venue_id = ?
+         AND date      = ?
+         AND time      = ?
+         AND status   != 'rejected'
+       LIMIT 1`,
+      [venue_id, date, slotStart]
+    );
+    if (conflicts.length) {
+      return res.status(409).json({
+        message: "This slot is already booked. Please choose a different time or venue.",
+      });
+    }
+
+    // 3. Insert a lightweight event record so the hall-coordinator workflow
+    //    can track it in the events table (status starts as 'pending').
+    const [evResult] = await db.promise().query(
+      `INSERT INTO events
+         (title, description, venue, date, time, capacity, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())`,
+      [
+        title,
+        purpose || null,
+        venueRows[0].name,
+        date,
+        slotStart,
+        expected_participants ? Number(expected_participants) : null,
+      ]
+    );
+    const eventId = evResult.insertId;
+
+    // 4. Create the venue_bookings row.
+    //    Uses organizer_id to stay consistent with the venue.js schema.
+    await db.promise().query(
+      `INSERT INTO venue_bookings
+         (event_id, venue_id, organizer_id, date, time, slot_end, purpose, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`,
+      [eventId, venue_id, req.user.id, date, slotStart, slotEnd, purpose || null]
+    );
+
+    res.status(201).json({
+      message: `Venue "${venueRows[0].name}" booked for ${date}. Pending hall coordinator approval.`,
+      event_id: eventId,
+    });
+  } catch (err) {
+    console.error("POST /faculty/venues/book error:", err);
+    res.status(500).json({ message: "Server error", detail: err.message });
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   GET /faculty/venues/bookings/mine
+   Returns all venue bookings made by the logged-in faculty member
+   so the Staff Advisor dashboard can display booking history.
+   ══════════════════════════════════════════════════════════ */
+router.get("/venues/bookings/mine", authorize(["FACULTY"]), facultyOnly, async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT
+         vb.id,
+         v.id          AS venue_id,
+         v.name        AS venue_name,
+         vb.date,
+         vb.time       AS slot_start,
+         COALESCE(vb.slot_end, ADDTIME(vb.time, '01:00:00')) AS slot_end,
+         vb.purpose,
+         vb.status,
+         e.title       AS event_title
+       FROM venue_bookings vb
+       JOIN   venues v ON v.id   = vb.venue_id
+       LEFT JOIN events e ON e.id = vb.event_id
+       WHERE vb.organizer_id = ?
+       ORDER BY vb.date DESC, vb.time DESC`,
+      [req.user.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /faculty/venues/bookings/mine error:", err);
+    res.status(500).json({ message: "Server error", detail: err.message });
+  }
 });
 
 module.exports = router;

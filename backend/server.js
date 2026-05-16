@@ -40,7 +40,9 @@ app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
 
+app.get("/faculty/faculty-signin.html", (req, res) => res.redirect("/faculty/fcsignin.html"));
 app.use(express.static(path.join(__dirname, "../frontend")));
+app.use("/faculty", express.static(path.join(__dirname, "../frontend/staff-advisor")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 cron.schedule("*/15 * * * *", () => {
