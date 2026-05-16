@@ -39,10 +39,7 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
-
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
-
+app.use(cors());
 app.use(express.json());
 
 app.get("/faculty/faculty-signin.html", (req, res) => res.redirect("/faculty/fcsignin.html"));
