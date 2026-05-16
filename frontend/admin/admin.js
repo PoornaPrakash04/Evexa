@@ -1848,7 +1848,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("logoutConfirmBtn").onclick = () => {
       localStorage.removeItem("adminToken");
       localStorage.removeItem("adminPage");
-      window.location.href = "../index.html";
+      window.location.href = "../home.html";
     };
   };
   document.getElementById("logoutBtn")?.addEventListener("click", doLogout);
