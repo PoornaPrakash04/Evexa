@@ -1,4 +1,5 @@
-
+console.log("JWT_SECRET:", process.env.JWT_SECRET);
+console.log("JWT_REFRESH_SECRET:", process.env.JWT_REFRESH_SECRET);
 const express   = require("express");
 const bcrypt    = require("bcrypt");
 const jwt       = require("jsonwebtoken");
