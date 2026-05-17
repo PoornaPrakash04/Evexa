@@ -324,17 +324,51 @@ router.post("/bookings", auth(["ORGANIZER"]), upload.single("support_doc"), (req
 
 /* ─────────────────────────────────────────
    DELETE /venues/bookings/:id
-   Cancel a pending booking (organizer only).
+   Cancel a booking (organizer only).
+   Allows cancellation of pending, faculty_approved, and hall_approved bookings.
+   If the booking had a linked event, reverts its status back to 'submitted'
+   so it re-enters the approval queue for a new venue booking.
 ───────────────────────────────────────── */
 router.delete("/bookings/:id", auth(["ORGANIZER"]), (req, res) => {
+  const cancellableStatuses = ["pending", "faculty_approved", "hall_approved"];
+
+  // First fetch the booking to check ownership and get event_id for cascade
   db.query(
-    "DELETE FROM venue_bookings WHERE id = ? AND organizer_id = ? AND status = 'pending'",
+    "SELECT * FROM venue_bookings WHERE id = ? AND organizer_id = ?",
     [req.params.id, req.user.id],
-    (err, result) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (!result.affectedRows)
-        return res.status(404).json({ message: "Booking not found or already approved." });
-      res.json({ message: "Booking cancelled." });
+    (err, rows) => {
+      if (err)          return res.status(500).json({ message: err.message });
+      if (!rows.length) return res.status(404).json({ message: "Booking not found." });
+
+      const booking = rows[0];
+
+      if (!cancellableStatuses.includes(booking.status)) {
+        return res.status(400).json({
+          message: `Cannot cancel a booking with status '${booking.status}'.`,
+        });
+      }
+
+      db.query(
+        "DELETE FROM venue_bookings WHERE id = ?",
+        [req.params.id],
+        (err2, result) => {
+          if (err2) return res.status(500).json({ message: err2.message });
+          if (!result.affectedRows)
+            return res.status(404).json({ message: "Booking not found." });
+
+          // If there was a linked event, revert it to 'submitted' so the organizer
+          // can assign a new venue and re-enter the approval chain.
+          if (booking.event_id) {
+            db.query(
+              "UPDATE events SET status = 'submitted' WHERE id = ?",
+              [booking.event_id],
+              (err3) => { if (err3) console.error("Event revert error:", err3); }
+            );
+          }
+
+          res.json({ message: "Booking cancelled." });
+        }
+      );
     }
   );
 });

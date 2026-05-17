@@ -979,11 +979,18 @@ async function loadMyVenueBookings() {
               b.status === 'pending'          ? 'Pending'          : b.status
             }</span>
           </td>
-          <td style="padding:10px 14px;">
-            ${b.status === 'pending'
-              ? `<button class="btn-ghost" style="color:var(--rose);font-size:12px;padding:4px 10px;"
+          <td style="padding:10px 14px;white-space:nowrap;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            ${['pending','faculty_approved','hall_approved'].includes(b.status)
+              ? `<button class="btn-ghost" style="color:var(--rose);font-size:12px;padding:4px 10px;border:1px solid var(--rose);border-radius:6px;"
                    onclick="cancelVenueBooking(${b.id})">🗑️ Cancel</button>`
-              : `<span style="color:var(--muted);font-size:12px;">—</span>`}
+              : ''}
+            ${b.status === 'rejected' || b.status === 'hall_approved' || b.status === 'faculty_approved'
+              ? `<button class="btn-ghost" style="color:var(--violet-mid);font-size:12px;padding:4px 10px;border:1px solid var(--violet);border-radius:6px;"
+                   onclick="rebookVenue('${b.venue_name}', '${b.date}')">🔄 Re-book</button>`
+              : ''}
+            ${b.status === 'pending'
+              ? `<span style="color:var(--amber);font-size:11px;">⏳ Awaiting</span>`
+              : ''}
           </td>
         </tr>`;
     }).join("");
@@ -991,12 +998,24 @@ async function loadMyVenueBookings() {
 }
 
 async function cancelVenueBooking(id) {
-  if (!confirm("Cancel this booking request?")) return;
+  if (!confirm("Cancel this booking? If it's approved, the linked event will be reverted to 'submitted' so you can re-book a venue.")) return;
   try {
     const res = await apiFetch(`/venues/bookings/${id}`, { method: "DELETE" });
     if (res.ok) { showToast("🗑️ Booking cancelled"); loadMyVenueBookings(); }
     else showToast("❌ Could not cancel");
   } catch { showToast("❌ Network error"); }
+}
+
+async function rebookVenue(venueName, date) {
+  // Switch to the calendar tab, set the venue, navigate to the right month, and open slots
+  switchVenueTab("calendar");
+  await selectVenue(venueName);
+  const d = new Date(date);
+  currentYear  = d.getFullYear();
+  currentMonth = d.getMonth();
+  await loadVenueBookings();
+  renderCalendar();
+  openVenueSlots(d.getDate());
 }
 
 document.getElementById("prevMonth")?.addEventListener("click", async () => {
