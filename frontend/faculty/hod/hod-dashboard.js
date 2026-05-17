@@ -1526,7 +1526,7 @@ function logout() {
       <div style="display:flex;gap:10px;justify-content:center;">
         <button onclick="this.closest('div[style*=fixed]').parentElement.remove()"
           style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Cancel</button>
-        <button onclick="localStorage.removeItem('faculty_auth_token');window.location.href='fcsignin.html';"
+        <button onclick="localStorage.removeItem('faculty_auth_token');window.location.href='../fcsignin.html';"
           style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
       </div>
     </div>

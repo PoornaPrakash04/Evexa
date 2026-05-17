@@ -233,7 +233,7 @@ function updateProfileStats() {
   const nums = document.querySelectorAll(".pstat-num");
   if (nums.length >= 2) {
     nums[0].textContent = events.length;
-    nums[1].textContent = events.filter(e => ["Draft", "Pending"].includes(e.status)).length;
+    nums[1].textContent = events.filter(e => ["pending", "submitted"].includes(e.status)).length;
   }
 }
 
@@ -260,7 +260,7 @@ async function loadDashboardStats() {
     if (nums.length >= 2) {
       nums[0].textContent = d.total_events ?? events.length;
     
-      nums[1].textContent = d.pending_events ?? events.filter(e => e.status === "Pending" || e.status === "Draft").length;
+      nums[1].textContent = d.pending_events ?? events.filter(e => ["pending", "submitted"].includes(e.status)).length;
     }
   } catch (err) {
     console.warn("Dashboard stats (non-critical):", err.message);
@@ -480,7 +480,7 @@ function renderDashApprovals() {
   if (!list) return;
 
   const orgData = window.__currentOrganizer || {};
-  const pending = events.filter(e => e.status === "Pending" || e.status === "Draft");
+  const pending = events.filter(e => ["pending", "submitted"].includes(e.status));
 
   if (!pending.length) {
     list.innerHTML = `<div class="empty-state"><span>✅</span><p>No events awaiting faculty approval</p></div>`;
@@ -626,13 +626,22 @@ function createEventCard(e) {
 
   
   const statusConfig = {
-  Pending:          { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
-  Draft:            { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
-  "Faculty Approved": { label: "✅ Faculty Approved",       bg: "#dbeafe",              color: "#1d4ed8" }, 
-  Approved:         { label: "✅ Approved",                 bg: "var(--emerald-light)", color: "#065f46" },
-  Rejected:         { label: "❌ Rejected",                 bg: "var(--rose-light)",    color: "#be123c" },
-  Published:        { label: "🌐 Published",                bg: "var(--violet-light)",  color: "var(--violet)" },
-  Completed:        { label: "🏁 Completed",                bg: "rgba(255,255,255,.08)",color: "var(--muted)" },
+  // Title-case keys (legacy — kept for safety)
+  Pending:            { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
+  Draft:              { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
+  "Faculty Approved": { label: "✅ Faculty Approved",         bg: "#dbeafe",              color: "#1d4ed8" },
+  Approved:           { label: "✅ Approved",                 bg: "var(--emerald-light)", color: "#065f46" },
+  Rejected:           { label: "❌ Rejected",                 bg: "var(--rose-light)",    color: "#be123c" },
+  Published:          { label: "🌐 Published",                bg: "var(--violet-light)",  color: "var(--violet)" },
+  Completed:          { label: "🏁 Completed",                bg: "rgba(255,255,255,.08)",color: "var(--muted)" },
+  // FIX: lowercase/snake_case keys matching actual DB/API values
+  pending:            { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
+  submitted:          { label: "⏳ Pending Approval",         bg: "var(--amber-light)",   color: "#b45309" },
+  faculty_approved:   { label: "✅ Faculty Approved",         bg: "#dbeafe",              color: "#1d4ed8" },
+  hall_approved:      { label: "✅ Hall Approved",            bg: "var(--emerald-light)", color: "#065f46" },
+  rejected:           { label: "❌ Rejected",                 bg: "var(--rose-light)",    color: "#be123c" },
+  published:          { label: "🌐 Published",                bg: "var(--violet-light)",  color: "var(--violet)" },
+  completed:          { label: "🏁 Completed",                bg: "rgba(255,255,255,.08)",color: "var(--muted)" },
 };
   const sc = statusConfig[e.status] || { label: e.status || "Unknown", bg: "rgba(255,255,255,.08)", color: "var(--muted)" };
 
@@ -749,11 +758,18 @@ async function selectVenue(name) {
 async function loadVenueBookings() {
   if (!currentVenue) return;
   try {
-    const res = await apiFetch(`/venues/calendar?venue_name=${encodeURIComponent(currentVenue)}&month=${currentMonth + 1}&year=${currentYear}`);
+    // FIX: use venue_id (more reliable than name lookup) and include year+month
+    // in the cache key so navigating months never bleeds data from another month.
+    const venueObj = venues.find(v => v.name === currentVenue);
+    const venueParam = venueObj?.id
+      ? `venue_id=${venueObj.id}`
+      : `venue_name=${encodeURIComponent(currentVenue)}`;
+    const cacheKey = `${currentVenue}__${currentYear}_${currentMonth + 1}`;
+    const res = await apiFetch(`/venues/calendar?${venueParam}&month=${currentMonth + 1}&year=${currentYear}`);
     if (res.ok) {
       const data = await res.json();
-      venueBookings[currentVenue] = {};
-      data.forEach(b => { venueBookings[currentVenue][b.day] = b.status; });
+      venueBookings[cacheKey] = {};
+      data.forEach(b => { venueBookings[cacheKey][b.day] = b.status; });
     }
   } catch (err) { console.error("Booking load error:", err); }
 }
@@ -771,15 +787,30 @@ function renderCalendar() {
   });
   const firstDay    = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const bookings    = venueBookings[currentVenue] || {};
+  const cacheKey    = `${currentVenue}__${currentYear}_${currentMonth + 1}`;
+  const bookings    = venueBookings[cacheKey] || {};
   for (let i = 0; i < firstDay; i++) { const empty = document.createElement("div"); empty.className = "calendar-day empty"; grid.appendChild(empty); }
   for (let day = 1; day <= daysInMonth; day++) {
     const cell = document.createElement("div");
     cell.className = "calendar-day"; cell.textContent = day;
     const status = bookings[day];
-    if (status === "booked" || status === "faculty-approved")  { cell.classList.add("booked");    cell.title = `Day ${day} — Fully Booked`; }
-    else if (status === "pending") { cell.classList.add("pending");   cell.title = `Day ${day} — Pending Approval`; }
-    else                           { cell.classList.add("available"); cell.title = `Day ${day} — Available (click to book)`; cell.addEventListener("click", () => openVenueSlots(day)); }
+    if (status === "booked" || status === "faculty-approved" || status === "pending") {
+      // The calendar signals that at least one slot is booked — never the whole day.
+      // "booked"/"faculty-approved" → amber partial; "pending" keeps its own amber shade.
+      // All states allow clicking through to the slot picker for the real picture.
+      cell.classList.add(status === "pending" ? "pending" : "partial");
+      cell.style.cursor = "pointer";
+      cell.title = status === "booked"
+        ? `Day ${day} — Partially booked · click to see available slots`
+        : status === "faculty-approved"
+          ? `Day ${day} — Has faculty-approved booking · click to see available slots`
+          : `Day ${day} — Has pending booking · click to see available slots`;
+      cell.addEventListener("click", () => openVenueSlots(day));
+    } else {
+      cell.classList.add("available");
+      cell.title = `Day ${day} — Available (click to book)`;
+      cell.addEventListener("click", () => openVenueSlots(day));
+    }
     grid.appendChild(cell);
   }
 }
@@ -801,7 +832,7 @@ async function openVenueSlots(day) {
 
 const evSel = document.getElementById("vbEventId");
 evSel.innerHTML = `<option value="">— Select an event (optional) —</option>`;
-const bookableEvents = events.filter(e => !["Rejected","Completed"].includes(e.status));
+const bookableEvents = events.filter(e => !["Rejected","Completed","rejected","completed"].includes(e.status));
 if (!bookableEvents.length) {
   evSel.insertAdjacentHTML("beforeend",
     `<option disabled>No pending events available</option>`);
@@ -815,7 +846,12 @@ bookableEvents.forEach(e => {
   openModal("venueBookModal");
 
   try {
-    const res   = await apiFetch(`/venues/slots?venue_name=${encodeURIComponent(currentVenue)}&date=${dateStr}`);
+    // FIX: prefer venue_id over venue_name for reliable DB lookup
+    const venueObj2 = venues.find(v => v.name === currentVenue);
+    const slotParam = venueObj2?.id
+      ? `venue_id=${venueObj2.id}`
+      : `venue_name=${encodeURIComponent(currentVenue)}`;
+    const res   = await apiFetch(`/venues/slots?${slotParam}&date=${dateStr}`);
     const slots = res.ok ? await res.json() : [];
     const avail = slots.filter(s => s.available);
 
@@ -838,10 +874,12 @@ bookableEvents.forEach(e => {
 }
 
 function selectSlotChip(el, start, end) {
-  el.classList.toggle("selected"); 
+  el.classList.toggle("selected");
   const selected = [...document.querySelectorAll(".slot-chip.selected")]
     .map(c => ({ start: c.dataset.start, end: c.dataset.end }));
   document.getElementById("vbSlotStart").value = JSON.stringify(selected);
+  // FIX: keep vbSlotEnd in sync with the last selected slot (used as fallback display)
+  document.getElementById("vbSlotEnd").value = selected.length ? selected[selected.length - 1].end : "";
 }
 
 async function submitVenueBooking(e) {
@@ -941,9 +979,15 @@ async function loadMyVenueBookings() {
               b.status === 'pending'          ? 'Pending'          : b.status
             }</span>
           </td>
+          <td style="padding:10px 14px;">
+            ${b.status === 'pending'
+              ? `<button class="btn-ghost" style="color:var(--rose);font-size:12px;padding:4px 10px;"
+                   onclick="cancelVenueBooking(${b.id})">🗑️ Cancel</button>`
+              : `<span style="color:var(--muted);font-size:12px;">—</span>`}
+          </td>
         </tr>`;
     }).join("");
-  } catch { tbody.innerHTML = `<tr><td colspan="6" class="table-empty">Failed to load</td></tr>`; }
+  } catch { tbody.innerHTML = `<tr><td colspan="7" class="table-empty">Failed to load</td></tr>`; }
 }
 
 async function cancelVenueBooking(id) {

@@ -96,8 +96,28 @@
     background: var(--amber-light) !important;
     color: var(--amber) !important;
     border: 1px solid rgba(245,158,11,0.40) !important;
-    cursor: default;
+    cursor: pointer;
     font-weight: 600;
+  }
+  .calendar-day.partial {
+    background: rgba(245,158,11,0.18) !important;
+    color: #92400e !important;
+    border: 1px solid rgba(245,158,11,0.55) !important;
+    cursor: pointer;
+    font-weight: 600;
+    position: relative;
+  }
+  .calendar-day.partial::after {
+    content: "◑";
+    position: absolute;
+    bottom: 2px;
+    right: 3px;
+    font-size: 8px;
+    opacity: 0.7;
+  }
+  .calendar-day.partial:hover {
+    background: rgba(245,158,11,0.30) !important;
+    transform: scale(1.08);
   }
   .calendar-day.available {
     cursor: pointer;
@@ -122,6 +142,7 @@
   body.light .slot-chip:hover,
   body.light .slot-chip.selected { background:#ede9fe; border-color:#8b5cf6; color:#5b21b6; }
   body.light .calendar-day.pending { background:#fef3c7 !important; color:#b45309 !important; border-color:rgba(180,83,9,0.30) !important; }
+  body.light .calendar-day.partial  { background:#fef9c3 !important; color:#92400e !important; border-color:rgba(245,158,11,0.45) !important; }
   body.light .calendar-day.available:hover { background:#ede9fe; color:#5b21b6; }
 </style>
 </head>
@@ -479,6 +500,7 @@
                 <span class="legend-dot" style="background:var(--amber);border-radius:50%;display:inline-block;width:10px;height:10px;margin-right:4px;"></span>Pending Approval
               </span>
               <span class="legend-item">
+                <span class="legend-dot legend-dot--partial" style="background:rgba(245,158,11,0.6);border-color:rgba(245,158,11,0.8);"></span>Partially Booked
                 <span class="legend-dot legend-dot--booked"></span>Booked
               </span>
             </div>

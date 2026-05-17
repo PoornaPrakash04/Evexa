@@ -78,24 +78,41 @@ router.get("/slots", auth(["ORGANIZER"]), (req, res) => {
   resolveVenueId(req.query, (err, venueId) => {
     if (err) return res.status(400).json({ message: err.message });
 
+    // FIX: check venue_availability first — if coordinator marked this day
+    // unavailable, return all slots as blocked immediately.
     db.query(
-      `SELECT TIME_FORMAT(time, '%H:%i:%s') AS start_time
-       FROM venue_bookings
-       WHERE venue_id = ?
-         AND date = ?
-         AND status != 'rejected'`,
+      "SELECT status FROM venue_availability WHERE venue_id = ? AND date = ?",
       [venueId, date],
-      (err, results) => {
+      (err, avail) => {
         if (err) return res.status(500).json({ message: err.message });
 
-        const booked     = results.map(r => r.start_time);
-        const slotStatus = generateSlots().map(slot => ({
-          start:     slot.start,
-          end:       slot.end,
-          available: !booked.includes(slot.start),
-        }));
+        if (avail.length && avail[0].status === "unavailable") {
+          return res.json(
+            generateSlots().map(slot => ({ ...slot, available: false }))
+          );
+        }
 
-        res.json(slotStatus);
+        // Day is not blocked — check individual slot conflicts from bookings
+        db.query(
+          `SELECT TIME_FORMAT(time, '%H:%i:%s') AS start_time
+           FROM venue_bookings
+           WHERE venue_id = ?
+             AND date = ?
+             AND status != 'rejected'`,
+          [venueId, date],
+          (err, results) => {
+            if (err) return res.status(500).json({ message: err.message });
+
+            const booked     = results.map(r => r.start_time);
+            const slotStatus = generateSlots().map(slot => ({
+              start:     slot.start,
+              end:       slot.end,
+              available: !booked.includes(slot.start),
+            }));
+
+            res.json(slotStatus);
+          }
+        );
       }
     );
   });
@@ -118,32 +135,55 @@ router.get("/calendar", auth(["ORGANIZER", "STUDENT", "FACULTY"]), (req, res) =>
     const lastDay     = new Date(Number(year), Number(month), 0).getDate();
     const endDate     = `${year}-${paddedMonth}-${String(lastDay).padStart(2, "0")}`;
 
+    // FIX: fetch venue_availability overrides first, then merge with booking statuses.
+    // Days marked unavailable by coordinator always show as "booked" on the calendar.
     db.query(
-      `SELECT
-         DAY(date) AS day,
-         MAX(CASE
-           WHEN status = 'hall_approved'    THEN 3
-           WHEN status = 'faculty_approved' THEN 2
-           WHEN status = 'pending'          THEN 1
-           ELSE 0
-         END) AS priority
-       FROM venue_bookings
+      `SELECT DAY(date) AS day
+       FROM venue_availability
        WHERE venue_id = ?
          AND date BETWEEN ? AND ?
-         AND status IN ('hall_approved', 'faculty_approved', 'pending')
-       GROUP BY DAY(date)`,
+         AND status = 'unavailable'`,
       [venueId, startDate, endDate],
-      (err, results) => {
+      (err, unavailRows) => {
         if (err) return res.status(500).json({ message: err.message });
 
-        const mapped = results.map(r => ({
-          day:    r.day,
-          status: r.priority >= 3 ? "booked"
-                : r.priority === 2 ? "faculty-approved"
-                : "pending",
-        }));
+        const unavailDays = new Set(unavailRows.map(r => r.day));
 
-        res.json(mapped);
+        db.query(
+          `SELECT
+             DAY(date) AS day,
+             MAX(CASE
+               WHEN status = 'hall_approved'    THEN 3
+               WHEN status = 'faculty_approved' THEN 2
+               WHEN status = 'pending'          THEN 1
+               ELSE 0
+             END) AS priority
+           FROM venue_bookings
+           WHERE venue_id = ?
+             AND date BETWEEN ? AND ?
+             AND status IN ('hall_approved', 'faculty_approved', 'pending')
+           GROUP BY DAY(date)`,
+          [venueId, startDate, endDate],
+          (err, results) => {
+            if (err) return res.status(500).json({ message: err.message });
+
+            const mapped = results.map(r => ({
+              day:    r.day,
+              status: r.priority >= 3 ? "booked"
+                    : r.priority === 2 ? "faculty-approved"
+                    : "pending",
+            }));
+
+            // Merge: unavailability overrides any booking status for that day
+            unavailDays.forEach(day => {
+              const existing = mapped.find(r => r.day === day);
+              if (existing) existing.status = "booked";
+              else mapped.push({ day, status: "booked" });
+            });
+
+            res.json(mapped);
+          }
+        );
       }
     );
   });
