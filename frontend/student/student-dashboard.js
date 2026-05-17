@@ -694,7 +694,11 @@ function initNotifications() {
   if (btn) {
     btn.addEventListener("click", e => {
       e.stopPropagation();
-      openNotifHistoryPage();
+      // Mark all read, then go to the dedicated notifications page
+      localNotifs = localNotifs.map(n => ({ ...n, read: true }));
+      saveNotifs();
+      updateNotifBadge();
+      window.location.href = "notifications.html";
     });
   }
 

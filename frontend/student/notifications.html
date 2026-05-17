@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Notifications | EVEXA</title>
+  <link rel="stylesheet" href="student-dashboard.css"/>
+  <style>
+    /* ── Page-level layout ── */
+    .notif-page-wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 0 48px;
+    }
+
+    /* ── Header bar ── */
+    .notif-page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .notif-page-header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .notif-page-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-1, #fff);
+      letter-spacing: -0.3px;
+    }
+    .notif-page-sub {
+      font-size: 13px;
+      color: var(--text-3, #888);
+    }
+    .notif-page-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+
+
+    /* ── Notification list ── */
+    .notif-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .notif-list-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 18px;
+      border-radius: 14px;
+      background: var(--surface, #111118);
+      border: 1px solid var(--border, #2a2a3a);
+      position: relative;
+      transition: border-color 0.18s, transform 0.15s;
+      cursor: default;
+      animation: notifIn 0.28s ease both;
+    }
+    .notif-list-item:hover {
+      border-color: var(--accent, #7c6ef7);
+      transform: translateY(-1px);
+    }
+    .notif-list-item.unread {
+      border-left: 3px solid var(--accent, #7c6ef7);
+      background: var(--surface-2, #16161e);
+    }
+
+    @keyframes notifIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .notif-item-icon-wrap {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--surface-2, #1e1e2e);
+      border: 1px solid var(--border, #2a2a3a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .notif-item-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .notif-item-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-1, #fff);
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .notif-item-sub {
+      font-size: 13px;
+      color: var(--text-3, #888);
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+    .notif-item-footer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .notif-item-time {
+      font-size: 11px;
+      color: var(--text-3, #888);
+    }
+    .notif-type-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-announcement { background: rgba(251,191,36,.15); color: #fbbf24; }
+    .badge-event        { background: rgba(124,110,247,.15); color: #7c6ef7; }
+    .badge-general      { background: rgba(52,211,153,.15);  color: #34d399; }
+
+    .unread-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent, #7c6ef7);
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+
+    /* ── Empty state ── */
+    .notif-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-3, #888);
+    }
+    .notif-empty-icon {
+      font-size: 48px;
+      opacity: 0.4;
+      margin-bottom: 14px;
+    }
+    .notif-empty-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-2, #bbb);
+      margin-bottom: 6px;
+    }
+    .notif-empty-sub {
+      font-size: 13px;
+    }
+
+    /* ── Action buttons ── */
+    .notif-action-btn {
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid var(--border, #2a2a3a);
+      background: var(--surface-2, #16161e);
+      color: var(--text-2, #ccc);
+      transition: all 0.18s;
+    }
+    .notif-action-btn:hover {
+      border-color: var(--accent, #7c6ef7);
+      color: var(--accent, #7c6ef7);
+    }
+    .notif-action-btn.danger:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+    .notif-action-btn.primary {
+      background: var(--accent, #7c6ef7);
+      border-color: var(--accent, #7c6ef7);
+      color: #fff;
+    }
+    .notif-action-btn.primary:hover {
+      opacity: 0.85;
+      color: #fff;
+    }
+
+    /* ── Group date separator ── */
+    .notif-date-sep {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3, #888);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin: 18px 0 6px;
+    }
+    .notif-date-sep::before,
+    .notif-date-sep::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border, #2a2a3a);
+    }
+
+    /* ── Loading skeleton ── */
+    .notif-skeleton {
+      display: flex;
+      gap: 14px;
+      padding: 16px 18px;
+      border-radius: 14px;
+      background: var(--surface, #111118);
+      border: 1px solid var(--border, #2a2a3a);
+      animation: pulse 1.4s ease infinite;
+    }
+    .skel-icon {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      background: var(--border, #2a2a3a);
+      flex-shrink: 0;
+    }
+    .skel-body { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .skel-line { height: 12px; border-radius: 6px; background: var(--border, #2a2a3a); }
+    .skel-line.short { width: 40%; }
+    .skel-line.med   { width: 65%; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.45; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .notif-stats-row { gap: 8px; }
+      .notif-stat-card { padding: 10px 14px; }
+      .notif-stat-val  { font-size: 20px; }
+      .notif-page-actions { gap: 6px; }
+      .notif-action-btn { padding: 7px 12px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">S</div>
+      <div class="brand-text">
+        <div class="brand-name">EVEXA</div>
+        <div class="brand-sub">Student Portal</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a class="nav-item" href="student-dashboard.html">
+        <span class="icon">🏠</span><span>Dashboard</span>
+      </a>
+      <a class="nav-item" href="event-details.html">
+        <span class="icon">📅</span><span>Events</span>
+      </a>
+      <a class="nav-item" href="clubs.html?view=mine">
+        <span class="icon">🏛️</span><span>My Clubs</span>
+      </a>
+      <a class="nav-item" href="my-issues.html">
+        <span class="icon">🚩</span><span>My Issues</span>
+      </a>
+      <a class="nav-item active" href="notifications.html">
+        <span class="icon">🔔</span><span>Notifications</span>
+      </a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="mini-user">
+        <div class="mini-avatar" aria-hidden="true"></div>
+        <div class="mini-meta">
+          <div class="mini-name" id="miniName"></div>
+          <div class="mini-role">Student</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
+        <div class="page-title">
+          <div class="title">Notifications</div>
+          <div class="subtitle">All your alerts and updates in one place.</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <nav class="top-links">
+          <button class="icon-btn theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Switch to Light Mode">🌙</button>
+
+          <!-- Notification Bell (goes back to this page) -->
+          <div class="notif-wrap">
+            <button class="icon-btn notif-bell" id="notifBtn" title="Notifications">🔔</button>
+          </div>
+
+          <button class="top-link" id="clubsBtn" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
+          <button class="top-link" type="button" onclick="window.location.href='eve.html'">EVE</button>
+          <button class="top-link danger" id="logoutBtn" type="button" onclick="logout()">Logout</button>
+        </nav>
+      </div>
+    </header>
+
+    <section class="content">
+      <div class="notif-page-wrap">
+
+        <!-- Notification list -->
+        <div class="notif-list" id="notifPageList">
+          <!-- Skeletons while loading -->
+          ${[1,2,3,4].map(() => `
+          <div class="notif-skeleton">
+            <div class="skel-icon"></div>
+            <div class="skel-body">
+              <div class="skel-line med"></div>
+              <div class="skel-line short"></div>
+            </div>
+          </div>`).join("")}
+        </div>
+
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="theme.js"></script>
+<script src="student-dashboard.js"></script>
+<script>
+  // ── Constants ──────────────────────────────────────────────────
+  const NOTIF_KEY_PAGE = "evexa_notifs";
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function getNotifs() {
+    return JSON.parse(localStorage.getItem(NOTIF_KEY_PAGE) || "[]");
+  }
+  function saveNotifsPage(arr) {
+    localStorage.setItem(NOTIF_KEY_PAGE, JSON.stringify(arr.slice(0, 50)));
+  }
+
+  function timeAgoPage(iso) {
+    if (!iso) return "";
+    const diff  = Date.now() - new Date(iso).getTime();
+    const mins  = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days  = Math.floor(diff / 86400000);
+    if (mins  < 1)  return "just now";
+    if (mins  < 60) return `${mins}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days  < 7)  return `${days}d ago`;
+    return new Date(iso).toLocaleDateString("en-IN", { day:"numeric", month:"short" });
+  }
+
+  function dayLabel(iso) {
+    if (!iso) return "Unknown";
+    const d     = new Date(iso);
+    const today = new Date();
+    const yest  = new Date(); yest.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return "Today";
+    if (d.toDateString() === yest.toDateString())  return "Yesterday";
+    return d.toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" });
+  }
+
+  function typeBadge(type) {
+    const map = {
+      announcement: { cls: "badge-announcement", label: "Announcement" },
+      event:        { cls: "badge-event",        label: "Event" },
+      general:      { cls: "badge-general",      label: "General" },
+    };
+    const t = map[type] || { cls: "badge-general", label: type || "General" };
+    return `<span class="notif-type-badge ${t.cls}">${t.label}</span>`;
+  }
+
+  // ── Render ─────────────────────────────────────────────────────
+  function renderPage() {
+    let notifs = getNotifs();
+
+    const subEl = document.getElementById("notifPageSub");
+    if (subEl) subEl.textContent = notifs.length
+      ? `${notifs.length} notification${notifs.length !== 1 ? "s" : ""}`
+      : "All caught up";
+
+    const list = document.getElementById("notifPageList");
+    if (!list) return;
+
+    if (!notifs.length) {
+      list.innerHTML = `
+        <div class="notif-empty">
+          <div class="notif-empty-icon">🔕</div>
+          <div class="notif-empty-title">No notifications here</div>
+          <div class="notif-empty-sub">You're all caught up! Check back later.</div>
+        </div>`;
+      return;
+    }
+
+    // Group by day
+    const groups = {};
+    notifs.forEach(n => {
+      const label = dayLabel(n.time);
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(n);
+    });
+
+    let html = "";
+    let delay = 0;
+    for (const [day, items] of Object.entries(groups)) {
+      html += `<div class="notif-date-sep">${day}</div>`;
+      items.forEach(n => {
+        html += `
+          <div class="notif-list-item ${n.read ? "" : "unread"}"
+               style="animation-delay:${delay}ms"
+               onclick="markOneRead('${n.id}')">
+            <div class="notif-item-icon-wrap">${n.icon || "🔔"}</div>
+            <div class="notif-item-body">
+              <div class="notif-item-title">
+                ${n.title}
+              </div>
+              <div class="notif-item-sub">${n.sub || ""}</div>
+              <div class="notif-item-footer">
+                <span class="notif-item-time">${timeAgoPage(n.time)}</span>
+                ${typeBadge(n.type)}
+              </div>
+            </div>
+            ${!n.read ? `<div class="unread-dot"></div>` : ""}
+          </div>`;
+        delay += 30;
+      });
+    }
+
+    list.innerHTML = html;
+  }
+
+  // ── Actions ────────────────────────────────────────────────────
+  function markOneRead(id) {
+    let notifs = getNotifs();
+    notifs = notifs.map(n => n.id === id ? { ...n, read: true } : n);
+    saveNotifsPage(notifs);
+    // also update badge via student-dashboard.js globals
+    if (typeof updateNotifBadge === "function") updateNotifBadge();
+    renderPage();
+  }
+
+  function markAllRead() {
+    let notifs = getNotifs().map(n => ({ ...n, read: true }));
+    saveNotifsPage(notifs);
+    if (typeof updateNotifBadge === "function") updateNotifBadge();
+    renderPage();
+  }
+
+  function clearAll() {
+    if (!confirm("Clear all notifications? This cannot be undone.")) return;
+    saveNotifsPage([]);
+    if (typeof updateNotifBadge === "function") updateNotifBadge();
+    renderPage();
+  }
+
+  // ── Bell on this page just refreshes ──────────────────────────
+  document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("notifBtn");
+    if (btn) btn.addEventListener("click", () => renderPage());
+  });
+
+  // ── Boot ───────────────────────────────────────────────────────
+  // Wait for student-dashboard.js to finish syncing, then render
+  window.addEventListener("load", async () => {
+    // syncNotifs is defined in student-dashboard.js; it fetches
+    // announcements + upcoming reminders and saves to localStorage.
+    if (typeof syncNotifs === "function") {
+      await syncNotifs();
+    }
+    renderPage();
+  });
+</script>
+</body>
+</html>

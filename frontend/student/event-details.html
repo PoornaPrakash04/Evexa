@@ -73,21 +73,20 @@
 
   <!-- Notification Bell -->
   <div class="notif-wrap">
-    <button class="icon-btn notif-btn" id="notifBtn" title="Notifications">
+    <button class="icon-btn notif-bell" id="notifBtn" title="Notifications">
       🔔
-      <span class="notif-dot" id="notifDot"></span>
     </button>
     <div class="notif-dropdown" id="notifDropdown">
-      <div class="notif-dropdown-head">
-  <span class="notif-dropdown-title" id="notifDropdownTitle">Notifications</span>
-  
-</div>
-      <div class="notif-dropdown-list" id="notifList">
-        <div class="notif-empty">No notifications yet.</div>
+      <div class="notif-drop-head">
+        <span class="notif-drop-title">🔔 Notifications</span>
+        <button class="notif-clear-btn" id="notifClearAll" onclick="clearAllNotifs()">Clear all</button>
+      </div>
+      <div class="notif-drop-list" id="notifDropList"></div>
+      <div class="notif-drop-footer">
+        <button class="notif-view-all-btn" onclick="openNotifHistoryPage()">View all notifications →</button>
       </div>
     </div>
   </div>
-
   <button class="top-link" id="clubsBtn" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
   <button class="top-link" type="button" onclick="window.location.href='eve.html'">EVE</button>
   <button class="top-link danger" id="logoutBtn" type="button" onclick="logout()">Logout</button>
