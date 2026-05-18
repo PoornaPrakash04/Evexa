@@ -1,4 +1,3 @@
-
 const express  = require("express");
 const db       = require("../db");
 const authorize = require("../middleware/authMiddleware");
@@ -28,39 +27,49 @@ router.get("/", (req, res) => {
 
 router.get("/my-clubs", authorize(), (req, res) => {
   if (req.user.role === "FACULTY") {
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    // HOD (role_id=1) is not assigned as club faculty_id — clubs belong to faculty
+    // coordinators. HOD portal needs all clubs visible, so detect HOD and skip the
+    // faculty_id filter. Faculty coordinators still see only their assigned clubs.
     db.query(
-      `SELECT
-         c.club_id,
-         c.club_id           AS id,
-         c.club_name,
-         c.club_name         AS name,
-         c.club_category     AS category,
-         c.club_logo         AS logo,
-         c.short_description AS description,
-         'Active'            AS status,
-         f.name              AS faculty_name,
-         COUNT(DISTINCT cm.student_id) AS member_count
-       FROM clubs c
-       LEFT JOIN club_members cm ON cm.club_id = c.club_id
-       LEFT JOIN faculty f       ON f.id = c.faculty_id
-       WHERE c.faculty_id = ?
-       GROUP BY c.club_id, c.club_name, c.club_category, c.club_logo, c.short_description, f.name`,
+      "SELECT role_id FROM faculty WHERE id = ? AND deleted_at IS NULL LIMIT 1",
       [req.user.id],
-      (err, result) => {
-        if (err) {
-          console.error("GET /clubs/my-clubs (faculty) error:", err);
-          return res.status(500).json({ message: "Server error", detail: err.message });
+      (roleErr, roleRows) => {
+        if (roleErr) {
+          console.error("GET /clubs/my-clubs role check error:", roleErr);
+          return res.status(500).json({ message: "Server error", detail: roleErr.message });
         }
-        res.json(result);
+
+        const HOD_ROLE_ID  = 1;
+        const isHOD        = roleRows[0]?.role_id === HOD_ROLE_ID;
+        const whereClause  = isHOD ? "" : "WHERE c.faculty_id = ?";
+        const queryParams  = isHOD ? [] : [req.user.id];
+
+        db.query(
+          `SELECT
+             c.club_id,
+             c.club_id           AS id,
+             c.club_name,
+             c.club_name         AS name,
+             c.club_category     AS category,
+             c.club_logo         AS logo,
+             c.short_description AS description,
+             'Active'            AS status,
+             f.name              AS faculty_name,
+             COUNT(DISTINCT cm.student_id) AS member_count
+           FROM clubs c
+           LEFT JOIN club_members cm ON cm.club_id = c.club_id
+           LEFT JOIN faculty f       ON f.id = c.faculty_id
+           ${whereClause}
+           GROUP BY c.club_id, c.club_name, c.club_category, c.club_logo, c.short_description, f.name`,
+          queryParams,
+          (err, result) => {
+            if (err) {
+              console.error("GET /clubs/my-clubs (faculty) error:", err);
+              return res.status(500).json({ message: "Server error", detail: err.message });
+            }
+            res.json(result);
+          }
+        );
       }
     );
   } else if (req.user.role === "STUDENT") {

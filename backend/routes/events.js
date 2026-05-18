@@ -262,7 +262,9 @@ router.get("/all", authorize(), (req, res) => {
     role === "ADMIN"
       ? ""
       : role === "FACULTY"
-      ? "WHERE e.status IN ('hall_approved', 'faculty_approved', 'published', 'completed') AND e.deleted_at IS NULL"
+      // Include 'submitted' and 'hod_approved' so HOD/faculty dashboards see events
+      // that are pending their action, not just already-approved ones.
+      ? "WHERE e.status IN ('submitted', 'faculty_approved', 'hod_approved', 'hall_approved', 'published', 'completed') AND e.deleted_at IS NULL"
       : "WHERE e.status IN ('hall_approved', 'published', 'completed') AND e.deleted_at IS NULL";
 
   db.query(
