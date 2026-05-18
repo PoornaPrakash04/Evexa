@@ -41,7 +41,7 @@ function statusLabel(s) {
 /* ── auth fetch ── */
 async function apiFetch(endpoint, opts = {}) {
   const token = localStorage.getItem("faculty_auth_token");
-  if (!token) { window.location.href = "fcsignin.html"; return null; }
+  if (!token) { window.location.href = "/faculty/fcsignin.html"; return null; }
 
   try {
     const base = window.API || "https://evexa-production.up.railway.app/api";
@@ -56,7 +56,7 @@ async function apiFetch(endpoint, opts = {}) {
 
     if (res.status === 401) {
       localStorage.removeItem("faculty_auth_token");
-      window.location.href = "fcsignin.html";
+      window.location.href = "/faculty/fcsignin.html";
       return null;
     }
     if (!res.ok) {
@@ -81,8 +81,6 @@ async function apiFetch(endpoint, opts = {}) {
 let currentPage = "dashboard";
 let calYear     = new Date().getFullYear();
 let calMonth    = new Date().getMonth();
-let chartsInited = false;
-
 let cachedProfile          = null;
 let cachedEvents           = [];
 let cachedClubs            = [];
@@ -217,7 +215,6 @@ const PAGE_META = {
   "dept-events":         ["Department Events",      "All events using classrooms in your department."],
   "dept-clubs":          ["Department Clubs",       "Clubs and their events within your department."],
   "proposals":           ["Event Proposal Review",  "Review and approve submitted proposals."],
-  "analytics":           ["Reports & Analytics",    "Department event and participation statistics."],
   "announcements":       ["Announcements",          "Post and manage department announcements."],
   "notif-history":       ["Notification History",   "All alerts and system updates."],
   "account-settings":    ["Account Settings",       "Update your profile and password."],
@@ -253,11 +250,6 @@ async function navigateTo(page) {
     "announcements":      renderAnnouncements,
     "notif-history":      renderNotifHistory,
     "account-settings":   () => { initAccountSettings(); asLoadProfile(); },
-    "analytics": async () => {
-      chartsInited = false;
-      await refreshAll();
-      setTimeout(initCharts, 60);
-    },
   };
 
   await renders[page]?.();
@@ -1098,107 +1090,6 @@ async function rejectProposalWithRemark(id, src = "proposal") {
 }
 
 /* ══════════════════════════════════════════════════════════
-   ANALYTICS
-   ══════════════════════════════════════════════════════════ */
-async function initCharts() {
-  chartsInited = true;
-  const kpi = document.getElementById("analyticsKpi");
-  const now = new Date();
-
-  const approvedEvents = cachedDeptEvents.filter(e =>
-    ["hod_approved","hall_approved","approved","published"].includes((e.status||"").toLowerCase())
-  );
-  const totalReg = cachedDeptEvents.reduce((sum,e) => sum + Number(e.registered_count||e.registered||e.participant_count||0), 0);
-
-  if (kpi) {
-    kpi.innerHTML = [
-      { icon:"📋", val:cachedDeptEvents.length,   label:"Dept Events",  cls:"kt" },
-      { icon:"✅", val:approvedEvents.length,     label:"Approved",     cls:"kc" },
-      { icon:"👥", val:totalReg,                  label:"Registrations",cls:"kv" },
-      { icon:"🚪", val:cachedMyClassrooms.length, label:"My Classrooms",cls:"ka" },
-    ].map(d => `
-      <div class="kpi-card ${d.cls}">
-        <div class="kpi-icon">${d.icon}</div>
-        <div class="kpi-val">${d.val}</div>
-        <div class="kpi-label">${d.label}</div>
-      </div>`).join("");
-  }
-
-  const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const labels=[], evCounts=[], regCounts=[];
-  for (let i=7; i>=0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    labels.push(MONTH_NAMES[d.getMonth()]);
-    const mEvs = cachedDeptEvents.filter(e => {
-      const ed = parseEventDate(e.date||e.event_date||e.start_date);
-      return ed && ed.getFullYear()===d.getFullYear() && ed.getMonth()===d.getMonth();
-    });
-    evCounts.push(mEvs.length);
-    regCounts.push(mEvs.reduce((s,e) => s + Number(e.registered_count||e.registered||0), 0));
-  }
-
-  const chartDefaults = {
-    responsive:true,
-    plugins:{ legend:{ display:false } },
-    scales:{
-      x:{ grid:{ display:false }, ticks:{ color:"rgba(240,242,255,.4)", font:{ weight:600, size:11 } } },
-      y:{ grid:{ color:"rgba(255,255,255,.05)" }, ticks:{ color:"rgba(240,242,255,.4)", font:{ weight:600, size:11 }, stepSize:1 }, beginAtZero:true },
-    },
-  };
-
-  tryChart("eventsChart", {
-    type:"bar",
-    data:{ labels, datasets:[{ data:evCounts, backgroundColor:"rgba(16,185,129,.7)", borderRadius:7, borderSkipped:false }] },
-    options:chartDefaults,
-  });
-  tryChart("participationChart", {
-    type:"line",
-    data:{ labels, datasets:[{ data:regCounts, borderColor:"#10b981", backgroundColor:"rgba(16,185,129,.12)", borderWidth:2.5, fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:"#10b981" }] },
-    options:chartDefaults,
-  });
-
-  const TECH_KEYWORDS = ["ieee","iedc","robotics","coding","tech","computer","ai","ml","cyber","hack","software","hardware"];
-  const technical = cachedDeptEvents.filter(e => {
-    const cat = (e.club_category||e.category||"").toLowerCase().trim();
-    if (cat === "technical") return true;
-    if (cat === "non-technical") return false;
-    return TECH_KEYWORDS.some(kw => [e.type||"",e.club||"",e.title||""].join(" ").toLowerCase().includes(kw));
-  }).length;
-  const nonTechnical = Math.max(0, cachedDeptEvents.length - technical);
-  const total = cachedDeptEvents.length || 1;
-
-  tryChart("typeChart", {
-    type:"doughnut",
-    data:{ labels:["Technical","Non-Technical"], datasets:[{ data:[technical||0,nonTechnical||0], backgroundColor:["#10b981","#8b5cf6"], borderWidth:0, hoverOffset:6 }] },
-    options:{ responsive:false, plugins:{ legend:{ display:false } }, cutout:"68%" },
-  });
-
-  const leg = document.getElementById("typeChartLegend");
-  if (leg) {
-    leg.innerHTML = [
-      { color:"#10b981", label:"Technical",     pct:Math.round((technical/total)*100),    cnt:technical    },
-      { color:"#8b5cf6", label:"Non-Technical", pct:Math.round((nonTechnical/total)*100), cnt:nonTechnical },
-    ].map(d => `
-      <div class="leg-row">
-        <div class="leg-swatch" style="background:${d.color};"></div>
-        <div><div class="leg-text">${d.label} — ${d.pct}%</div><div class="leg-pct">${d.cnt} events</div></div>
-      </div>`).join("");
-  }
-
-  // Classroom usage chart
-  const classroomMap = {};
-  cachedDeptEvents.forEach(e => { const name=(e.venue||"Unknown").trim(); classroomMap[name]=(classroomMap[name]||0)+1; });
-  const sorted = Object.entries(classroomMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  const BG = ["rgba(16,185,129,.7)","rgba(6,182,212,.7)","rgba(139,92,246,.7)","rgba(245,158,11,.7)","rgba(236,72,153,.7)","rgba(239,68,68,.7)","rgba(59,130,246,.7)","rgba(251,146,60,.7)","rgba(132,204,22,.7)","rgba(167,139,250,.7)"];
-
-  tryChart("classroomChart", {
-    type:"bar",
-    data:{ labels:sorted.map(([n])=>n)||["No events"], datasets:[{ data:sorted.map(([,c])=>c)||[0], backgroundColor:sorted.map((_,i)=>BG[i%BG.length]), borderRadius:7, borderSkipped:false }] },
-    options:{ ...chartDefaults, indexAxis:"y" },
-  });
-}
-
-/* ══════════════════════════════════════════════════════════
    ANNOUNCEMENTS
    ══════════════════════════════════════════════════════════ */
 async function renderAnnouncements() {
@@ -1526,7 +1417,7 @@ function logout() {
       <div style="display:flex;gap:10px;justify-content:center;">
         <button onclick="this.closest('div[style*=fixed]').parentElement.remove()"
           style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Cancel</button>
-        <button onclick="localStorage.removeItem('faculty_auth_token');window.location.href='../fcsignin.html';"
+        <button onclick="localStorage.removeItem('faculty_auth_token');window.location.href='/faculty/fcsignin.html';"
           style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
       </div>
     </div>
@@ -1595,14 +1486,6 @@ function showToast(msg, type="info") {
 function debounce(fn, ms=280) {
   let timer;
   return (...args) => { clearTimeout(timer); timer=setTimeout(()=>fn(...args),ms); };
-}
-
-function tryChart(id, config) {
-  const canvas = document.getElementById(id);
-  if (!canvas || typeof Chart === "undefined") return;
-  const existing = Chart.getChart(canvas);
-  if (existing) existing.destroy();
-  new Chart(canvas, config);
 }
 
 /* ── kick off ── */

@@ -30,16 +30,14 @@
           <span>Dashboard</span>
         </a>
 
-        <!-- ✅ Renamed from "Event Details" to "Events" -->
         <a class="nav-item" href="event-details.html" data-nav="event-details.html">
           <span class="icon">📅</span>
           <span>Events</span>
         </a>
 
-        <!-- ✅ My Clubs -->
         <a class="nav-item" href="clubs.html?view=mine">
-  <span class="icon">🏛️</span><span>My Clubs</span>
-</a>
+          <span class="icon">🏛️</span><span>My Clubs</span>
+        </a>
         <a class="nav-item" href="my-issues.html">🚩 <span>My Issues</span></a>
         
       </nav>
@@ -54,6 +52,7 @@
         </div>
       </div>
     </aside>
+
     <!-- Main -->
     <main class="main">
       <header class="topbar">
@@ -66,29 +65,27 @@
         </div>
         <div class="topbar-right">
           <nav class="top-links">
-  <button class="icon-btn theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Switch to Light Mode">🌙</button>
+            <button class="icon-btn theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Switch to Light Mode">🌙</button>
 
-  <!-- Notification Bell -->
-  <div class="notif-wrap">
-    <button class="icon-btn notif-bell" id="notifBtn" title="Notifications">
-      🔔
-    </button>
-    <div class="notif-dropdown" id="notifDropdown">
-      <div class="notif-drop-head">
-        <span class="notif-drop-title">🔔 Notifications</span>
-        <button class="notif-clear-btn" id="notifClearAll" onclick="clearAllNotifs()">Clear all</button>
-      </div>
-      <div class="notif-drop-list" id="notifDropList"></div>
-      <div class="notif-drop-footer">
-        <button class="notif-view-all-btn" onclick="openNotifHistoryPage()">View all notifications →</button>
-      </div>
-    </div>
-  </div>
+            <!-- Notification Bell -->
+            <div class="notif-wrap">
+              <button class="icon-btn notif-bell" id="notifBtn" title="Notifications">🔔</button>
+              <div class="notif-dropdown" id="notifDropdown">
+                <div class="notif-drop-head">
+                  <span class="notif-drop-title">🔔 Notifications</span>
+                  <button class="notif-clear-btn" id="notifClearAll" onclick="clearAllNotifs()">Clear all</button>
+                </div>
+                <div class="notif-drop-list" id="notifDropList"></div>
+                <div class="notif-drop-footer">
+                  <button class="notif-view-all-btn" onclick="openNotifHistoryPage()">View all notifications →</button>
+                </div>
+              </div>
+            </div>
 
-  <button class="top-link" id="clubsBtn" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
-  <button class="top-link" type="button" onclick="window.location.href='eve.html'">EVE</button>
-  <button class="top-link danger" id="logoutBtn" type="button" onclick="logout()">Logout</button>
-</nav>
+            <button class="top-link" id="clubsBtn" type="button" onclick="window.location.href='clubs.html'">Clubs</button>
+            <button class="top-link" type="button" onclick="window.location.href='eve.html'">EVE</button>
+            <button class="top-link danger" id="logoutBtn" type="button" onclick="logout()">Logout</button>
+          </nav>
         </div>
       </header>
 
@@ -98,71 +95,82 @@
       </section>
     </main>
   </div>
-<!-- QR Ticket Modal -->
-<div class="ticket-overlay" id="ticketOverlay" onclick="closeTicket()"></div>
 
-<div class="ticket-modal" id="ticketModal">
-  <div class="ticket-modal-inner">
+  <!-- ─── QR Ticket Modal ─────────────────────────────── -->
+  <div class="ticket-overlay" id="ticketOverlay" onclick="closeTicket()"></div>
 
-    <!-- Close -->
-    <button class="ticket-close-btn" onclick="closeTicket()" type="button">✕</button>
+  <div class="ticket-modal" id="ticketModal">
+    <div class="ticket-modal-inner">
 
-    <!-- Ticket card -->
-    <div class="ticket-card" id="ticketCard">
+      <button class="ticket-close-btn" onclick="closeTicket()" type="button">✕</button>
 
-      <!-- Header -->
-      <div class="ticket-header">
-        <div class="ticket-brand">EVEXA</div>
-        <div class="ticket-badge">Event Ticket</div>
-      </div>
-
-      <!-- Event info -->
-      <div class="ticket-event-name" id="tEventName"></div>
-      <div class="ticket-event-meta">
-        <span id="tEventDate"></span> &nbsp;·&nbsp;
-        <span id="tEventVenue"></span>
-      </div>
-      <div class="ticket-event-club" id="tEventClub"></div>
-
-      <!-- Divider perforated -->
-      <div class="ticket-perforated">
-        <div class="ticket-hole left"></div>
-        <div class="ticket-dashes"></div>
-        <div class="ticket-hole right"></div>
-      </div>
-
-      <!-- Student info + QR -->
-      <div class="ticket-body">
-        <div class="ticket-student">
-          <div class="ticket-student-name" id="tStudentName"></div>
-          <div class="ticket-info-row"><span>Roll No</span><span id="tRollNo"></span></div>
-          <div class="ticket-info-row"><span>Department</span><span id="tDept"></span></div>
-          <div class="ticket-info-row"><span>Class</span><span id="tClass"></span></div>
-          <div class="ticket-info-row"><span>Email</span><span id="tEmail"></span></div>
-          <div class="ticket-info-row"><span>Ticket ID</span><span id="tTicketId" style="font-size:10px;"></span></div>
+      <div class="ticket-card" id="ticketCard">
+        <div class="ticket-header">
+          <div class="ticket-brand">EVEXA</div>
+          <div class="ticket-badge">Event Ticket</div>
         </div>
-        <div class="ticket-qr-wrap">
-          <img class="ticket-qr" id="ticketQR" src="" alt="QR Code" />
-          <div class="ticket-qr-label">Scan to verify</div>
+        <div class="ticket-event-name" id="tEventName"></div>
+        <div class="ticket-event-meta">
+          <span id="tEventDate"></span> &nbsp;·&nbsp;
+          <span id="tEventVenue"></span>
+        </div>
+        <div class="ticket-event-club" id="tEventClub"></div>
+        <div class="ticket-perforated">
+          <div class="ticket-hole left"></div>
+          <div class="ticket-dashes"></div>
+          <div class="ticket-hole right"></div>
+        </div>
+        <div class="ticket-body">
+          <div class="ticket-student">
+            <div class="ticket-student-name" id="tStudentName"></div>
+            <div class="ticket-info-row"><span>Roll No</span><span id="tRollNo"></span></div>
+            <div class="ticket-info-row"><span>Department</span><span id="tDept"></span></div>
+            <div class="ticket-info-row"><span>Class</span><span id="tClass"></span></div>
+            <div class="ticket-info-row"><span>Email</span><span id="tEmail"></span></div>
+            <div class="ticket-info-row"><span>Ticket ID</span><span id="tTicketId" style="font-size:10px;"></span></div>
+          </div>
+          <div class="ticket-qr-wrap">
+            <img class="ticket-qr" id="ticketQR" src="" alt="QR Code" />
+            <div class="ticket-qr-label">Scan to verify</div>
+          </div>
+        </div>
+        <div class="ticket-footer">
+          <span>Valid for one-time entry only</span>
+          <span id="tIssuedAt"></span>
         </div>
       </div>
 
-      <!-- Footer -->
-      <div class="ticket-footer">
-        <span>Valid for one-time entry only</span>
-        <span id="tIssuedAt"></span>
+      <div class="ticket-actions">
+        <button class="btn primary" onclick="downloadTicket()" type="button">⬇ Download Ticket</button>
+        <button class="btn ghost"  onclick="closeTicket()"    type="button">Close</button>
       </div>
-    </div>
 
-    <!-- Actions -->
-    <div class="ticket-actions">
-      <button class="btn primary" onclick="downloadTicket()" type="button">⬇ Download Ticket</button>
-      <button class="btn ghost"  onclick="closeTicket()"    type="button">Close</button>
     </div>
-
   </div>
-</div>
-<script src="theme.js"></script>
+
+  <!-- ─── Payment Pending Modal ───────────────────────── -->
+  <!--
+    NOTE: Razorpay opens its own secure hosted popup — no custom payment
+    form is needed in the HTML. This modal is only shown while the order
+    is being created on the backend (loading state).
+  -->
+  <div class="ticket-overlay" id="payLoadingOverlay" style="display:none;"></div>
+  <div id="payLoadingModal" style="
+      display:none;position:fixed;inset:0;z-index:10000;
+      pointer-events:none;align-items:center;justify-content:center;">
+    <div style="
+        background:var(--surface,#fff);border-radius:20px;padding:32px 40px;
+        text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.2);pointer-events:all;
+        min-width:240px;">
+      <div style="font-size:32px;margin-bottom:12px;">💳</div>
+      <div style="font-size:15px;font-weight:800;color:var(--text-1,#111);margin-bottom:6px;">
+        Opening payment…
+      </div>
+      <div style="font-size:12px;color:#6b7280;">Please wait while Razorpay loads</div>
+    </div>
+  </div>
+
+  <script src="theme.js"></script>
   <script src="student-dashboard.js"></script>
   <script src="event-single.js"></script>
 </body>

@@ -94,7 +94,7 @@ const ROLE_CONFIG = {
     idField:     "faculty_no",
     logIcon:     "👨‍🏫",
     logColor:    "orange",
-    extraClaims: (user) => ({ faculty_no: user.faculty_no }),
+    extraClaims: (user) => ({ faculty_no: user.faculty_no, role_id: user.role_id }),
   },
 };
 
@@ -118,7 +118,7 @@ router.post("/login", async (req, res) => {
     
     
     
-    `SELECT id, name, password, ${config.idField}${config.table === "organizers" ? ", club" : config.table === "faculty" ? ", faculty_no" : ""} FROM ${config.table} WHERE ${config.idField} = ? LIMIT 1`,
+    `SELECT id, name, password, ${config.idField}${config.table === "organizers" ? ", club" : config.table === "faculty" ? ", faculty_no, role_id" : ""} FROM ${config.table} WHERE ${config.idField} = ? LIMIT 1`,
     [identifier],
     async (err, rows) => {
       if (err) return res.status(500).json({ message: "Server error." });

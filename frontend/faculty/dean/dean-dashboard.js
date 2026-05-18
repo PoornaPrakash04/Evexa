@@ -50,7 +50,7 @@ function isDeanActionable(status) {
 /* ── auth fetch ── */
 async function apiFetch(endpoint, opts = {}) {
   const token = localStorage.getItem("dean_auth_token") || localStorage.getItem("faculty_auth_token");
-  if (!token) { window.location.href = "fcsignin.html"; return null; }
+  if (!token) { window.location.href = "/faculty/fcsignin.html"; return null; }
 
   try {
     const base = window.API || "https://evexa-production.up.railway.app/api";
@@ -65,7 +65,7 @@ async function apiFetch(endpoint, opts = {}) {
 
     if (res.status === 401) {
       localStorage.removeItem("dean_auth_token");
-      window.location.href = "fcsignin.html";
+      window.location.href = "/faculty/fcsignin.html";
       return null;
     }
     if (!res.ok) {
@@ -1245,7 +1245,7 @@ function logout() {
       <div style="display:flex;gap:10px;justify-content:center;">
         <button onclick="this.closest('div[style*=fixed]').parentElement.remove()"
           style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Cancel</button>
-        <button onclick="localStorage.removeItem('dean_auth_token');localStorage.removeItem('faculty_auth_token');window.location.href='../fcsignin.html';"
+        <button onclick="localStorage.removeItem('dean_auth_token');localStorage.removeItem('faculty_auth_token');window.location.href='/faculty/fcsignin.html';"
           style="flex:1;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
       </div>
     </div>

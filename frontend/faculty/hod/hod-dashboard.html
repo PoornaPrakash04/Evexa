@@ -43,11 +43,6 @@
 
       
 
-      <div class="section-label">Analytics</div>
-      <button class="nav-item" data-page="analytics" data-tooltip="Analytics">
-        <span class="icon">📊</span><span class="nav-label">Analytics</span>
-      </button>
-
       <div class="section-label">Communication</div>
       <button class="nav-item" data-page="announcements" data-tooltip="Announcements">
         <span class="icon">📢</span><span class="nav-label">Announcements</span>
@@ -331,46 +326,6 @@
         </div>
       </div>
 
-      <!-- ANALYTICS -->
-      <div id="pg-analytics" class="page-section" style="display:none">
-        <div class="analytics-kpi-row" id="analyticsKpi"></div>
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">📊 Events Per Month</div>
-              <div class="panel-sub">Last 8 months — department events</div>
-            </div></div>
-            <div class="panel-body chart-box"><canvas id="eventsChart" height="200"></canvas></div>
-          </div>
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">👥 Student Participation</div>
-              <div class="panel-sub">Registrations per month</div>
-            </div></div>
-            <div class="panel-body chart-box"><canvas id="participationChart" height="200"></canvas></div>
-          </div>
-        </div>
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">🎓 Technical vs Non-Technical</div>
-              <div class="panel-sub">Event distribution</div>
-            </div></div>
-            <div class="panel-body donut-row">
-              <canvas id="typeChart" width="180" height="180"></canvas>
-              <div id="typeChartLegend" class="donut-legend"></div>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">🚪 Events By Classroom</div>
-              <div class="panel-sub">Bookings across your classrooms</div>
-            </div></div>
-            <div class="panel-body chart-box"><canvas id="classroomChart" height="200"></canvas></div>
-          </div>
-        </div>
-      </div>
-
       <!-- ANNOUNCEMENTS -->
       <div id="pg-announcements" class="page-section" style="display:none">
         <div class="two-col">
@@ -473,7 +428,6 @@
 </aside>
 
 <div class="toast" id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="hod-dashboard.js"></script>
 </body>
 </html>

@@ -525,6 +525,282 @@ router.get("/hall/venues", ...hallChain, (req, res) => {
 
 
 
+/* ══════════════════════════════════════════════════════════
+   HOD — Classroom management
+   HODs are excluded from the Hall Coordinator workflow by design,
+   but they are assigned venues (classrooms) via coordinator_faculty_id.
+   These dedicated routes give the HOD portal visibility into those
+   classrooms and the pending booking requests against them.
+   ══════════════════════════════════════════════════════════ */
+
+function hodOnly(req, res, next) {
+  if (req.faculty?.role_id !== ROLE.HOD) {
+    return res.status(403).json({ message: "HOD access only." });
+  }
+  next();
+}
+
+/**
+ * GET /faculty/hod/classrooms
+ * Returns every venue (classroom) whose coordinator_faculty_id matches
+ * the logged-in HOD.  Mirrors GET /faculty/hall/venues for Hall Coordinators.
+ */
+router.get(
+  "/hod/classrooms",
+  authorize(["FACULTY"]), facultyOnly, loadFacultyContext, hodOnly,
+  (req, res) => {
+    db.query(
+      `SELECT id, name, capacity, location, status, coordinator_note
+       FROM venues
+       WHERE coordinator_faculty_id = ?`,
+      [req.user.id],
+      (err, result) => {
+        if (err) return res.status(500).json({ message: "Server error", detail: err.message });
+        res.json(result);
+      }
+    );
+  }
+);
+
+/**
+ * GET /faculty/hod/classroom-requests
+ * Returns pending venue_bookings for classrooms managed by this HOD.
+ * "Pending" here means the booking has not yet been confirmed or rejected
+ * (status = 'pending' | 'faculty_approved').
+ */
+router.get(
+  "/hod/classroom-requests",
+  authorize(["FACULTY"]), facultyOnly, loadFacultyContext, hodOnly,
+  async (req, res) => {
+    try {
+      // Collect the IDs of all classrooms this HOD coordinates
+      const [venueRows] = await db.promise().query(
+        `SELECT id FROM venues WHERE coordinator_faculty_id = ?`,
+        [req.user.id]
+      );
+
+      if (!venueRows.length) return res.json([]);
+
+      const venueIds     = venueRows.map(v => v.id);
+      const placeholders = venueIds.map(() => "?").join(",");
+
+      const [rows] = await db.promise().query(
+        `SELECT
+           vb.id,
+           vb.date           AS event_date,
+           vb.time           AS event_time,
+           vb.slot_end,
+           vb.status,
+           vb.purpose,
+           vb.event_id,
+           v.name            AS venue,
+           v.name            AS classroom,
+           v.capacity,
+           e.title,
+           e.category,
+           e.registration_fee,
+           e.description,
+           COALESCE(c.club_name, e.organizer_id) AS club,
+           o.name            AS organizer
+         FROM venue_bookings vb
+         JOIN   venues      v  ON v.id  = vb.venue_id
+         LEFT JOIN events   e  ON e.id  = vb.event_id
+         LEFT JOIN clubs    c  ON c.club_id = e.club_id
+         LEFT JOIN organizers o ON o.id = vb.organizer_id
+         WHERE vb.venue_id IN (${placeholders})
+           AND vb.status NOT IN ('rejected', 'hall_approved')
+         ORDER BY vb.date ASC`,
+        venueIds
+      );
+
+      res.json(rows);
+    } catch (err) {
+      console.error("GET /faculty/hod/classroom-requests error:", err);
+      res.status(500).json({ message: "Server error", detail: err.message });
+    }
+  }
+);
+
+/**
+ * PATCH /faculty/hod/classroom-requests/:id/approve
+ * HOD confirms a classroom booking (sets status → 'hall_approved').
+ */
+router.patch(
+  "/hod/classroom-requests/:id/approve",
+  authorize(["FACULTY"]), facultyOnly, loadFacultyContext, hodOnly,
+  async (req, res) => {
+    const { remark } = req.body || {};
+    try {
+      // Ensure the booking belongs to one of this HOD's classrooms
+      const [venueRows] = await db.promise().query(
+        `SELECT id FROM venues WHERE coordinator_faculty_id = ?`,
+        [req.user.id]
+      );
+      if (!venueRows.length) {
+        return res.status(403).json({ message: "No classrooms assigned to you." });
+      }
+
+      const venueIds     = venueRows.map(v => v.id);
+      const placeholders = venueIds.map(() => "?").join(",");
+
+      const [check] = await db.promise().query(
+        `SELECT id, event_id FROM venue_bookings
+         WHERE id = ? AND venue_id IN (${placeholders}) AND status != 'rejected'`,
+        [req.params.id, ...venueIds]
+      );
+      if (!check.length) {
+        return res.status(404).json({
+          message: "Booking not found or not under your classrooms.",
+        });
+      }
+
+      await db.promise().query(
+        `UPDATE venue_bookings
+         SET status = 'hall_approved', updated_at = NOW()
+         WHERE id = ?`,
+        [req.params.id]
+      );
+
+      // Mirror the approval onto the linked event if present
+      if (check[0].event_id) {
+        await db.promise().query(
+          `UPDATE events
+           SET status           = 'hall_approved',
+               hall_status      = 'approved',
+               hall_remark      = COALESCE(?, hall_remark),
+               hall_approved_by = ?,
+               hall_approved_at = NOW()
+           WHERE id = ? AND LOWER(TRIM(status)) IN ('submitted', 'faculty_approved', 'pending')`,
+          [remark || null, req.user.id, check[0].event_id]
+        );
+      }
+
+      res.json({ message: "Classroom booking confirmed by HOD." });
+    } catch (err) {
+      console.error("PATCH /faculty/hod/classroom-requests/:id/approve error:", err);
+      res.status(500).json({ message: "Server error", detail: err.message });
+    }
+  }
+);
+
+/**
+ * PATCH /faculty/hod/classroom-requests/:id/reject
+ * HOD rejects a classroom booking (sets status → 'rejected').
+ * A remark is required.
+ */
+router.patch(
+  "/hod/classroom-requests/:id/reject",
+  authorize(["FACULTY"]), facultyOnly, loadFacultyContext, hodOnly,
+  async (req, res) => {
+    const { remark } = req.body || {};
+    if (!remark) {
+      return res.status(400).json({ message: "A remark is required when rejecting." });
+    }
+
+    try {
+      const [venueRows] = await db.promise().query(
+        `SELECT id FROM venues WHERE coordinator_faculty_id = ?`,
+        [req.user.id]
+      );
+      if (!venueRows.length) {
+        return res.status(403).json({ message: "No classrooms assigned to you." });
+      }
+
+      const venueIds     = venueRows.map(v => v.id);
+      const placeholders = venueIds.map(() => "?").join(",");
+
+      const [check] = await db.promise().query(
+        `SELECT id, event_id FROM venue_bookings
+         WHERE id = ? AND venue_id IN (${placeholders}) AND status != 'rejected'`,
+        [req.params.id, ...venueIds]
+      );
+      if (!check.length) {
+        return res.status(404).json({
+          message: "Booking not found or not under your classrooms.",
+        });
+      }
+
+      await db.promise().query(
+        `UPDATE venue_bookings SET status = 'rejected', updated_at = NOW() WHERE id = ?`,
+        [req.params.id]
+      );
+
+      if (check[0].event_id) {
+        await db.promise().query(
+          `UPDATE events
+           SET status      = 'submitted',
+               hall_status = 'rejected',
+               hall_remark = ?
+           WHERE id = ?`,
+          [remark, check[0].event_id]
+        );
+      }
+
+      res.json({ message: "Classroom booking rejected by HOD." });
+    } catch (err) {
+      console.error("PATCH /faculty/hod/classroom-requests/:id/reject error:", err);
+      res.status(500).json({ message: "Server error", detail: err.message });
+    }
+  }
+);
+
+/**
+ * PATCH /faculty/hod/classrooms/:id/availability
+ * HOD updates the status/note of one of their assigned classrooms.
+ * Mirrors PATCH /faculty/hall/venues/:id/availability.
+ */
+router.patch(
+  "/hod/classrooms/:id/availability",
+  authorize(["FACULTY"]), facultyOnly, loadFacultyContext, hodOnly,
+  async (req, res) => {
+    const { status, note, date } = req.body || {};
+
+    if (!status) return res.status(400).json({ message: "status is required." });
+    const allowed = ["available", "unavailable", "maintenance"];
+    if (!allowed.includes(status.toLowerCase())) {
+      return res.status(400).json({ message: `status must be one of: ${allowed.join(", ")}` });
+    }
+
+    const venueId = Number(req.params.id);
+
+    try {
+      // Confirm this classroom belongs to the HOD
+      const [ownerCheck] = await db.promise().query(
+        `SELECT id FROM venues WHERE id = ? AND coordinator_faculty_id = ?`,
+        [venueId, req.user.id]
+      );
+      if (!ownerCheck.length) {
+        return res.status(403).json({ message: "Classroom not assigned to you." });
+      }
+
+      if (date) {
+        await db.promise().query(
+          `INSERT INTO venue_availability (venue_id, date, status, note, updated_by)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             status     = VALUES(status),
+             note       = VALUES(note),
+             updated_by = VALUES(updated_by)`,
+          [venueId, date, status.toLowerCase(), note || null, req.user.id]
+        );
+      } else {
+        await db.promise().query(
+          `UPDATE venues SET status = ?, coordinator_note = ?
+           WHERE id = ? AND coordinator_faculty_id = ?`,
+          [status.toLowerCase(), note || null, venueId, req.user.id]
+        );
+      }
+
+      res.json({ message: "Classroom availability updated successfully." });
+    } catch (err) {
+      console.error("PATCH /faculty/hod/classrooms/:id/availability error:", err);
+      res.status(500).json({ message: "Server error", detail: err.message });
+    }
+  }
+);
+
+
+
 
 router.patch("/hall/venues/:id/availability", ...hallChain, async (req, res) => {
   const { status, note, date } = req.body || {};

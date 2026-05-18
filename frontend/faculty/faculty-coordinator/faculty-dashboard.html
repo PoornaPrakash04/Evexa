@@ -249,6 +249,8 @@
               <div id="venueList" class="venue-match-list"></div>
             </div>
             <div class="venue-match-calendar-wrap">
+              <!-- Venue info card: populated by renderVenueInfoCard() -->
+              <div id="venueInfoCard"></div>
               <div class="venue-match-topbar">
                 <button type="button" class="venue-match-nav" id="prevMonth">‹</button>
                 <div id="calendarTitle" class="venue-match-title"></div>
@@ -262,9 +264,12 @@
               <div class="venue-match-legend">
                 <span><i class="vm-dot vm-available"></i> Available</span>
                 <span><i class="vm-dot vm-partial"></i> Partial</span>
-                <span><i class="vm-dot vm-unavailable"></i> Unavailable</span>
+                <span><i class="vm-dot vm-unavailable"></i> Unavailable / Blocked</span>
                 <span><i class="vm-dot vm-booked"></i> Booked</span>
                 <span><i class="vm-dot vm-today"></i> Today</span>
+              </div>
+              <div style="margin-top:10px;font-size:11px;color:var(--text-3);text-align:center;opacity:.7;">
+                Click any date to see booking details
               </div>
             </div>
           </div>

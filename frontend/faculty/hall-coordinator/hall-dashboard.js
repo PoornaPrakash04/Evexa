@@ -233,7 +233,7 @@ const PAGE_META = {
   "venues":           ["Venues & Availability",    "Check venue availability by date."],
   "event-list":       ["All Events",               "Complete event list across all clubs."],
   "all-clubs":        ["All Clubs",                "Browse all clubs and their events."],
-  "analytics":        ["Reports & Analytics",      "Events and participation statistics."],
+  
   "announcements":    ["Announcements",            "Post and manage announcements."],
   "notif-history":    ["Notification History",     "All alerts and system updates."],
   "account-settings": ["Account Settings",         "Update your profile and password."],
@@ -273,11 +273,7 @@ async function navigateTo(page) {
     "announcements":    renderAnnouncements,
     "notif-history":    renderNotifHistory,
     "account-settings": () => { initAccountSettings(); asLoadProfile(); },
-    "analytics": async () => {
-      chartsInited = false;
-      await refreshAll();
-      setTimeout(initCharts, 60);
-    },
+    
   };
 
   await renders[page]?.();

@@ -258,7 +258,14 @@ async function renderEvent(event) {
       </div>
     </div>`;
 
-  document.getElementById("registerNowBtn")?.addEventListener("click", () => registerForEvent(event.id));
+  // ── Wire up Register button ──────────────────────────
+  document.getElementById("registerNowBtn")?.addEventListener("click", () => {
+    if (event.registration_fee > 0) {
+      openPaymentModal(event);   // paid → show payment portal first
+    } else {
+      registerForEvent(event.id); // free → register directly
+    }
+  });
 
   // Load cert section async (after main content painted)
   if (isPast && alreadyRegistered) {
@@ -274,7 +281,6 @@ async function loadCertificateSection(eventId, eventTitle) {
   const status = await checkCertificateStatus(eventId);
 
   if (status.available) {
-    // Certificate is ready
     const issuedDate = status.issued_at
       ? new Date(status.issued_at).toLocaleDateString("en-IN", { dateStyle: "medium" })
       : null;
@@ -290,9 +296,7 @@ async function loadCertificateSection(eventId, eventTitle) {
         </div>
         <div class="cert-ready-badge">✓ Available</div>
       </div>
-
       <div class="cert-event-label">${eventTitle}</div>
-
       <div class="cert-actions-row">
         <button class="cert-dl-btn" id="certDownloadBtn" onclick="downloadCertificate(${eventId})" type="button">
           <span class="cert-dl-icon">⬇</span>
@@ -302,11 +306,8 @@ async function loadCertificateSection(eventId, eventTitle) {
           👁 Preview
         </button>
       </div>
-
       <div class="cert-note">PDF · Participation Certificate · EVEXA</div>`;
-
   } else {
-    // Not yet issued
     section.innerHTML = `
       <div class="cert-pending-header">
         <div class="cert-pending-icon">📜</div>
@@ -316,7 +317,6 @@ async function loadCertificateSection(eventId, eventTitle) {
         </div>
         <div class="cert-pending-badge">Pending</div>
       </div>
-
       <div class="cert-pending-body">
         <div class="cert-pending-timeline">
           <div class="cert-tl-item cert-tl-done">
@@ -340,7 +340,7 @@ async function loadCertificateSection(eventId, eventTitle) {
           </div>
         </div>
         <p class="cert-pending-note">
-          The organizer will generate certificates after verifying attendance. 
+          The organizer will generate certificates after verifying attendance.
           Check back soon.
         </p>
       </div>`;
@@ -364,14 +364,13 @@ async function downloadCertificate(eventId) {
     });
 
     if (res.ok) {
-      const blob         = await res.blob();
-      const url          = URL.createObjectURL(blob);
-      const a            = document.createElement("a");
-      a.href             = url;
-      // Try to get filename from Content-Disposition header
-      const disposition  = res.headers.get("Content-Disposition") || "";
-      const match        = disposition.match(/filename="?([^"]+)"?/);
-      a.download         = match ? match[1] : `Certificate-event-${eventId}.pdf`;
+      const blob        = await res.blob();
+      const url         = URL.createObjectURL(blob);
+      const a           = document.createElement("a");
+      a.href            = url;
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const match       = disposition.match(/filename="?([^"]+)"?/);
+      a.download        = match ? match[1] : `Certificate-event-${eventId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -415,17 +414,162 @@ async function previewCertificate(eventId) {
     const blob   = await res.blob();
     const url    = URL.createObjectURL(blob);
     const viewer = window.open(url, "_blank");
-    if (!viewer) {
-      // Fallback: open in same tab if popup blocked
-      window.location.href = url;
-    }
+    if (!viewer) window.location.href = url;
   } catch {
     alert("Preview failed. Try downloading instead.");
   }
 }
 
 // ─────────────────────────────────────────────────────
-// EVERYTHING BELOW is unchanged from your original file
+// PAYMENT PORTAL (Razorpay)
+// ─────────────────────────────────────────────────────
+
+let _pendingEvent = null; // holds the full event object while payment is in progress
+
+/**
+ * Opens the Razorpay checkout for paid events.
+ * Flow:
+ *   1. POST /payments/create-order  → get razorpay order_id
+ *   2. Open Razorpay checkout popup
+ *   3. On success → POST /payments/verify → then registerForEvent()
+ */
+async function openPaymentModal(event) {
+  const token = localStorage.getItem("student_auth_token");
+  if (!token) {
+    alert("Please login to register.");
+    window.location.href = "stsignin.html";
+    return;
+  }
+
+  _pendingEvent = event;
+
+  const btn = document.getElementById("registerNowBtn");
+  if (btn) { btn.textContent = "Initialising payment…"; btn.disabled = true; }
+
+  try {
+    // Step 1 – Create an order on your backend (backend calls Razorpay Orders API)
+    const orderRes = await fetch(`${API_BASE}/payments/create-order`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ event_id: event.id }),
+    });
+
+    if (!orderRes.ok) {
+      const err = await orderRes.json().catch(() => ({}));
+      alert(err.message || "Could not initiate payment. Please try again.");
+      if (btn) { btn.textContent = "Register Now →"; btn.disabled = false; }
+      return;
+    }
+
+    const order = await orderRes.json();
+    // Expected: { order_id, amount, currency, key_id, student_name, student_email, student_contact }
+
+    // Step 2 – Load Razorpay script if not already loaded
+    await loadRazorpayScript();
+
+    // Step 3 – Open checkout
+    const options = {
+      key:          order.key_id,           // Your Razorpay Key ID (from backend)
+      amount:       order.amount,           // Amount in paise
+      currency:     order.currency || "INR",
+      name:         "EVEXA",
+      description:  `Registration: ${event.title}`,
+      order_id:     order.order_id,         // Razorpay order id
+      prefill: {
+        name:    order.student_name    || "",
+        email:   order.student_email   || "",
+        contact: order.student_contact || "",
+      },
+      theme: { color: "#6d5efc" },
+
+      handler: async function (response) {
+        // Step 4 – Payment succeeded; verify on backend then register
+        await verifyAndRegister(response);
+      },
+
+      modal: {
+        ondismiss: function () {
+          if (btn) { btn.textContent = "Register Now →"; btn.disabled = false; }
+        },
+      },
+    };
+
+    const rzp = new Razorpay(options);
+
+    rzp.on("payment.failed", function (response) {
+      console.error("Razorpay payment failed:", response.error);
+      alert(`Payment failed: ${response.error.description}`);
+      if (btn) { btn.textContent = "Register Now →"; btn.disabled = false; }
+    });
+
+    if (btn) { btn.textContent = "Register Now →"; btn.disabled = false; }
+    rzp.open();
+
+  } catch (err) {
+    console.error("Payment init error:", err);
+    alert("Server error. Please try again.");
+    if (btn) { btn.textContent = "Register Now →"; btn.disabled = false; }
+  }
+}
+
+/** Dynamically load the Razorpay checkout script (once). */
+function loadRazorpayScript() {
+  return new Promise((resolve, reject) => {
+    if (window.Razorpay) { resolve(); return; }
+    const script = document.createElement("script");
+    script.src   = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload  = resolve;
+    script.onerror = () => reject(new Error("Failed to load Razorpay SDK"));
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * After Razorpay callback: verify signature on backend, then register the student.
+ * response = { razorpay_payment_id, razorpay_order_id, razorpay_signature }
+ */
+async function verifyAndRegister(response) {
+  const token = localStorage.getItem("student_auth_token");
+  const btn   = document.getElementById("registerNowBtn");
+
+  if (btn) { btn.textContent = "Verifying payment…"; btn.disabled = true; }
+
+  try {
+    const verifyRes = await fetch(`${API_BASE}/payments/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        event_id:              _pendingEvent.id,
+        razorpay_payment_id:   response.razorpay_payment_id,
+        razorpay_order_id:     response.razorpay_order_id,
+        razorpay_signature:    response.razorpay_signature,
+      }),
+    });
+
+    if (!verifyRes.ok) {
+      const err = await verifyRes.json().catch(() => ({}));
+      alert(err.message || "Payment verification failed. Contact admin with your payment ID: " + response.razorpay_payment_id);
+      if (btn) { btn.textContent = "Register Now →"; btn.disabled = false; }
+      return;
+    }
+
+    // Verified ✅ — now complete registration
+    if (btn) { btn.textContent = "Completing registration…"; btn.disabled = true; }
+    await registerForEvent(_pendingEvent.id);
+
+  } catch (err) {
+    console.error("Verification error:", err);
+    alert("Server error during verification. Please contact admin with payment ID: " + response.razorpay_payment_id);
+    if (btn) { btn.textContent = "Register Now →"; btn.disabled = false; }
+  }
+}
+
 // ─────────────────────────────────────────────────────
 
 async function registerForEvent(eventId) {

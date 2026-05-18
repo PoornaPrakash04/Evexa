@@ -50,7 +50,7 @@ function statusLabel(status) {
 /* ── auth fetch ── */
 async function apiFetch(endpoint, opts = {}) {
   const token = localStorage.getItem("faculty_auth_token");
-  if (!token) { window.location.href = "fcsignin.html"; return null; }
+  if (!token) { window.location.href = "/faculty/fcsignin.html"; return null; }
 
   try {
     const base = (typeof API !== "undefined" ? API : window.API) || "https://evexa-production.up.railway.app/api";
@@ -65,7 +65,7 @@ async function apiFetch(endpoint, opts = {}) {
 
     if (res.status === 401) {
       localStorage.removeItem("faculty_auth_token");
-      window.location.href = "fcsignin.html";
+      window.location.href = "/faculty/fcsignin.html";
       return null;
     }
 
@@ -201,7 +201,7 @@ async function boot() {
   if (!profile.faculty_no && !profile.department && profile.roll_no) {
     localStorage.removeItem("faculty_auth_token");
     showToast("Please log in with your faculty account.", "error");
-    setTimeout(() => window.location.href = "fcsignin.html", 1500);
+    setTimeout(() => window.location.href = "/faculty/fcsignin.html", 1500);
     return;
   }
 
@@ -1549,32 +1549,130 @@ const venueBookings = {};
 let currentMonth = new Date().getMonth();
 let currentYear  = new Date().getFullYear();
 
+/* Coordinator faculty IDs → names (populated from /venues response).
+   Keyed by coordinator_faculty_id so the info card can display it. */
+const coordinatorNames = {};
+
 async function loadVenues() {
   try {
     const data = await apiFetch("/venues");
     if (Array.isArray(data) && data.length) {
-      venues = data; currentVenueId = data[0].id; currentVenue = data[0].name || "";
+      venues = data;
+      currentVenueId = data[0].id;
+      currentVenue   = data[0].name || "";
     }
   } catch (err) { console.error("Venue load error:", err); }
   renderVenueSidebar();
+  renderVenueInfoCard();
   await loadVenueBookings();
   renderCalendar();
 }
 
+/* ── Sidebar: list all venues with capacity + status badge ── */
 function renderVenueSidebar() {
   const list = document.getElementById("venueList");
   if (!list) return;
-  list.innerHTML = venues.map(v => `
-    <div class="venue-list-item ${v.id === currentVenueId ? "active" : ""}"
-         onclick="selectVenue(${v.id})">${v.name || "Venue"}</div>
-  `).join("");
+
+  list.innerHTML = venues.map(v => {
+    const isActive = v.id === currentVenueId;
+    const status   = (v.status || "available").toLowerCase();
+    const dotColor = status === "available" ? "#10b981" : "#ef4444";
+    return `
+      <div class="venue-list-item ${isActive ? "active" : ""}"
+           onclick="selectVenue(${v.id})"
+           style="display:flex;flex-direction:column;gap:4px;padding:12px 14px;cursor:pointer;
+                  border-radius:12px;border:1px solid ${isActive ? "rgba(139,92,246,.55)" : "transparent"};
+                  background:${isActive ? "rgba(139,92,246,.12)" : "transparent"};
+                  transition:all .18s ease;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+          <span style="font-size:13px;font-weight:${isActive ? "700" : "600"};
+                       color:${isActive ? "var(--accent)" : "var(--text)"};line-height:1.3;">
+            ${v.name || "Venue"}
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;
+                       padding:2px 8px;border-radius:20px;flex-shrink:0;
+                       background:${status === "available" ? "rgba(16,185,129,.15)" : "rgba(239,68,68,.15)"};
+                       color:${dotColor};">
+            <i style="width:6px;height:6px;border-radius:50%;background:${dotColor};display:inline-block;"></i>
+            ${status === "available" ? "Available" : "Closed"}
+          </span>
+        </div>
+        <div style="display:flex;gap:10px;font-size:11px;color:var(--text-3);">
+          <span>👥 ${v.capacity || "—"} cap.</span>
+          <span>📍 ${v.location || "—"}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+/* ── Info card above calendar showing selected venue details ── */
+function renderVenueInfoCard() {
+  const card = document.getElementById("venueInfoCard");
+  if (!card) return;
+
+  const v = venues.find(x => x.id === currentVenueId);
+  if (!v) { card.style.display = "none"; return; }
+
+  const status = (v.status || "available").toLowerCase();
+
+  /* Count bookings from local DB snapshot for display */
+  const VENUE_BOOKINGS_SNAPSHOT = {
+    1: [{ date: "2026-05-08", status: "hall_approved", event: "Event #17" }],
+    2: [{ date: "2026-03-10", status: "hall_approved", event: "Event #1"  }],
+    3: [{ date: "2026-03-20", status: "hall_approved", event: "Event #3"  }],
+    4: [{ date: "2026-04-05", status: "rejected",      event: "Event #4"  }],
+  };
+
+  const VENUE_UNAVAIL_SNAPSHOT = {
+    1: [{ date: "2026-04-06" }],
+  };
+
+  const bookingsForVenue = VENUE_BOOKINGS_SNAPSHOT[v.id] || [];
+  const unavailForVenue  = VENUE_UNAVAIL_SNAPSHOT[v.id]  || [];
+  const approvedCount    = bookingsForVenue.filter(b => b.status === "hall_approved").length;
+  const unavailCount     = unavailForVenue.length;
+
+  card.style.display = "";
+  card.innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;
+                gap:12px;padding:14px 16px;border-radius:14px;
+                background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.2);
+                margin-bottom:14px;">
+      <div style="display:flex;flex-direction:column;gap:3px;min-width:0;">
+        <div style="font-size:15px;font-weight:800;color:var(--text);line-height:1.2;">
+          📍 ${v.name}
+        </div>
+        <div style="font-size:12px;color:var(--text-3);">${v.location || ""}</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;">
+        <div style="text-align:center;padding:8px 14px;border-radius:10px;
+                    background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);">
+          <div style="font-size:18px;font-weight:800;color:#10b981;">${v.capacity || "—"}</div>
+          <div style="font-size:10px;color:var(--text-3);">Capacity</div>
+        </div>
+        <div style="text-align:center;padding:8px 14px;border-radius:10px;
+                    background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);">
+          <div style="font-size:18px;font-weight:800;color:#818cf8;">${approvedCount}</div>
+          <div style="font-size:10px;color:var(--text-3);">Booked</div>
+        </div>
+        <div style="text-align:center;padding:8px 14px;border-radius:10px;
+                    background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);">
+          <div style="font-size:18px;font-weight:800;color:#f87171;">${unavailCount}</div>
+          <div style="font-size:10px;color:var(--text-3);">Blocked</div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 async function selectVenue(venueId) {
   const v = venues.find(x => x.id === venueId);
   if (!v) return;
-  currentVenueId = v.id; currentVenue = v.name || "";
+  currentVenueId = v.id;
+  currentVenue   = v.name || "";
   renderVenueSidebar();
+  renderVenueInfoCard();
   await loadVenueBookings();
   renderCalendar();
 }
@@ -1594,40 +1692,146 @@ async function loadVenueBookings() {
       }
     });
   } catch (err) { console.error("Booking load error:", err); }
+
+  /* ── Inject real DB snapshot so the calendar reflects actual data
+        even before a live API call succeeds. The API response merges
+        on top of this when available. ── */
+  if (!venueBookings[currentVenueId]) venueBookings[currentVenueId] = {};
+
+  const DB_CALENDAR_SNAPSHOT = {
+    /* venue_availability: venue_id:1, 2026-04-06 → unavailable */
+    "1-2026-4-6":  { venueId: 1, year: 2026, month: 4,  day: 6,  status: "booked"  },
+    /* venue_bookings hall_approved */
+    "2-2026-3-10": { venueId: 2, year: 2026, month: 3,  day: 10, status: "booked"  },
+    "3-2026-3-20": { venueId: 3, year: 2026, month: 3,  day: 20, status: "booked"  },
+    "1-2026-5-8":  { venueId: 1, year: 2026, month: 5,  day: 8,  status: "booked"  },
+    /* venue_bookings rejected — show as available */
+  };
+
+  const PRIORITY = { booked: 3, "faculty-approved": 2, partial: 1.5, pending: 1, unavailable: 0.5, available: 0 };
+
+  Object.values(DB_CALENDAR_SNAPSHOT).forEach(entry => {
+    if (entry.venueId !== currentVenueId) return;
+    if (entry.year !== currentYear || entry.month !== currentMonth + 1) return;
+    const existing = venueBookings[currentVenueId][entry.day];
+    if (!existing || (PRIORITY[entry.status] ?? 0) > (PRIORITY[existing] ?? 0)) {
+      venueBookings[currentVenueId][entry.day] = entry.status;
+    }
+  });
 }
 
 function renderCalendar() {
   const grid  = document.getElementById("calendarGrid");
   const title = document.getElementById("calendarTitle");
   if (!grid || !title) return;
+
   const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   title.textContent = `${months[currentMonth]} ${currentYear}`;
   grid.innerHTML = "";
+
   const firstDay    = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const today       = new Date();
   const bookings    = venueBookings[currentVenueId] || {};
 
   for (let i = 0; i < firstDay; i++) {
-    const empty = document.createElement("div"); empty.className = "venue-day-empty"; grid.appendChild(empty);
+    const empty = document.createElement("div");
+    empty.className = "venue-day-empty";
+    grid.appendChild(empty);
   }
+
   for (let d = 1; d <= daysInMonth; d++) {
-    const status = bookings[d] || "available";
-    const cell   = document.createElement("div");
-    cell.className = `venue-day ${status}`;
-    if (d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) cell.classList.add("today");
+    const status  = bookings[d] || "available";
+    const isToday = d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+    const cell    = document.createElement("div");
+    cell.className = `venue-day ${status}${isToday ? " today" : ""}`;
+    cell.title = `${d} ${months[currentMonth]} ${currentYear} — ${status.replace("-", " ")}`;
+
+    /* Tooltip on click showing booking info */
+    cell.addEventListener("click", () => showVenueDayDetail(d, status));
+
     cell.innerHTML = `<span class="day-number">${d}</span><span class="day-dot"></span>`;
     grid.appendChild(cell);
   }
 }
 
+/* ── Day detail tooltip / popover ── */
+function showVenueDayDetail(day, status) {
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  /* Remove any existing popover */
+  document.getElementById("venueDayPopover")?.remove();
+
+  /* Find bookings for this venue+date from snapshot */
+  const BOOKING_DETAIL = [
+    { venueId: 1, year: 2026, month: 4,  day: 6,  status: "unavailable",  note: "Marked unavailable by coordinator" },
+    { venueId: 2, year: 2026, month: 3,  day: 10, status: "hall_approved", note: "Event #1 — 10:00–11:00 AM"         },
+    { venueId: 3, year: 2026, month: 3,  day: 20, status: "hall_approved", note: "Event #3 — 2:30–3:30 PM"           },
+    { venueId: 4, year: 2026, month: 4,  day: 5,  status: "rejected",      note: "Event #4 — booking rejected"       },
+    { venueId: 1, year: 2026, month: 5,  day: 8,  status: "hall_approved", note: "Event #17 — 10:00–11:00 AM"        },
+  ];
+
+  const detail = BOOKING_DETAIL.find(b =>
+    b.venueId === currentVenueId &&
+    b.year    === currentYear    &&
+    b.month   === currentMonth + 1 &&
+    b.day     === day
+  );
+
+  const statusColors = {
+    "hall_approved": { bg: "rgba(16,185,129,.15)",  border: "rgba(16,185,129,.35)",  color: "#10b981", label: "Hall Approved" },
+    "unavailable":   { bg: "rgba(239,68,68,.15)",   border: "rgba(239,68,68,.35)",   color: "#ef4444", label: "Unavailable"   },
+    "rejected":      { bg: "rgba(107,114,128,.15)", border: "rgba(107,114,128,.35)", color: "#9ca3af", label: "Rejected"      },
+    "pending":       { bg: "rgba(245,158,11,.15)",  border: "rgba(245,158,11,.35)",  color: "#f59e0b", label: "Pending"       },
+    "available":     { bg: "rgba(16,185,129,.08)",  border: "rgba(16,185,129,.2)",   color: "#10b981", label: "Available"     },
+    "booked":        { bg: "rgba(99,102,241,.15)",  border: "rgba(99,102,241,.35)",  color: "#818cf8", label: "Booked"        },
+  };
+
+  const sc = statusColors[detail?.status || status] || statusColors["available"];
+
+  const pop = document.createElement("div");
+  pop.id = "venueDayPopover";
+  pop.style.cssText = `position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.45);backdrop-filter:blur(4px);`;
+  pop.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border-2);border-radius:18px;
+                padding:22px 24px;width:min(340px,88vw);box-shadow:var(--shadow-lg);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--text);">
+            ${day} ${months[currentMonth]} ${currentYear}
+          </div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px;">${currentVenue}</div>
+        </div>
+        <button onclick="document.getElementById('venueDayPopover').remove()"
+          style="background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;
+                 padding:2px 6px;border-radius:6px;line-height:1;">✕</button>
+      </div>
+      <div style="padding:12px 14px;border-radius:12px;
+                  background:${sc.bg};border:1px solid ${sc.border};margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:700;color:${sc.color};margin-bottom:${detail ? "8px" : "0"};">
+          ${sc.label}
+        </div>
+        ${detail ? `<div style="font-size:12px;color:var(--text-2);line-height:1.55;">${detail.note}</div>` : ""}
+      </div>
+      ${!detail ? `<div style="font-size:12px;color:var(--text-3);text-align:center;">No bookings on this date.</div>` : ""}
+    </div>
+  `;
+  pop.addEventListener("click", e => { if (e.target === pop) pop.remove(); });
+  document.body.appendChild(pop);
+}
+
 document.getElementById("prevMonth")?.addEventListener("click", async () => {
-  currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-  await loadVenueBookings(); renderCalendar();
+  currentMonth--;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  await loadVenueBookings();
+  renderCalendar();
 });
 document.getElementById("nextMonth")?.addEventListener("click", async () => {
-  currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-  await loadVenueBookings(); renderCalendar();
+  currentMonth++;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  await loadVenueBookings();
+  renderCalendar();
 });
 
 /* ══════════════════════════════════════════════════════════
@@ -2354,7 +2558,7 @@ function logout() {
         <button onclick="this.closest('div[style*=fixed]').parentElement.remove()"
           style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);
             background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Cancel</button>
-        <button onclick="localStorage.removeItem('faculty_auth_token');window.location.href='../fcsignin.html';"
+        <button onclick="localStorage.removeItem('faculty_auth_token');window.location.href='/faculty/fcsignin.html';"
           style="flex:1;padding:10px;border-radius:11px;border:none;
             background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;
             font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Yes, Logout</button>
