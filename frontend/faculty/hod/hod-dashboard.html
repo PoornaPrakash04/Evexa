@@ -32,16 +32,15 @@
       </button>
 
       <div class="section-label">Events</div>
-      <button class="nav-item" data-page="event-list" data-tooltip="All Events">
+      <button class="nav-item" data-page="dept-events" data-tooltip="All Events">
         <span class="icon">📅</span><span class="nav-label">Event List</span>
       </button>
 
       <div class="section-label">Clubs</div>
-      <button class="nav-item" data-page="all-clubs" data-tooltip="All Clubs">
+      <button class="nav-item" data-page="dept-clubs" data-tooltip="All Clubs">
         <span class="icon">🌐</span><span class="nav-label">All Clubs</span>
       </button>
 
-      
 
       <div class="section-label">Communication</div>
       <button class="nav-item" data-page="announcements" data-tooltip="Announcements">
@@ -134,8 +133,8 @@
         <div class="panel">
           <div class="panel-header">
             <div>
-              <div class="panel-title">🗓️ Classroom Booking Calendar</div>
-              <div class="panel-sub">Classroom bookings by date for your department</div>
+              <div class="panel-title">🗓️ Calendar Overview</div>
+              <div class="panel-sub">Events by date</div>
             </div>
             <div class="cal-controls">
               <button class="cal-nav-btn" id="dashCalPrev">‹</button>
@@ -145,7 +144,6 @@
           </div>
           <div class="panel-body">
             <div class="cal-legend">
-              <span class="leg-item"><span class="leg-dot pending-dot"></span>Pending</span>
               <span class="leg-item"><span class="leg-dot approved-dot"></span>Approved</span>
               <span class="leg-item"><span class="leg-dot today-dot"></span>Today</span>
             </div>
@@ -154,6 +152,28 @@
               <div class="cal-detail-title" id="dashCalDetailTitle"></div>
               <div class="cal-detail-meta" id="dashCalDetailMeta"></div>
               <div class="cal-detail-actions" id="dashCalDetailActions"></div>
+            </div>
+            <div class="panel" id="dashSelectedDatePanel" style="display:none; margin-top:16px;">
+              <div class="panel-header">
+                <div class="event-detail-header">
+                  <h2 class="event-detail-title">Event Details</h2>
+                  <button class="event-close-btn" onclick="closeCalendarDetail()">✕</button>
+                </div>
+                <div class="event-detail-sub">Events on the selected date</div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Event</th><th>Club</th><th>Organizer</th>
+                      <th>Capacity</th><th>Venue</th><th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashSelectedDateBody">
+                    <tr><td colspan="6" class="td-empty">No events selected.</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -227,6 +247,15 @@
                 <tr><td colspan="8" class="td-loading">Loading events…</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVENT DETAIL -->
+      <div id="pg-event-detail" class="page-section" style="display:none">
+        <div class="panel">
+          <div class="panel-body" id="eventDetailBody">
+            <div class="list-empty">Loading event details…</div>
           </div>
         </div>
       </div>
@@ -325,7 +354,6 @@
           <div class="panel-body" id="detailBody"></div>
         </div>
       </div>
-
       <!-- ANNOUNCEMENTS -->
       <div id="pg-announcements" class="page-section" style="display:none">
         <div class="two-col">
@@ -428,6 +456,7 @@
 </aside>
 
 <div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="hod-dashboard.js"></script>
 </body>
 </html>

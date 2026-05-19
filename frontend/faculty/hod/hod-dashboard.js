@@ -81,6 +81,8 @@ async function apiFetch(endpoint, opts = {}) {
 let currentPage = "dashboard";
 let calYear     = new Date().getFullYear();
 let calMonth    = new Date().getMonth();
+let chartsInited = false;
+
 let cachedProfile          = null;
 let cachedEvents           = [];
 let cachedClubs            = [];
@@ -212,7 +214,8 @@ const PAGE_META = {
   "dashboard":           ["Dashboard",              "Welcome back — here's your HOD coordinator overview."],
   "classroom-requests":  ["Classroom Requests",     "Proposals requesting classroom allocation from your department."],
   "my-classrooms":       ["My Classrooms",          "Manage classroom availability for your department."],
-  "dept-events":         ["Department Events",      "All events using classrooms in your department."],
+  "dept-events":         ["Event List",             "All department events."],
+  "event-detail":        ["Event Details",           "Full details for this event."],
   "dept-clubs":          ["Department Clubs",       "Clubs and their events within your department."],
   "proposals":           ["Event Proposal Review",  "Review and approve submitted proposals."],
   "announcements":       ["Announcements",          "Post and manage department announcements."],
@@ -245,6 +248,7 @@ async function navigateTo(page) {
     "classroom-requests": renderClassroomRequests,
     "my-classrooms":      renderMyClassrooms,
     "dept-events":        renderDeptEvents,
+    "event-detail":       renderEventDetail,
     "dept-clubs":         renderDeptClubs,
     "proposals":          renderProposals,
     "announcements":      renderAnnouncements,
@@ -259,7 +263,7 @@ async function navigateTo(page) {
    DASHBOARD
    ══════════════════════════════════════════════════════════ */
 async function renderDashboard() {
-  if (!cachedEvents.length && !cachedClassroomRequests.length) await refreshAll();
+  await refreshAll();
 
   elSet("heroPending", cachedClassroomRequests.length);
   elSet("heroClassrooms", cachedMyClassrooms.length);
@@ -303,17 +307,21 @@ function renderDashboardCalendar() {
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const total    = new Date(calYear, calMonth + 1, 0).getDate();
 
+  const PENDING_STATUSES = new Set(["draft", "submitted", "faculty_approved", "pending", "review", "under review", "awaiting", "new", "forwarded"]);
   const dayMap = {};
-  const allEvs = [...cachedDeptEvents, ...cachedClassroomRequests];
+  const allCalEvents = [...cachedEvents, ...cachedProposals];
   const seen = new Set();
-  allEvs.forEach(e => {
+  allCalEvents.forEach(e => {
     if (!e || seen.has(e.id)) return;
     seen.add(e.id);
+    if (PENDING_STATUSES.has((e.status || "").toLowerCase().trim())) return;
     const dt = parseEventDate(e.date || e.event_date || e.start_date);
-    if (!dt || dt.getFullYear() !== calYear || dt.getMonth() !== calMonth) return;
-    const day = dt.getDate();
-    if (!dayMap[day]) dayMap[day] = [];
-    dayMap[day].push(e);
+    if (!dt) return;
+    if (dt.getFullYear() === calYear && dt.getMonth() === calMonth) {
+      const day = dt.getDate();
+      if (!dayMap[day]) dayMap[day] = [];
+      dayMap[day].push(e);
+    }
   });
 
   const days = ["SU","MO","TU","WE","TH","FR","SA"];
@@ -322,40 +330,71 @@ function renderDashboardCalendar() {
   for (let d = 1; d <= total; d++) {
     const isToday = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
     const evs     = dayMap[d] || [];
-    const hasPend = evs.some(e => (e.status || "").toLowerCase() === STATUS.SUBMITTED);
     const hasAppr = evs.some(e => ["hod_approved","hall_approved","approved"].includes((e.status||"").toLowerCase()));
     const hasAny  = evs.length > 0;
-    const dayClass = hasPend ? "has-pending" : hasAppr ? "has-approved" : hasAny ? "has-event" : "";
+    const dayClass = hasAppr ? "has-approved" : hasAny ? "has-event" : "";
     const cls = ["cal-day", isToday ? "today" : "", dayClass].filter(Boolean).join(" ");
-    const enc = evs.length ? encodeURIComponent(JSON.stringify(evs.map(e => ({id:e.id,title:e.title,club:e.club,status:e.status})))) : "";
+    const enc = evs.length ? encodeURIComponent(JSON.stringify(evs)) : "";
     html += `<div class="${cls}" onclick="dashCalDayClick(this,${d})" data-events="${enc.replace(/"/g,"&quot;")}">${d}</div>`;
   }
   html += `</div>`;
   calEl.innerHTML = html;
 }
 
+function closeCalendarDetail() {
+  document.querySelectorAll("#dashMiniCalendar .cal-day.selected").forEach(d => d.classList.remove("selected"));
+  const det   = document.getElementById("dashCalEventDetail");
+  const panel = document.getElementById("dashSelectedDatePanel");
+  if (det)   det.style.display   = "none";
+  if (panel) panel.style.display = "none";
+}
+
 function dashCalDayClick(el2, day) {
-  const det = document.getElementById("dashCalEventDetail");
+  const det   = document.getElementById("dashCalEventDetail");
+  const panel = document.getElementById("dashSelectedDatePanel");
+  const tbody = document.getElementById("dashSelectedDateBody");
+
+  if (!det) return;
+
   if (el2.classList.contains("selected")) {
     el2.classList.remove("selected");
-    if (det) det.style.display = "none";
+    det.style.display = "none";
+    if (panel) panel.style.display = "none";
     return;
   }
+
   document.querySelectorAll("#dashMiniCalendar .cal-day.selected").forEach(d => d.classList.remove("selected"));
   el2.classList.add("selected");
 
   const raw = el2.getAttribute("data-events")?.replace(/&quot;/g, '"');
-  if (!raw) { if (det) det.style.display = "none"; return; }
+  if (!raw) { det.style.display = "none"; if (panel) panel.style.display = "none"; return; }
+
   const evs = JSON.parse(decodeURIComponent(raw));
   elSet("dashCalDetailTitle", `${evs.length} event${evs.length > 1 ? "s" : ""} on ${fmtDate(new Date(calYear, calMonth, day))}`);
   elSet("dashCalDetailMeta", evs.map(e => `${e.title} · ${e.club || "—"}`).join(" | "));
+
   const actions = document.getElementById("dashCalDetailActions");
   if (actions) {
     actions.innerHTML = evs.map(e =>
       `<button class="mini-btn" onclick="navigateTo('dept-events')">📅 ${e.title}</button>`
     ).join("");
   }
-  if (det) det.style.display = "";
+
+  det.style.display = "";
+
+  if (tbody && panel) {
+    tbody.innerHTML = evs.map(e => `
+      <tr>
+        <td><span class="ev-name">${e.title || "Untitled"}</span></td>
+        <td>${e.club || "—"}</td>
+        <td>${e.organizer || e.created_by || "—"}</td>
+        <td>${e.capacity || e.expected_participants || "—"}</td>
+        <td>${e.venue || e.classroom || "—"}</td>
+        <td><span class="badge ${statusClass(e.status)}">${statusLabel(e.status)}</span></td>
+      </tr>
+    `).join("");
+    panel.style.display = "";
+  }
 }
 
 function initCalNav() {
@@ -636,6 +675,24 @@ async function renderMyClassrooms() {
             padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--text-3);">
             📝 Note: ${c.note}
           </div>` : ""}
+          <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Classroom Details</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px;">
+            <div style="flex:1;min-width:180px;">
+              <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px;">Classroom Name</label>
+              <input type="text" id="classroomName_${c.id}" value="${(c.name || "").replace(/"/g, "&quot;")}"
+                placeholder="e.g. Room 411"
+                style="width:100%;padding:8px 12px;border-radius:10px;border:1px solid var(--border-2);
+                  background:var(--surface-2);color:var(--text);font-size:13px;font-family:var(--font,inherit);outline:none;box-sizing:border-box;"/>
+            </div>
+            <div style="min-width:120px;">
+              <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px;">Capacity</label>
+              <input type="number" id="classroomCapacity_${c.id}" value="${c.capacity || ""}"
+                placeholder="e.g. 60" min="1"
+                style="width:100%;padding:8px 12px;border-radius:10px;border:1px solid var(--border-2);
+                  background:var(--surface-2);color:var(--text);font-size:13px;font-family:var(--font,inherit);outline:none;box-sizing:border-box;"/>
+            </div>
+            <button class="btn ghost" onclick="saveClassroomDetails(${c.id})" style="white-space:nowrap;padding:9px 18px;">✏️ Update Name</button>
+          </div>
           <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Update Availability</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
             <div>
@@ -721,48 +778,161 @@ async function saveClassroomAvailability(classroomId) {
   }
 }
 
+async function saveClassroomDetails(classroomId) {
+  const name     = document.getElementById(`classroomName_${classroomId}`)?.value.trim();
+  const capacity = document.getElementById(`classroomCapacity_${classroomId}`)?.value.trim();
+
+  if (!name) { showToast("Classroom name cannot be empty.", "error"); return; }
+
+  const res = await apiFetch(`/faculty/hod/classrooms/${classroomId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name, capacity: capacity ? Number(capacity) : undefined }),
+  });
+  if (res !== null) {
+    showToast("✏️ Classroom updated successfully!", "success");
+    renderMyClassrooms();
+  } else {
+    showToast("Failed to update classroom.", "error");
+  }
+}
+
 /* ══════════════════════════════════════════════════════════
    DEPT EVENTS
    ══════════════════════════════════════════════════════════ */
-async function renderDeptEvents(search = "", status = "all") {
+async function renderDeptEvents(search, status) {
+  if (search === undefined) search = "";
+  if (status === undefined) status = "all";
+
   const fresh = await apiFetch("/events/all");
   cachedEvents = Array.isArray(fresh) ? fresh : [];
 
-  // Filter to department events
-  const myClassroomNames = new Set(cachedMyClassrooms.map(c => (c.name||"").toLowerCase().trim()));
-  const deptName = (cachedProfile?.department || "").toLowerCase();
-  cachedDeptEvents = cachedEvents.filter(e => {
-    const v = (e.venue || "").toLowerCase().trim();
-    return myClassroomNames.has(v) || (e.department || "").toLowerCase() === deptName;
+  // Exclude submitted (pending-review) events — those belong on the Proposals page.
+  cachedDeptEvents = cachedEvents.filter(function(e) {
+    return (e.status || "").toLowerCase().trim() !== "submitted";
   });
 
-  const tbody = document.getElementById("deptEventListBody");
+  var tbody = document.getElementById("deptEventListBody");
   if (!tbody) return;
 
-  let list = [...cachedDeptEvents];
-  if (status !== "all") list = list.filter(e => (e.status||"").toLowerCase().trim() === status.toLowerCase());
-  if (search) {
-    const q = search.toLowerCase();
-    list = list.filter(e => (e.title||"").toLowerCase().includes(q) || (e.club||"").toLowerCase().includes(q));
+  var list = cachedDeptEvents.slice();
+  if (status !== "all") {
+    list = list.filter(function(e) {
+      return (e.status || "").toLowerCase().trim() === status.toLowerCase();
+    });
   }
-  list.sort((a,b) => {
-    const da = parseEventDate(a.date||a.event_date||a.start_date);
-    const db = parseEventDate(b.date||b.event_date||b.start_date);
-    return (db||0) - (da||0);
+  if (search) {
+    var q = search.toLowerCase();
+    list = list.filter(function(e) {
+      return (e.title || "").toLowerCase().includes(q) ||
+             (e.club  || "").toLowerCase().includes(q) ||
+             (e.venue || "").toLowerCase().includes(q);
+    });
+  }
+  list.sort(function(a, b) {
+    var da = parseEventDate(a.date || a.event_date || a.start_date);
+    var db = parseEventDate(b.date || b.event_date || b.start_date);
+    return (db || 0) - (da || 0);
   });
 
-  tbody.innerHTML = list.length ? list.map(e => `
-    <tr>
-      <td><span class="ev-name">${e.title||"Untitled"}</span></td>
-      <td>${e.club||e.organizer||"—"}</td>
-      <td>${fmtDate(e.date||e.event_date||e.start_date)}</td>
-      <td>${e.venue||"—"}</td>
-      <td><span class="tag">${e.category||e.type||"General"}</span></td>
-      <td>${e.capacity||"—"}</td>
-      <td>${e.registration_fee>0?"₹"+e.registration_fee:"Free"}</td>
-      <td><span class="badge ${statusClass(e.status)}">${statusLabel(e.status)}</span></td>
-    </tr>
-  `).join("") : `<tr><td colspan="8" class="td-empty">No department events found.</td></tr>`;
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="td-empty">No events found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(function(e) {
+    return '<tr>' +
+      '<td><span class="ev-name" style="cursor:pointer;text-decoration:underline;" ' +
+        'onclick="currentEventDetail=' + e.id + ';navigateTo(\'event-detail\');">' +
+        (e.title || "Untitled") + '</span></td>' +
+      '<td>' + (e.club || e.organizer_name || e.organizer || "—") + '</td>' +
+      '<td>' + fmtDate(e.date || e.event_date || e.start_date) + '</td>' +
+      '<td>' + (e.venue || "—") + '</td>' +
+      '<td><span class="tag">' + (e.category || e.type || "General") + '</span></td>' +
+      '<td>' + (e.capacity || "—") + '</td>' +
+      '<td>' + (e.registration_fee > 0 ? "₹" + e.registration_fee : "Free") + '</td>' +
+      '<td><span class="badge ' + statusClass(e.status) + '">' + statusLabel(e.status) + '</span></td>' +
+    '</tr>';
+  }).join("");
+}
+
+/* ── Event detail state ── */
+var currentEventDetail = null;
+
+async function renderEventDetail() {
+  var body = document.getElementById("eventDetailBody");
+  if (!body) return;
+
+  var id = currentEventDetail;
+  if (!id) {
+    body.innerHTML = '<div class="list-empty">No event selected. ' +
+      '<button class="btn ghost sm" onclick="navigateTo(\'dept-events\')">← Back to Events</button></div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="list-empty">Loading…</div>';
+
+  var e = cachedEvents.find(function(ev) { return String(ev.id) === String(id); });
+  if (!e) {
+    var fresh = await apiFetch("/events/" + id);
+    e = fresh || null;
+  }
+
+  if (!e) {
+    body.innerHTML = '<div class="list-empty">Event not found. ' +
+      '<button class="btn ghost sm" onclick="navigateTo(\'dept-events\')">← Back</button></div>';
+    return;
+  }
+
+  var fields = [
+    ["Event Name",    e.title || "—"],
+    ["Club",          e.club || "—"],
+    ["Organizer",     e.organizer_name || e.organizer || "—"],
+    ["Date",          fmtDate(e.date || e.event_date || e.start_date)],
+    ["Time",          formatTime(e.time || e.start_time)],
+    ["Venue",         e.venue || "—"],
+    ["Category",      e.category || e.type || "—"],
+    ["Capacity",      e.capacity || "—"],
+    ["Fee",           e.registration_fee > 0 ? "₹" + e.registration_fee : "Free"],
+    ["Status",        statusLabel(e.status)],
+    ["Academic Year", e.academic_year || "—"],
+  ];
+
+  var gridHtml = fields.map(function(f) {
+    return '<div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;">' +
+      '<div style="font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;' +
+        'letter-spacing:.6px;margin-bottom:4px;">' + f[0] + '</div>' +
+      '<div style="font-size:14px;font-weight:600;color:var(--text);">' + f[1] + '</div>' +
+    '</div>';
+  }).join("");
+
+  var posterHtml = e.poster
+    ? '<div style="margin-bottom:24px;">' +
+        '<img src="/uploads/' + e.poster + '" alt="Event Poster"' +
+        ' style="max-width:320px;width:100%;border-radius:14px;border:1px solid var(--border);' +
+        'box-shadow:var(--shadow-lg);" />' +
+      '</div>'
+    : "";
+
+  var descHtml = e.description
+    ? '<div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;' +
+        'padding:16px 18px;margin-top:20px;">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;' +
+          'letter-spacing:.6px;margin-bottom:8px;">Description</div>' +
+        '<div style="font-size:14px;color:var(--text);line-height:1.7;">' + e.description + '</div>' +
+      '</div>'
+    : "";
+
+  body.innerHTML =
+    '<div style="margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
+      '<button class="btn ghost sm" onclick="navigateTo(\'dept-events\')">← Back to Events</button>' +
+      '<span class="badge ' + statusClass(e.status) + '" style="font-size:13px;padding:5px 14px;">' +
+        statusLabel(e.status) + '</span>' +
+    '</div>' +
+    posterHtml +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">' +
+      gridHtml +
+    '</div>' +
+    descHtml;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1486,6 +1656,14 @@ function showToast(msg, type="info") {
 function debounce(fn, ms=280) {
   let timer;
   return (...args) => { clearTimeout(timer); timer=setTimeout(()=>fn(...args),ms); };
+}
+
+function tryChart(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas || typeof Chart === "undefined") return;
+  const existing = Chart.getChart(canvas);
+  if (existing) existing.destroy();
+  new Chart(canvas, config);
 }
 
 /* ── kick off ── */

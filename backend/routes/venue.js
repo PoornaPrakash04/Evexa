@@ -1,10 +1,29 @@
 const express = require("express");
 const db      = require("../db");
-const auth    = require("../middleware/authMiddleware");
+const authorize = require("../middleware/authMiddleware");
 const multer  = require("multer");
 const path    = require("path");
 
 const router = express.Router();
+
+/**
+ * Role-normalising auth wrapper.
+ * The JWT may store role as "faculty", "FACULTY", or a numeric id.
+ * This wrapper upper-cases req.user.role before the real middleware sees it,
+ * so the allow-list check always works regardless of how the token was issued.
+ */
+function auth(roles) {
+  const upper = roles.map(r => r.toUpperCase());
+  return [
+    (req, res, next) => {
+      if (req.user && req.user.role) {
+        req.user.role = String(req.user.role).toUpperCase();
+      }
+      next();
+    },
+    authorize(upper),
+  ];
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
@@ -12,10 +31,10 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-/** Generate hourly slots 08:00 – 21:00 */
+/** Generate hourly slots 07:00 – 09:00 */
 function generateSlots() {
   const slots = [];
-  for (let hour = 8; hour < 21; hour++) {
+  for (let hour = 7; hour < 9; hour++) {
     slots.push({
       start: `${String(hour).padStart(2, "0")}:00:00`,
       end:   `${String(hour + 1).padStart(2, "0")}:00:00`,
@@ -56,7 +75,7 @@ function resolveVenueId(source, cb) {
    Used by frontend to populate sidebar + filter dropdowns.
    FIX: now includes `id` so the frontend can send venue_id in bookings.
 ───────────────────────────────────────── */
-router.get("/", auth(["ORGANIZER", "STUDENT", "FACULTY"]), (req, res) => {
+router.get("/", auth(["ORGANIZER", "STUDENT", "FACULTY", "HALL_COORDINATOR"]), (req, res) => {
   db.query(
     "SELECT id, name, capacity, location, status FROM venues",
     (err, results) => {
@@ -71,7 +90,7 @@ router.get("/", auth(["ORGANIZER", "STUDENT", "FACULTY"]), (req, res) => {
    Returns available/booked hourly slots for a venue+date.
    Accepts venue_id or venue_name query param.
 ───────────────────────────────────────── */
-router.get("/slots", auth(["ORGANIZER"]), (req, res) => {
+router.get("/slots", auth(["ORGANIZER", "FACULTY", "HALL_COORDINATOR"]), (req, res) => {
   const { date } = req.query;
   if (!date) return res.status(400).json({ message: "date required" });
 
@@ -123,7 +142,7 @@ router.get("/slots", auth(["ORGANIZER"]), (req, res) => {
    Returns per-day booking status for a venue+month.
    Accepts venue_id or venue_name query param.
 ───────────────────────────────────────── */
-router.get("/calendar", auth(["ORGANIZER", "STUDENT", "FACULTY"]), (req, res) => {
+router.get("/calendar", auth(["ORGANIZER", "STUDENT", "FACULTY", "HALL_COORDINATOR"]), (req, res) => {
   const { year, month } = req.query;
   if (!year || !month) return res.status(400).json({ message: "year and month required" });
 
@@ -193,7 +212,12 @@ router.get("/calendar", auth(["ORGANIZER", "STUDENT", "FACULTY"]), (req, res) =>
    GET /venues/bookings/mine
    Returns all bookings made by the logged-in organizer.
 ───────────────────────────────────────── */
-router.get("/bookings/mine", auth(["ORGANIZER"]), (req, res) => {
+router.get("/bookings/mine", auth(["ORGANIZER", "FACULTY", "HALL_COORDINATOR"]), (req, res) => {
+  const isFaculty = req.user.role === "FACULTY";
+
+  /* Faculty bookings are stored with organizer_id = req.user.id too,
+     but we also support a dedicated faculty_id column if present.
+     We query by organizer_id for both roles (faculty uses same field). */
   db.query(
     `SELECT vb.id, v.id AS venue_id, v.name AS venue_name,
             vb.date, vb.time AS slot_start,
@@ -216,10 +240,8 @@ router.get("/bookings/mine", auth(["ORGANIZER"]), (req, res) => {
 /* ─────────────────────────────────────────
    POST /venues/bookings
    Create a new venue booking request.
-
-   FIX: now accepts EITHER venue_id (preferred) OR venue_name (fallback).
-   The frontend sends venue_name after storing full venue objects;
-   this route resolves the name to an id transparently.
+   Accepts ORGANIZER or FACULTY role.
+   Stores the requester's id in organizer_id (shared column for both roles).
 
    Body fields:
      venue_id    – preferred (integer)
@@ -231,14 +253,13 @@ router.get("/bookings/mine", auth(["ORGANIZER"]), (req, res) => {
      purpose     – optional text
      support_doc – optional file upload
 ───────────────────────────────────────── */
-router.post("/bookings", auth(["ORGANIZER"]), upload.single("support_doc"), (req, res) => {
+router.post("/bookings", auth(["ORGANIZER", "FACULTY", "HALL_COORDINATOR"]), upload.single("support_doc"), (req, res) => {
   const { event_id, date, slot_start, slot_end, purpose } = req.body;
 
   if (!date || !slot_start || !slot_end) {
     return res.status(400).json({ message: "date, slot_start, and slot_end are required." });
   }
 
-  // FIX: resolve venue_id from either venue_id or venue_name in the body
   resolveVenueId(req.body, (resolveErr, vId) => {
     if (resolveErr) {
       return res.status(400).json({ message: resolveErr.message });
@@ -247,7 +268,6 @@ router.post("/bookings", auth(["ORGANIZER"]), upload.single("support_doc"), (req
     db.getConnection((connErr, connection) => {
       if (connErr) return res.status(500).json({ message: "Connection error." });
 
-      // Verify venue exists
       connection.query("SELECT id FROM venues WHERE id = ?", [vId], (err, rows) => {
         if (err || !rows.length) {
           connection.release();
@@ -262,16 +282,11 @@ router.post("/bookings", auth(["ORGANIZER"]), upload.single("support_doc"), (req
             return res.status(500).json({ message: "Transaction error." });
           }
 
-          // Check for conflicting booking on same venue/date/slot
+          // Check venue_availability — if coordinator blocked this day, reject immediately
           connection.query(
-            `SELECT id FROM venue_bookings
-             WHERE venue_id = ?
-               AND date = ?
-               AND time = ?
-               AND status != 'rejected'
-             FOR UPDATE`,
-            [vId, date, slot_start],
-            (err, conflicts) => {
+            "SELECT status FROM venue_availability WHERE venue_id = ? AND date = ?",
+            [vId, date],
+            (err, avail) => {
               if (err) {
                 return connection.rollback(() => {
                   connection.release();
@@ -279,39 +294,65 @@ router.post("/bookings", auth(["ORGANIZER"]), upload.single("support_doc"), (req
                 });
               }
 
-              if (conflicts.length > 0) {
+              if (avail.length && avail[0].status === "unavailable") {
                 return connection.rollback(() => {
                   connection.release();
-                  res.status(409).json({
-                    message: "This slot is already booked. Please choose another.",
-                  });
+                  res.status(409).json({ message: "This venue is marked unavailable on that date." });
                 });
               }
 
-              // Insert the booking
+              // Check for conflicting slot booking
               connection.query(
-                `INSERT INTO venue_bookings
-                   (event_id, venue_id, date, time, slot_end, status, purpose, organizer_id)
-                 VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
-                [event_id || null, vId, date, slot_start, slot_end, purpose || null, req.user.id],
-                (err) => {
+                `SELECT id FROM venue_bookings
+                 WHERE venue_id = ?
+                   AND date = ?
+                   AND time = ?
+                   AND status != 'rejected'
+                 FOR UPDATE`,
+                [vId, date, slot_start],
+                (err, conflicts) => {
                   if (err) {
                     return connection.rollback(() => {
                       connection.release();
-                      res.status(400).json({
-                        message: "Booking failed.",
-                        error: err.message,
+                      res.status(500).json({ message: err.message });
+                    });
+                  }
+
+                  if (conflicts.length > 0) {
+                    return connection.rollback(() => {
+                      connection.release();
+                      res.status(409).json({
+                        message: "This slot is already booked. Please choose another.",
                       });
                     });
                   }
 
-                  connection.commit(commitErr => {
-                    connection.release();
-                    if (commitErr) {
-                      return res.status(500).json({ message: "Commit failed." });
+                  // Insert — organizer_id holds the requester id for both ORGANIZER and FACULTY
+                  connection.query(
+                    `INSERT INTO venue_bookings
+                       (event_id, venue_id, date, time, slot_end, status, purpose, organizer_id)
+                     VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
+                    [event_id || null, vId, date, slot_start, slot_end, purpose || null, req.user.id],
+                    (err) => {
+                      if (err) {
+                        return connection.rollback(() => {
+                          connection.release();
+                          res.status(400).json({
+                            message: "Booking failed.",
+                            error: err.message,
+                          });
+                        });
+                      }
+
+                      connection.commit(commitErr => {
+                        connection.release();
+                        if (commitErr) {
+                          return res.status(500).json({ message: "Commit failed." });
+                        }
+                        res.json({ message: "Venue booked successfully." });
+                      });
                     }
-                    res.json({ message: "Venue booked successfully." });
-                  });
+                  );
                 }
               );
             }
@@ -329,7 +370,7 @@ router.post("/bookings", auth(["ORGANIZER"]), upload.single("support_doc"), (req
    If the booking had a linked event, reverts its status back to 'submitted'
    so it re-enters the approval queue for a new venue booking.
 ───────────────────────────────────────── */
-router.delete("/bookings/:id", auth(["ORGANIZER"]), (req, res) => {
+router.delete("/bookings/:id", auth(["ORGANIZER", "FACULTY", "HALL_COORDINATOR"]), (req, res) => {
   const cancellableStatuses = ["pending", "faculty_approved", "hall_approved"];
 
   // First fetch the booking to check ownership and get event_id for cascade

@@ -1004,10 +1004,12 @@ body.light .toast.info    { color: #6d28d9; }
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: all 0.15s ease; position: relative;
 }
-.venue-day.available { background: rgba(16,185,129,.18); border: 1px solid rgba(16,185,129,.25); color: #34d399; }
-.venue-day.available:hover { background: rgba(16,185,129,.32); }
-.venue-day.partial   { background: rgba(245,158,11,.18); border: 1px solid rgba(245,158,11,.3);  color: #fbbf24; }
-.venue-day.partial:hover { background: rgba(245,158,11,.32); }
+.venue-day.available { background: rgba(16,185,129,.18); border: 1px solid rgba(16,185,129,.25); color: #34d399; cursor: pointer; }
+.venue-day.available:hover { background: rgba(16,185,129,.32); transform: scale(1.08); }
+.venue-day.partial   { background: rgba(245,158,11,.18); border: 1px solid rgba(245,158,11,.3);  color: #fbbf24; cursor: pointer; }
+.venue-day.partial:hover { background: rgba(245,158,11,.32); transform: scale(1.08); }
+.venue-day.pending   { background: rgba(245,158,11,.25); border: 1px solid rgba(245,158,11,.45); color: #b45309; cursor: pointer; font-weight: 600; }
+.venue-day.pending:hover { background: rgba(245,158,11,.38); transform: scale(1.08); }
 .venue-day.booked    { background: rgba(236,72,153,.18); border: 1px solid rgba(236,72,153,.25); color: #f472b6; cursor: not-allowed; }
 .venue-day.unavailable { background: rgba(239,68,68,.18); border: 1px solid rgba(239,68,68,.28); color: #f87171; cursor: pointer; }
 .venue-day.unavailable:hover { background: rgba(239,68,68,.32); }

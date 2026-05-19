@@ -749,6 +749,48 @@ router.patch(
  * HOD updates the status/note of one of their assigned classrooms.
  * Mirrors PATCH /faculty/hall/venues/:id/availability.
  */
+/**
+ * PATCH /faculty/hod/classrooms/:id
+ * HOD updates the name and/or capacity of one of their assigned classrooms.
+ */
+router.patch(
+  "/hod/classrooms/:id",
+  authorize(["FACULTY"]), facultyOnly, loadFacultyContext, hodOnly,
+  async (req, res) => {
+    const { name, capacity } = req.body || {};
+    if (!name && !capacity) {
+      return res.status(400).json({ message: "At least one of name or capacity is required." });
+    }
+
+    const venueId = Number(req.params.id);
+    try {
+      const [ownerCheck] = await db.promise().query(
+        `SELECT id FROM venues WHERE id = ? AND coordinator_faculty_id = ?`,
+        [venueId, req.user.id]
+      );
+      if (!ownerCheck.length) {
+        return res.status(403).json({ message: "Classroom not assigned to you." });
+      }
+
+      const fields = [];
+      const values = [];
+      if (name)     { fields.push("name = ?");     values.push(name.trim()); }
+      if (capacity) { fields.push("capacity = ?");  values.push(Number(capacity)); }
+      values.push(venueId, req.user.id);
+
+      await db.promise().query(
+        `UPDATE venues SET ${fields.join(", ")} WHERE id = ? AND coordinator_faculty_id = ?`,
+        values
+      );
+
+      res.json({ message: "Classroom updated successfully." });
+    } catch (err) {
+      console.error("PATCH /faculty/hod/classrooms/:id error:", err);
+      res.status(500).json({ message: "Server error", detail: err.message });
+    }
+  }
+);
+
 router.patch(
   "/hod/classrooms/:id/availability",
   authorize(["FACULTY"]), facultyOnly, loadFacultyContext, hodOnly,
@@ -1306,39 +1348,104 @@ router.post("/venues/book", authorize(["FACULTY"]), facultyOnly, async (req, res
       });
     }
 
-    // 3. Insert a lightweight event record so the hall-coordinator workflow
-    //    can track it in the events table (status starts as 'pending').
-    const [evResult] = await db.promise().query(
-      `INSERT INTO events
-         (title, description, venue, date, time, capacity, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())`,
-      [
-        title,
-        purpose || null,
-        venueRows[0].name,
-        date,
-        slotStart,
-        expected_participants ? Number(expected_participants) : null,
-      ]
-    );
-    const eventId = evResult.insertId;
+    // 3. Attempt to create a lightweight event record for the hall-coordinator workflow.
+    //    This is best-effort: if the events table has strict NOT NULL constraints that
+    //    we cannot satisfy (organizer_id, club_id, etc.) we skip it and proceed with
+    //    just the venue_bookings row, which is enough for the booking to work.
+    let eventId = null;
+    try {
+      const [evResult] = await db.promise().query(
+        `INSERT INTO events
+           (title, description, venue, date, time, capacity, status, organizer_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, NOW())`,
+        [
+          title,
+          purpose || null,
+          venueRows[0].name,
+          date,
+          slotStart,
+          expected_participants ? Number(expected_participants) : null,
+          req.user.id,   // store faculty id in organizer_id so ownership is clear
+        ]
+      );
+      eventId = evResult.insertId;
+    } catch (evErr) {
+      // events table may have additional required columns — log but don't abort
+      console.warn("POST /faculty/venues/book: could not create events row:", evErr.message);
+    }
 
     // 4. Create the venue_bookings row.
-    //    Uses organizer_id to stay consistent with the venue.js schema.
-    await db.promise().query(
-      `INSERT INTO venue_bookings
-         (event_id, venue_id, organizer_id, date, time, slot_end, purpose, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`,
-      [eventId, venue_id, req.user.id, date, slotStart, slotEnd, purpose || null]
+    //    Inspect actual columns AND the status ENUM so we use a valid value.
+    const [colRows] = await db.promise().query(
+      `SELECT COLUMN_NAME, COLUMN_TYPE
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'venue_bookings'`
     );
+    const cols = new Map(colRows.map(r => [r.COLUMN_NAME, r.COLUMN_TYPE]));
+
+    // Resolve the correct "pending" status value from the ENUM definition.
+    // e.g. COLUMN_TYPE might be: enum('requested','approved','rejected')
+    // or enum('pending','faculty_approved','hall_approved','rejected')
+    let statusValue = "pending";
+    const statusColType = cols.get("status") || "";
+    if (statusColType.startsWith("enum(")) {
+      // Extract all enum values: enum('a','b') → ['a','b']
+      const enumVals = statusColType
+        .slice(5, -1)                      // strip enum( and )
+        .split(",")
+        .map(v => v.replace(/'/g, "").trim());
+
+      console.log("[/faculty/venues/book] status ENUM values:", enumVals);
+
+      // Pick the best match for "pending" — in priority order
+      const pendingCandidates = [
+        "pending", "requested", "submitted", "new", "awaiting",
+        "under_review", "review", "open",
+      ];
+      const match = pendingCandidates.find(c => enumVals.includes(c));
+      if (match) {
+        statusValue = match;
+      } else {
+        // Fall back to whatever the first defined ENUM value is
+        statusValue = enumVals[0];
+      }
+    }
+    console.log("[/faculty/venues/book] using status value:", statusValue);
+
+    // Build insert dynamically based on what columns actually exist
+    const insertCols = ["venue_id", "date", "time", "status", "created_at"];
+    const insertVals = [venue_id, date, slotStart, statusValue, new Date()];
+
+    if (cols.has("organizer_id"))  { insertCols.push("organizer_id");  insertVals.push(req.user.id); }
+    if (cols.has("faculty_id"))    { insertCols.push("faculty_id");    insertVals.push(req.user.id); }
+    if (cols.has("event_id"))      { insertCols.push("event_id");      insertVals.push(eventId || null); }
+    if (cols.has("slot_end"))      { insertCols.push("slot_end");      insertVals.push(slotEnd); }
+    if (cols.has("end_time"))      { insertCols.push("end_time");      insertVals.push(slotEnd); }
+    if (cols.has("purpose"))       { insertCols.push("purpose");       insertVals.push(purpose || null); }
+    if (cols.has("notes"))         { insertCols.push("notes");         insertVals.push(purpose || null); }
+    if (cols.has("updated_at"))    { insertCols.push("updated_at");    insertVals.push(new Date()); }
+
+    const placeholders = insertCols.map(() => "?").join(", ");
+    const sql = `INSERT INTO venue_bookings (${insertCols.join(", ")}) VALUES (${placeholders})`;
+
+    console.log("[/faculty/venues/book] INSERT sql:", sql);
+    console.log("[/faculty/venues/book] INSERT vals:", insertVals);
+
+    const [bookResult] = await db.promise().query(sql, insertVals);
 
     res.status(201).json({
-      message: `Venue "${venueRows[0].name}" booked for ${date}. Pending hall coordinator approval.`,
-      event_id: eventId,
+      message: `Venue "${venueRows[0].name}" booked for ${date}. Pending coordinator approval.`,
+      event_id:   eventId,
+      booking_id: bookResult.insertId,
+      status:     statusValue,
     });
   } catch (err) {
-    console.error("POST /faculty/venues/book error:", err);
-    res.status(500).json({ message: "Server error", detail: err.message });
+    console.error("POST /faculty/venues/book error:", err.code, err.sqlMessage || err.message);
+    res.status(500).json({
+      message: "Server error",
+      detail:  err.sqlMessage || err.message,
+      code:    err.code || null,
+    });
   }
 });
 

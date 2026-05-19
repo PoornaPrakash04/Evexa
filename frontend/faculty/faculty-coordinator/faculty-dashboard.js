@@ -48,7 +48,7 @@ function statusLabel(status) {
 }
 
 /* ── auth fetch ── */
-async function apiFetch(endpoint, opts = {}) {
+async function apiFetch(endpoint, opts = {}, _retry = false) {
   const token = localStorage.getItem("faculty_auth_token");
   if (!token) { window.location.href = "/faculty/fcsignin.html"; return null; }
 
@@ -63,12 +63,23 @@ async function apiFetch(endpoint, opts = {}) {
       },
     });
 
+    // 401 = expired/invalid token → try a silent refresh once, then redirect
+    if (res.status === 401 && !_retry) {
+      const refreshed = await fcRefreshToken();
+      if (refreshed) return apiFetch(endpoint, opts, true);
+      localStorage.removeItem("faculty_auth_token");
+      localStorage.removeItem("faculty_refresh_token");
+      window.location.href = "/faculty/fcsignin.html";
+      return null;
+    }
     if (res.status === 401) {
       localStorage.removeItem("faculty_auth_token");
+      localStorage.removeItem("faculty_refresh_token");
       window.location.href = "/faculty/fcsignin.html";
       return null;
     }
 
+    // 403 = permission denied for this role — NOT an auth failure, do not redirect
     if (!res.ok) {
       let body = "";
       try { body = await res.text(); } catch (_) {}
@@ -86,6 +97,31 @@ async function apiFetch(endpoint, opts = {}) {
   } catch (e) {
     console.error("[apiFetch] network error:", e);
     return null;
+  }
+}
+
+/**
+ * Silently exchanges the stored refresh token for a new access token.
+ * Returns true on success, false on any failure.
+ */
+async function fcRefreshToken() {
+  const refreshToken = localStorage.getItem("faculty_refresh_token");
+  if (!refreshToken) return false;
+  try {
+    const base = (typeof API !== "undefined" ? API : window.API) || "https://evexa-production.up.railway.app/api";
+    const res = await fetch(`${base}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return false;
+    const { accessToken, refreshToken: newRefresh } = await res.json();
+    if (!accessToken) return false;
+    localStorage.setItem("faculty_auth_token", accessToken);
+    if (newRefresh) localStorage.setItem("faculty_refresh_token", newRefresh);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -1540,7 +1576,7 @@ function openAllClubProposals()    { setSelectedClub("all"); navigateTo("proposa
 function openAllClubAnalytics()    { setSelectedClub("all"); chartsInited = false; navigateTo("analytics"); }
 
 /* ══════════════════════════════════════════════════════════
-   VENUES
+   VENUES  — full booking UI (mirrors organizer portal)
    ══════════════════════════════════════════════════════════ */
 let venues         = [];
 let currentVenueId = null;
@@ -1549,121 +1585,77 @@ const venueBookings = {};
 let currentMonth = new Date().getMonth();
 let currentYear  = new Date().getFullYear();
 
-/* Coordinator faculty IDs → names (populated from /venues response).
-   Keyed by coordinator_faculty_id so the info card can display it. */
-const coordinatorNames = {};
-
 async function loadVenues() {
   try {
     const data = await apiFetch("/venues");
-    if (Array.isArray(data) && data.length) {
-      venues = data;
-      currentVenueId = data[0].id;
-      currentVenue   = data[0].name || "";
+    // Normalise: API may return array or wrapped { venues: [...] }
+    const list = Array.isArray(data) ? data
+               : Array.isArray(data?.venues) ? data.venues
+               : [];
+    if (list.length) {
+      venues = list;
+      // Preserve previously selected venue across reloads
+      if (!currentVenueId || !venues.find(v => v.id === currentVenueId)) {
+        currentVenueId = venues[0].id;
+        currentVenue   = venues[0].name || "";
+      }
     }
   } catch (err) { console.error("Venue load error:", err); }
-  renderVenueSidebar();
-  renderVenueInfoCard();
+  renderVenueSidebar();   // sidebar list only — strip removed (no double display)
   await loadVenueBookings();
   renderCalendar();
 }
 
-/* ── Sidebar: list all venues with capacity + status badge ── */
+/* ── Tab switcher ── */
+function fcSwitchVenueTab(tab) {
+  document.querySelectorAll(".fc-vtab").forEach(b => b.classList.remove("active"));
+  document.getElementById("fvtab-panel-calendar").style.display   = tab === "calendar"   ? "" : "none";
+  document.getElementById("fvtab-panel-mybookings").style.display = tab === "mybookings" ? "" : "none";
+  document.getElementById(`fvtab-${tab}`).classList.add("active");
+  if (tab === "mybookings") loadFcMyVenueBookings();
+}
+
+
+/* ── Sidebar list ── */
 function renderVenueSidebar() {
   const list = document.getElementById("venueList");
   if (!list) return;
-
   list.innerHTML = venues.map(v => {
-    const isActive = v.id === currentVenueId;
-    const status   = (v.status || "available").toLowerCase();
-    const dotColor = status === "available" ? "#10b981" : "#ef4444";
-    return `
-      <div class="venue-list-item ${isActive ? "active" : ""}"
-           onclick="selectVenue(${v.id})"
-           style="display:flex;flex-direction:column;gap:4px;padding:12px 14px;cursor:pointer;
-                  border-radius:12px;border:1px solid ${isActive ? "rgba(139,92,246,.55)" : "transparent"};
-                  background:${isActive ? "rgba(139,92,246,.12)" : "transparent"};
-                  transition:all .18s ease;margin-bottom:6px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
-          <span style="font-size:13px;font-weight:${isActive ? "700" : "600"};
-                       color:${isActive ? "var(--accent)" : "var(--text)"};line-height:1.3;">
-            ${v.name || "Venue"}
-          </span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;
-                       padding:2px 8px;border-radius:20px;flex-shrink:0;
-                       background:${status === "available" ? "rgba(16,185,129,.15)" : "rgba(239,68,68,.15)"};
-                       color:${dotColor};">
-            <i style="width:6px;height:6px;border-radius:50%;background:${dotColor};display:inline-block;"></i>
-            ${status === "available" ? "Available" : "Closed"}
-          </span>
-        </div>
-        <div style="display:flex;gap:10px;font-size:11px;color:var(--text-3);">
-          <span>👥 ${v.capacity || "—"} cap.</span>
-          <span>📍 ${v.location || "—"}</span>
-        </div>
+    const active = v.id === currentVenueId;
+    const statusOk = (v.status || "available") === "available";
+    return `<div class="venue-list-item ${active ? "active" : ""}"
+                 onclick="selectVenue(${v.id})">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+        <span>${v.name}</span>
+        <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;flex-shrink:0;
+              background:${statusOk ? "rgba(16,185,129,.12)" : "rgba(239,68,68,.1)"};
+              color:${statusOk ? "#10b981" : "#ef4444"};">${statusOk ? "Open" : "Closed"}</span>
       </div>
-    `;
+      <div class="vli-meta">👥 ${v.capacity || "—"} · 📍 ${v.location || "—"}</div>
+    </div>`;
   }).join("");
+  renderVenueMetaCard();
 }
 
-/* ── Info card above calendar showing selected venue details ── */
-function renderVenueInfoCard() {
-  const card = document.getElementById("venueInfoCard");
+/* ── Meta card (selected venue summary + quick-book) ── */
+function renderVenueMetaCard() {
+  const card = document.getElementById("fcVenueMetaCard");
   if (!card) return;
-
   const v = venues.find(x => x.id === currentVenueId);
   if (!v) { card.style.display = "none"; return; }
-
-  const status = (v.status || "available").toLowerCase();
-
-  /* Count bookings from local DB snapshot for display */
-  const VENUE_BOOKINGS_SNAPSHOT = {
-    1: [{ date: "2026-05-08", status: "hall_approved", event: "Event #17" }],
-    2: [{ date: "2026-03-10", status: "hall_approved", event: "Event #1"  }],
-    3: [{ date: "2026-03-20", status: "hall_approved", event: "Event #3"  }],
-    4: [{ date: "2026-04-05", status: "rejected",      event: "Event #4"  }],
-  };
-
-  const VENUE_UNAVAIL_SNAPSHOT = {
-    1: [{ date: "2026-04-06" }],
-  };
-
-  const bookingsForVenue = VENUE_BOOKINGS_SNAPSHOT[v.id] || [];
-  const unavailForVenue  = VENUE_UNAVAIL_SNAPSHOT[v.id]  || [];
-  const approvedCount    = bookingsForVenue.filter(b => b.status === "hall_approved").length;
-  const unavailCount     = unavailForVenue.length;
-
   card.style.display = "";
   card.innerHTML = `
-    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;
-                gap:12px;padding:14px 16px;border-radius:14px;
-                background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.2);
-                margin-bottom:14px;">
-      <div style="display:flex;flex-direction:column;gap:3px;min-width:0;">
-        <div style="font-size:15px;font-weight:800;color:var(--text);line-height:1.2;">
-          📍 ${v.name}
-        </div>
-        <div style="font-size:12px;color:var(--text-3);">${v.location || ""}</div>
+    <div style="padding:11px;border-radius:11px;background:rgba(139,92,246,.08);
+                border:1px solid rgba(139,92,246,.2);">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--accent);margin-bottom:6px;">
+        SELECTED
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;">
-        <div style="text-align:center;padding:8px 14px;border-radius:10px;
-                    background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);">
-          <div style="font-size:18px;font-weight:800;color:#10b981;">${v.capacity || "—"}</div>
-          <div style="font-size:10px;color:var(--text-3);">Capacity</div>
-        </div>
-        <div style="text-align:center;padding:8px 14px;border-radius:10px;
-                    background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);">
-          <div style="font-size:18px;font-weight:800;color:#818cf8;">${approvedCount}</div>
-          <div style="font-size:10px;color:var(--text-3);">Booked</div>
-        </div>
-        <div style="text-align:center;padding:8px 14px;border-radius:10px;
-                    background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);">
-          <div style="font-size:18px;font-weight:800;color:#f87171;">${unavailCount}</div>
-          <div style="font-size:10px;color:var(--text-3);">Blocked</div>
-        </div>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">${v.name}</div>
+      <div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px;">
+        📍 ${v.location || "—"} &nbsp;·&nbsp; 👥 ${v.capacity || "—"}
       </div>
-    </div>
-  `;
+
+    </div>`;
 }
 
 async function selectVenue(venueId) {
@@ -1671,53 +1663,64 @@ async function selectVenue(venueId) {
   if (!v) return;
   currentVenueId = v.id;
   currentVenue   = v.name || "";
-  renderVenueSidebar();
-  renderVenueInfoCard();
+  renderVenueSidebar();   // no strip — venues shown only once in sidebar
   await loadVenueBookings();
   renderCalendar();
 }
 
 async function loadVenueBookings() {
   if (!currentVenueId) return;
+  const cacheKey = `${currentVenueId}__${currentYear}_${currentMonth + 1}`;
   try {
-    const data = await apiFetch(`/venues/calendar?venue_id=${currentVenueId}&month=${currentMonth + 1}&year=${currentYear}`);
-    if (!Array.isArray(data)) return;
-    venueBookings[currentVenueId] = {};
+    const token = localStorage.getItem("faculty_auth_token");
+    let res = await fetch(
+      `${API}/venues/calendar?venue_id=${currentVenueId}&month=${currentMonth + 1}&year=${currentYear}`,
+      { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } }
+    );
+
+    // If faculty doesn't have access to the shared calendar endpoint, try fetching
+    // their own bookings and build a minimal calendar from those instead
+    if (!res.ok) {
+      console.warn(`[loadVenueBookings] ${res.status} on /venues/calendar — building from own bookings`);
+      venueBookings[cacheKey] = venueBookings[cacheKey] || {};
+      try {
+        const myBookings = await apiFetch("/faculty/venues/bookings/mine") ||
+                           await apiFetch("/venues/bookings/mine");
+        if (Array.isArray(myBookings)) {
+          venueBookings[cacheKey] = {};
+          const paddedMonth = String(currentMonth + 1).padStart(2, "0");
+          myBookings
+            .filter(b => {
+              if (b.venue_id !== currentVenueId) return false;
+              const bDate = b.date || "";
+              return bDate.startsWith(`${currentYear}-${paddedMonth}`);
+            })
+            .forEach(b => {
+              const day = parseInt((b.date || "").split("-")[2], 10);
+              if (day) venueBookings[cacheKey][day] = b.status || "pending";
+            });
+        }
+      } catch (e) {
+        console.warn("[loadVenueBookings] could not load own bookings for calendar:", e);
+      }
+      return;
+    }
+
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data?.days ?? data?.bookings ?? []);
+    venueBookings[cacheKey] = {};
     const PRIORITY = { booked: 3, "faculty-approved": 2, partial: 1.5, pending: 1, unavailable: 0.5, available: 0 };
-    data.forEach(item => {
-      const s        = (item.status || "available").toLowerCase();
-      const existing = venueBookings[currentVenueId][item.day];
-      if (!existing || (PRIORITY[s] ?? 0) > (PRIORITY[existing] ?? 0)) {
-        venueBookings[currentVenueId][item.day] = s;
+    list.forEach(item => {
+      const s  = (item.status || "available").toLowerCase();
+      const ex = venueBookings[cacheKey][item.day];
+      if (!ex || (PRIORITY[s] ?? 0) > (PRIORITY[ex] ?? 0)) {
+        venueBookings[cacheKey][item.day] = s;
       }
     });
-  } catch (err) { console.error("Booking load error:", err); }
-
-  /* ── Inject real DB snapshot so the calendar reflects actual data
-        even before a live API call succeeds. The API response merges
-        on top of this when available. ── */
-  if (!venueBookings[currentVenueId]) venueBookings[currentVenueId] = {};
-
-  const DB_CALENDAR_SNAPSHOT = {
-    /* venue_availability: venue_id:1, 2026-04-06 → unavailable */
-    "1-2026-4-6":  { venueId: 1, year: 2026, month: 4,  day: 6,  status: "booked"  },
-    /* venue_bookings hall_approved */
-    "2-2026-3-10": { venueId: 2, year: 2026, month: 3,  day: 10, status: "booked"  },
-    "3-2026-3-20": { venueId: 3, year: 2026, month: 3,  day: 20, status: "booked"  },
-    "1-2026-5-8":  { venueId: 1, year: 2026, month: 5,  day: 8,  status: "booked"  },
-    /* venue_bookings rejected — show as available */
-  };
-
-  const PRIORITY = { booked: 3, "faculty-approved": 2, partial: 1.5, pending: 1, unavailable: 0.5, available: 0 };
-
-  Object.values(DB_CALENDAR_SNAPSHOT).forEach(entry => {
-    if (entry.venueId !== currentVenueId) return;
-    if (entry.year !== currentYear || entry.month !== currentMonth + 1) return;
-    const existing = venueBookings[currentVenueId][entry.day];
-    if (!existing || (PRIORITY[entry.status] ?? 0) > (PRIORITY[existing] ?? 0)) {
-      venueBookings[currentVenueId][entry.day] = entry.status;
-    }
-  });
+  } catch (err) {
+    console.error("Booking load error:", err);
+    venueBookings[cacheKey] = venueBookings[cacheKey] || {};
+  }
 }
 
 function renderCalendar() {
@@ -1725,100 +1728,545 @@ function renderCalendar() {
   const title = document.getElementById("calendarTitle");
   if (!grid || !title) return;
 
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  title.textContent = `${months[currentMonth]} ${currentYear}`;
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  title.textContent = `${MONTHS[currentMonth]} ${currentYear}`;
   grid.innerHTML = "";
 
   const firstDay    = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const today       = new Date();
-  const bookings    = venueBookings[currentVenueId] || {};
+  // Month-keyed cache (mirrors organizer — prevents data bleed when navigating months)
+  const cacheKey = `${currentVenueId}__${currentYear}_${currentMonth + 1}`;
+  const bookings = venueBookings[cacheKey] || {};
 
   for (let i = 0; i < firstDay; i++) {
-    const empty = document.createElement("div");
-    empty.className = "venue-day-empty";
-    grid.appendChild(empty);
+    const e = document.createElement("div");
+    e.className = "venue-day venue-day-empty";
+    grid.appendChild(e);
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
     const status  = bookings[d] || "available";
     const isToday = d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
     const cell    = document.createElement("div");
-    cell.className = `venue-day ${status}${isToday ? " today" : ""}`;
-    cell.title = `${d} ${months[currentMonth]} ${currentYear} — ${status.replace("-", " ")}`;
 
-    /* Tooltip on click showing booking info */
-    cell.addEventListener("click", () => showVenueDayDetail(d, status));
-
+    // Organizer-style class logic: pending → amber; booked/faculty-approved → partial; else available
+    let dayClass = "venue-day";
+    if (status === "pending") {
+      dayClass += " pending";
+      cell.title = `${d} ${MONTHS[currentMonth]} — Has pending booking · click to see available slots`;
+    } else if (status === "booked" || status === "faculty-approved" || status === "partial") {
+      dayClass += " partial";
+      cell.title = status === "faculty-approved"
+        ? `${d} ${MONTHS[currentMonth]} — Has faculty-approved booking · click for available slots`
+        : `${d} ${MONTHS[currentMonth]} — Partially booked · click for available slots`;
+    } else {
+      dayClass += " available";
+      cell.title = `${d} ${MONTHS[currentMonth]} — Available (click to book)`;
+    }
+    if (isToday) dayClass += " today";
+    cell.className = dayClass;
+    cell.style.cursor = "pointer";
     cell.innerHTML = `<span class="day-number">${d}</span><span class="day-dot"></span>`;
+    cell.addEventListener("click", () => fcOpenVenueSlots(d));
     grid.appendChild(cell);
+  }
+
+  // Hide "Book Today" button if viewing a different month
+  const btn = document.getElementById("fcQuickBookBtn");
+  if (btn) btn.style.display =
+    (today.getMonth() === currentMonth && today.getFullYear() === currentYear) ? "" : "none";
+}
+
+/* ── Default slot generator (used when /venues/slots returns 403) ──
+   Generates standard hourly slots 08:00–18:00, all marked available.
+   The backend will still enforce booking conflicts on submission.        ── */
+function fcGenerateDefaultSlots() {
+  const slots = [];
+  for (let h = 8; h < 18; h++) {
+    const pad = n => String(n).padStart(2, "0");
+    slots.push({
+      start: `${pad(h)}:00:00`,
+      end:   `${pad(h + 1)}:00:00`,
+      available: true,
+    });
+  }
+  return slots;
+}
+
+/* ─── BOOKING MODAL ──────────────────────────────────────────── */
+async function fcOpenVenueSlots(dayOrFlag) {
+  let day = dayOrFlag;
+  const now = new Date();
+  if (dayOrFlag === "__today__") {
+    if (now.getMonth() !== currentMonth || now.getFullYear() !== currentYear) {
+      showToast("Navigate to the current month first.", "warning"); return;
+    }
+    day = now.getDate();
+  }
+
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+
+  document.getElementById("fcVbVenueName").value = currentVenue;
+  document.getElementById("fcVbDate").value      = dateStr;
+  document.getElementById("fcVbSlots").value     = "";
+  document.getElementById("fcVbPurpose").value   = "";
+  document.getElementById("fcVbDoc").value       = "";
+
+  const v = venues.find(x => x.id === currentVenueId);
+  document.getElementById("fcVbModalSub").textContent =
+    `${currentVenue}${v?.location ? " · " + v.location : ""}`;
+
+  document.getElementById("fcVbInfoBar").innerHTML =
+    `<span style="font-size:18px;">📍</span>
+     <div>
+       <div style="font-weight:700;">${currentVenue}</div>
+       <div style="font-size:11.5px;opacity:.8;">📅 ${day} ${MONTHS[currentMonth]} ${currentYear}${v?.capacity ? " · 👥 " + v.capacity : ""}</div>
+     </div>`;
+
+  /* Populate events dropdown from cachedEvents */
+  const evSel = document.getElementById("fcVbEventId");
+  evSel.innerHTML = `<option value="">— None (standalone booking) —</option>`;
+  (cachedEvents || [])
+    .filter(e => !["rejected","completed"].includes((e.status||"").toLowerCase()))
+    .forEach(e => evSel.insertAdjacentHTML("beforeend",
+      `<option value="${e.id}">${e.title}</option>`));
+
+  fcVbGoStep(1, true);
+
+  /* Show modal */
+  const modal = document.getElementById("fcVenueBookModal");
+  modal.style.display = "flex";
+
+  /* Load slots — prefer venue_id; fall back to venue_name (mirrors organizer) */
+  const slotList = document.getElementById("fcVbSlotList");
+  slotList.innerHTML = `<span style="color:var(--text-3);font-size:13px;">Loading slots…</span>`;
+  document.getElementById("fcVbSlotHint").textContent = "";
+
+  try {
+    const token     = localStorage.getItem("faculty_auth_token");
+    const venueObj  = venues.find(x => x.id === currentVenueId);
+    const slotParam = venueObj?.id
+      ? `venue_id=${venueObj.id}`
+      : `venue_name=${encodeURIComponent(currentVenue)}`;
+
+    let slots = null;
+    let res = await fetch(`${API}/venues/slots?${slotParam}&date=${dateStr}`, {
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
+    });
+
+    if (res.ok) {
+      const raw = await res.json();
+      // Normalise: array or wrapped { slots:[..], data:[..], available_slots:[..] }
+      slots = Array.isArray(raw) ? raw
+            : Array.isArray(raw?.slots)            ? raw.slots
+            : Array.isArray(raw?.data)             ? raw.data
+            : Array.isArray(raw?.available_slots)  ? raw.available_slots
+            : null;
+    } else if (res.status === 403) {
+      // Endpoint is organizer-only — generate standard hourly slots client-side
+      // The backend will still enforce conflict checks on submission
+      console.warn("[fcOpenVenueSlots] 403 on /venues/slots — generating default slots client-side");
+      slots = fcGenerateDefaultSlots();
+
+      // Overlay any bookings we already know about from our own bookings list
+      try {
+        const myBookings = await apiFetch("/faculty/venues/bookings/mine") ||
+                           await apiFetch("/venues/bookings/mine");
+        if (Array.isArray(myBookings)) {
+          const bookedStarts = new Set(
+            myBookings
+              .filter(b => b.venue_id === currentVenueId && b.date === dateStr && b.status !== "rejected")
+              .map(b => (b.slot_start || b.time || "").slice(0, 8))
+          );
+          slots = slots.map(s => ({
+            ...s,
+            available: s.available && !bookedStarts.has(s.start.slice(0, 8)),
+          }));
+        }
+      } catch (_) { /* best-effort */ }
+    } else {
+      console.warn(`[fcOpenVenueSlots] ${res.status} from /venues/slots`);
+    }
+
+    if (!slots || !slots.length) {
+      slotList.innerHTML = `<span style="color:var(--text-3);font-size:13px;">No time slots defined for this venue.</span>`;
+      document.getElementById("fcVbSlotHint").textContent = "";
+      return;
+    }
+
+    const availSlots  = slots.filter(s => s.available !== false && s.status !== "booked");
+    const bookedSlots = slots.filter(s => s.available === false  || s.status === "booked");
+
+    if (!availSlots.length) {
+      slotList.innerHTML = `<span style="color:var(--text-3);font-size:13px;">All slots are booked for this date.</span>`;
+      document.getElementById("fcVbSlotHint").textContent =
+        `${bookedSlots.length} slot${bookedSlots.length !== 1 ? "s" : ""} fully booked — try another date.`;
+      return;
+    }
+
+    slotList.innerHTML = slots.map(s => {
+      const start    = s.start || s.slot_start || "";
+      const end      = s.end   || s.slot_end   || "";
+      const label    = `${start.slice(0,5)} – ${end.slice(0,5)}`;
+      const isBooked = s.available === false || s.status === "booked";
+      if (isBooked) {
+        return `<button class="fc-slot-chip booked" disabled title="Already booked">🔒 ${label}</button>`;
+      }
+      return `<button type="button" class="fc-slot-chip"
+        data-start="${start}" data-end="${end}"
+        onclick="fcSelectSlot(this,'${start}','${end}')">${label}</button>`;
+    }).join("");
+
+    document.getElementById("fcVbSlotHint").textContent =
+      `${availSlots.length} slot${availSlots.length !== 1 ? "s" : ""} available · ${bookedSlots.length} booked. Tap to select.`;
+  } catch (err) {
+    console.error("Slot load error:", err);
+    slotList.innerHTML = `<span style="color:#ef4444;font-size:13px;">Failed to load slots — try again.</span>`;
   }
 }
 
-/* ── Day detail tooltip / popover ── */
-function showVenueDayDetail(day, status) {
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+/* ── Slot chip toggle ── */
+function fcSelectSlot(el, start, end) {
+  el.classList.toggle("selected");
+  const selected = [...document.querySelectorAll("#fcVbSlotList .fc-slot-chip.selected")]
+    .map(c => ({ start: c.dataset.start, end: c.dataset.end }));
 
-  /* Remove any existing popover */
-  document.getElementById("venueDayPopover")?.remove();
+  document.getElementById("fcVbSlots").value = JSON.stringify(selected);
 
-  /* Find bookings for this venue+date from snapshot */
-  const BOOKING_DETAIL = [
-    { venueId: 1, year: 2026, month: 4,  day: 6,  status: "unavailable",  note: "Marked unavailable by coordinator" },
-    { venueId: 2, year: 2026, month: 3,  day: 10, status: "hall_approved", note: "Event #1 — 10:00–11:00 AM"         },
-    { venueId: 3, year: 2026, month: 3,  day: 20, status: "hall_approved", note: "Event #3 — 2:30–3:30 PM"           },
-    { venueId: 4, year: 2026, month: 4,  day: 5,  status: "rejected",      note: "Event #4 — booking rejected"       },
-    { venueId: 1, year: 2026, month: 5,  day: 8,  status: "hall_approved", note: "Event #17 — 10:00–11:00 AM"        },
-  ];
+  const count = document.getElementById("fcVbSlotCount");
+  if (selected.length) {
+    count.textContent = `${selected.length} selected`;
+    count.style.display = "";
+  } else {
+    count.style.display = "none";
+  }
 
-  const detail = BOOKING_DETAIL.find(b =>
-    b.venueId === currentVenueId &&
-    b.year    === currentYear    &&
-    b.month   === currentMonth + 1 &&
-    b.day     === day
-  );
+  const box = document.getElementById("fcVbSelectedBox");
+  if (selected.length) {
+    box.style.display = "";
+    document.getElementById("fcVbSelectedList").innerHTML =
+      selected.map((s,i) =>
+        `<div>Slot ${i+1}: <strong>${s.start.slice(0,5)} – ${s.end.slice(0,5)}</strong></div>`
+      ).join("");
+  } else {
+    box.style.display = "none";
+  }
 
-  const statusColors = {
-    "hall_approved": { bg: "rgba(16,185,129,.15)",  border: "rgba(16,185,129,.35)",  color: "#10b981", label: "Hall Approved" },
-    "unavailable":   { bg: "rgba(239,68,68,.15)",   border: "rgba(239,68,68,.35)",   color: "#ef4444", label: "Unavailable"   },
-    "rejected":      { bg: "rgba(107,114,128,.15)", border: "rgba(107,114,128,.35)", color: "#9ca3af", label: "Rejected"      },
-    "pending":       { bg: "rgba(245,158,11,.15)",  border: "rgba(245,158,11,.35)",  color: "#f59e0b", label: "Pending"       },
-    "available":     { bg: "rgba(16,185,129,.08)",  border: "rgba(16,185,129,.2)",   color: "#10b981", label: "Available"     },
-    "booked":        { bg: "rgba(99,102,241,.15)",  border: "rgba(99,102,241,.35)",  color: "#818cf8", label: "Booked"        },
-  };
+  const btn = document.getElementById("fcVbNextBtn");
+  btn.disabled = selected.length === 0;
+  btn.style.opacity = selected.length ? "1" : ".4";
+}
 
-  const sc = statusColors[detail?.status || status] || statusColors["available"];
+/* ── Step navigator ── */
+function fcVbGoStep(step, reset = false) {
+  [1,2,3].forEach(n => {
+    document.getElementById(`fcVbPanel${n}`).style.display = n === step ? "" : "none";
+    const ind = document.getElementById(`fcStep${n}`);
+    ind.classList.remove("active","done");
+    if (n < step)        ind.classList.add("done");
+    else if (n === step) ind.classList.add("active");
+  });
+  [1,2].forEach(n => {
+    document.getElementById(`fcLine${n}`)?.classList.toggle("done", n < step);
+  });
+  if (step === 3) fcBuildReview();
+  if (reset) {
+    document.querySelectorAll("#fcVbSlotList .fc-slot-chip.selected")
+      .forEach(c => c.classList.remove("selected"));
+    document.getElementById("fcVbSlots").value     = "";
+    document.getElementById("fcVbSlotCount").style.display  = "none";
+    document.getElementById("fcVbSelectedBox").style.display = "none";
+    const btn = document.getElementById("fcVbNextBtn");
+    btn.disabled = true; btn.style.opacity = ".4";
+  }
+}
 
-  const pop = document.createElement("div");
-  pop.id = "venueDayPopover";
-  pop.style.cssText = `position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;
-    background:rgba(0,0,0,.45);backdrop-filter:blur(4px);`;
-  pop.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border-2);border-radius:18px;
-                padding:22px 24px;width:min(340px,88vw);box-shadow:var(--shadow-lg);">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
-        <div>
-          <div style="font-size:15px;font-weight:800;color:var(--text);">
-            ${day} ${months[currentMonth]} ${currentYear}
+/* ── Build review card ── */
+function fcBuildReview() {
+  const raw     = document.getElementById("fcVbSlots").value;
+  const slots   = raw ? JSON.parse(raw) : [];
+  const venue   = document.getElementById("fcVbVenueName").value;
+  const dateStr = document.getElementById("fcVbDate").value;
+  const purpose = document.getElementById("fcVbPurpose").value.trim();
+  const evSel   = document.getElementById("fcVbEventId");
+  const doc     = document.getElementById("fcVbDoc").files[0];
+  const MONTHS  = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const [y,m,d] = dateStr.split("-").map(Number);
+
+  document.getElementById("fcVbReviewBody").innerHTML = [
+    ["Venue",    venue],
+    ["Date",     `${d} ${MONTHS[m-1]} ${y}`],
+    ["Slots",    slots.map(s => `${s.start.slice(0,5)}–${s.end.slice(0,5)}`).join(", ") || "—"],
+    ["Event",    evSel.value ? evSel.options[evSel.selectedIndex]?.text : "Standalone"],
+    ["Purpose",  purpose || `<span style="color:var(--text-3);">None provided</span>`],
+    ["Document", doc ? `📎 ${doc.name}` : `<span style="color:var(--text-3);">None</span>`],
+  ].map(([l,v]) => `
+    <div class="fc-rv-row">
+      <span class="fc-rv-label">${l}</span>
+      <span class="fc-rv-val">${v}</span>
+    </div>`).join("");
+}
+
+/* ── FormData POST helper — handles token refresh like apiFetch but for multipart ── */
+async function fcVenueBookingFetch(formData, _retry = false) {
+  const token = localStorage.getItem("faculty_auth_token");
+  if (!token) { window.location.href = "/faculty/fcsignin.html"; return null; }
+  const base = (typeof API !== "undefined" ? API : window.API) || "https://evexa-production.up.railway.app/api";
+  const res = await fetch(`${base}/venues/bookings`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}` },
+    body: formData,
+  });
+  if (res.status === 401 && !_retry) {
+    const refreshed = await fcRefreshToken();
+    if (refreshed) return fcVenueBookingFetch(formData, true);
+    localStorage.removeItem("faculty_auth_token");
+    localStorage.removeItem("faculty_refresh_token");
+    window.location.href = "/faculty/fcsignin.html";
+    return null;
+  }
+  if (res.status === 403) {
+    // Try faculty-specific booking endpoint as fallback
+    const res2 = await fetch(`${base}/faculty/venues/book`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(Object.fromEntries(formData)),
+    });
+    return res2;
+  }
+  return res;
+}
+
+/* ── Submit ── */
+async function fcSubmitVenueBooking() {
+  const raw = document.getElementById("fcVbSlots").value;
+  let slots = [];
+  try { slots = JSON.parse(raw); } catch {}
+  if (!slots.length) { showToast("Please select at least one slot.", "warning"); return; }
+
+  const btn = document.getElementById("fcVbSubmitBtn");
+  btn.disabled = true; btn.textContent = "Submitting…";
+
+  const venueId = currentVenueId;
+  const venue   = document.getElementById("fcVbVenueName").value;
+  const date    = document.getElementById("fcVbDate").value;
+  const purpose = document.getElementById("fcVbPurpose").value;
+  const eventId = document.getElementById("fcVbEventId").value;
+  const docFile = document.getElementById("fcVbDoc").files[0];
+
+  let ok = 0;
+  try {
+    for (const slot of slots) {
+      // Build FormData for /venues/bookings (shared endpoint)
+      const fd = new FormData();
+      fd.append("venue_id",   venueId);
+      fd.append("venue_name", venue);
+      fd.append("date",       date);
+      fd.append("slot_start", slot.start);
+      fd.append("slot_end",   slot.end);
+      fd.append("purpose",    purpose);
+      fd.append("event_id",   eventId);
+      if (docFile) fd.append("support_doc", docFile);
+
+      try {
+        const token = localStorage.getItem("faculty_auth_token");
+        const base  = (typeof API !== "undefined" ? API : window.API) || "https://evexa-production.up.railway.app/api";
+
+        // Try primary shared endpoint first
+        let res = await fetch(`${base}/venues/bookings`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${token}` },
+          body: fd,
+        });
+
+        // If 403 (role not permitted), fall back to faculty-specific endpoint
+        if (res.status === 403) {
+          console.warn("[fcSubmitVenueBooking] /venues/bookings returned 403 — trying /faculty/venues/book");
+          res = await fetch(`${base}/faculty/venues/book`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              venue_id:              venueId,
+              title:                 purpose?.trim() || venue || "Faculty Venue Booking",
+              date,
+              start_time:            slot.start,   // backend expects start_time
+              end_time:              slot.end,      // backend expects end_time
+              purpose,
+              expected_participants: null,
+            }),
+          });
+        }
+
+        // Handle 401 with token refresh
+        if (res.status === 401) {
+          const refreshed = await fcRefreshToken();
+          if (refreshed) {
+            const newToken = localStorage.getItem("faculty_auth_token");
+            res = await fetch(`${base}/faculty/venues/book`, {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${newToken}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                venue_id:   venueId,
+                title:      purpose?.trim() || venue || "Faculty Venue Booking",
+                date,
+                start_time: slot.start,
+                end_time:   slot.end,
+                purpose,
+              }),
+            });
+          } else {
+            localStorage.removeItem("faculty_auth_token");
+            localStorage.removeItem("faculty_refresh_token");
+            window.location.href = "/faculty/fcsignin.html";
+            break;
+          }
+        }
+
+        if (!res) break;
+        if (res.ok) {
+          ok++;
+        } else {
+          const errBody = await res.json().catch(() => ({}));
+          // Prefer db-level detail so schema errors surface clearly
+          const errMsg  = errBody.detail || errBody.message || `HTTP ${res.status}`;
+          console.error(`[fcSubmitVenueBooking] slot ${slot.start} failed:`, errBody);
+          showToast(`Slot ${slot.start.slice(0,5)}: ${errMsg}`, "error");
+        }
+      } catch (e) {
+        console.error("[fcSubmitVenueBooking] network error:", e);
+        showToast("Network error — please try again.", "error");
+      }
+    }
+
+    if (ok > 0) {
+      showToast(`✅ ${ok} booking request${ok > 1 ? "s" : ""} submitted!`, "success");
+      document.getElementById("fcVenueBookModal").style.display = "none";
+      await loadVenueBookings();
+      renderCalendar();
+      setTimeout(() => fcSwitchVenueTab("mybookings"), 400);
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = "📩 Submit Booking Request";
+  }
+}
+
+/* ── My Bookings tab ── */
+async function loadFcMyVenueBookings() {
+  const tbody  = document.getElementById("fcMyVenueBookingsBody");
+  const pills  = document.getElementById("fcMyBookingsPills");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="7" class="td-empty">Loading…</td></tr>`;
+  if (pills) pills.innerHTML = "";
+
+  try {
+    // Use faculty-specific endpoint; fall back to shared organizer endpoint
+    let data = await apiFetch("/faculty/venues/bookings/mine");
+    if (!Array.isArray(data)) data = await apiFetch("/venues/bookings/mine");
+    if (!Array.isArray(data) || !data.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="td-empty">
+        <div style="padding:24px 0;text-align:center;">
+          <div style="font-size:32px;margin-bottom:8px;">📭</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);">No venue bookings yet</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:4px;">
+            Use the <strong>Calendar</strong> tab to book a slot.
           </div>
-          <div style="font-size:12px;color:var(--text-3);margin-top:2px;">${currentVenue}</div>
         </div>
-        <button onclick="document.getElementById('venueDayPopover').remove()"
-          style="background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;
-                 padding:2px 6px;border-radius:6px;line-height:1;">✕</button>
-      </div>
-      <div style="padding:12px 14px;border-radius:12px;
-                  background:${sc.bg};border:1px solid ${sc.border};margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:${sc.color};margin-bottom:${detail ? "8px" : "0"};">
-          ${sc.label}
-        </div>
-        ${detail ? `<div style="font-size:12px;color:var(--text-2);line-height:1.55;">${detail.note}</div>` : ""}
-      </div>
-      ${!detail ? `<div style="font-size:12px;color:var(--text-3);text-align:center;">No bookings on this date.</div>` : ""}
-    </div>
-  `;
-  pop.addEventListener("click", e => { if (e.target === pop) pop.remove(); });
-  document.body.appendChild(pop);
+      </td></tr>`;
+      return;
+    }
+
+    /* Pills */
+    const counts = { pending:0, faculty_approved:0, hall_approved:0, rejected:0 };
+    data.forEach(b => { if (b.status in counts) counts[b.status]++; });
+    if (pills) pills.innerHTML = [
+      { key:"hall_approved",    label:"Approved",    c:"#059669", bg:"rgba(16,185,129,.12)" },
+      { key:"faculty_approved", label:"Fac. Review", c:"#0284c7", bg:"rgba(14,165,233,.12)" },
+      { key:"pending",          label:"Pending",     c:"#b45309", bg:"rgba(245,158,11,.12)"  },
+      { key:"rejected",         label:"Rejected",    c:"#dc2626", bg:"rgba(239,68,68,.12)"   },
+    ].filter(p => counts[p.key] > 0)
+     .map(p => `<span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
+                background:${p.bg};color:${p.c};">${counts[p.key]} ${p.label}</span>`)
+     .join("");
+
+    const SI = {
+      hall_approved:    { c:"#059669", bg:"rgba(16,185,129,.12)",  lbl:"✅ Hall Approved"    },
+      faculty_approved: { c:"#0284c7", bg:"rgba(14,165,233,.12)",  lbl:"🔵 Faculty Approved" },
+      pending:          { c:"#b45309", bg:"rgba(245,158,11,.12)",  lbl:"⏳ Pending"           },
+      rejected:         { c:"#dc2626", bg:"rgba(239,68,68,.12)",   lbl:"❌ Rejected"          },
+    };
+
+    tbody.innerHTML = data.map((b,i) => {
+      const si = SI[b.status] || { c:"var(--text-3)", bg:"var(--surface-3)", lbl: b.status };
+      return `<tr style="border-bottom:1px solid var(--border-2);">
+        <td style="padding:10px 12px;color:var(--text-3);">${i+1}</td>
+        <td style="padding:10px 12px;font-weight:600;">📍 ${b.venue_name}</td>
+        <td style="padding:10px 12px;color:var(--text-2);">${b.event_title || `<span style="color:var(--text-3);">—</span>`}</td>
+        <td style="padding:10px 12px;color:var(--text-2);white-space:nowrap;">${b.date || ""}</td>
+        <td style="padding:10px 12px;color:var(--text-2);white-space:nowrap;font-family:monospace;font-size:12px;">
+          ${(b.slot_start||"").slice(0,5)}${b.slot_end ? " – "+b.slot_end.slice(0,5) : ""}
+        </td>
+        <td style="padding:10px 12px;">
+          <span style="padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;
+                       background:${si.bg};color:${si.c};">${si.lbl}</span>
+        </td>
+        <td style="padding:10px 12px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${["pending","faculty_approved","hall_approved"].includes(b.status)
+              ? `<button onclick="fcCancelVenueBooking(${b.id})"
+                         style="background:none;border:1px solid rgba(239,68,68,.35);border-radius:7px;
+                                padding:4px 10px;font-size:12px;color:#ef4444;cursor:pointer;">
+                   🗑️ Cancel</button>` : ""}
+            ${["rejected","hall_approved"].includes(b.status)
+              ? `<button onclick="fcRebook('${b.venue_name}','${b.date}')"
+                         style="background:none;border:1px solid rgba(139,92,246,.35);border-radius:7px;
+                                padding:4px 10px;font-size:12px;color:var(--accent);cursor:pointer;">
+                   🔄 Re-book</button>` : ""}
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  } catch {
+    tbody.innerHTML = `<tr><td colspan="7" class="td-empty">Failed to load bookings.</td></tr>`;
+  }
+}
+
+async function fcCancelVenueBooking(id) {
+  if (!confirm("Cancel this booking request?")) return;
+  try {
+    // apiFetch handles 401 refresh; 403 = already-cancelled or not owner → show error
+    const data = await apiFetch(`/venues/bookings/${id}`, { method: "DELETE" });
+    if (data !== null) {
+      showToast("🗑️ Booking cancelled", "success");
+      loadFcMyVenueBookings();
+      await loadVenueBookings();
+      renderCalendar();
+    } else {
+      // null from apiFetch means either redirected (401) or failed (403/5xx)
+      // Only show the error toast if we're still on the page (no redirect happened)
+      if (document.getElementById("fcVenueBookModal") !== null) {
+        showToast("❌ Could not cancel this booking", "error");
+      }
+    }
+  } catch { showToast("❌ Network error", "error"); }
+}
+
+/* ── Re-book: switch to calendar tab, navigate to original date & open modal ── */
+async function fcRebook(venueName, date) {
+  fcSwitchVenueTab("calendar");
+  const v = venues.find(x => x.name === venueName);
+  if (v) { currentVenueId = v.id; currentVenue = v.name; }
+  const d = new Date(date);
+  currentYear  = d.getFullYear();
+  currentMonth = d.getMonth();
+  renderVenueSidebar();
+  await loadVenueBookings();
+  renderCalendar();
+  fcOpenVenueSlots(d.getDate());
 }
 
 document.getElementById("prevMonth")?.addEventListener("click", async () => {

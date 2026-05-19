@@ -1,4 +1,3 @@
-
 const API_BASE = "https://evexa-production.up.railway.app/api";
 
 const form    = document.getElementById("signinForm");
@@ -79,6 +78,9 @@ const meRes = await fetch(`${API_BASE}/faculty/me`, {
 });
 
 if (!meRes.ok) {
+  // Clean up stored tokens — login effectively failed if we can't get the profile
+  localStorage.removeItem("faculty_auth_token");
+  localStorage.removeItem("faculty_refresh_token");
   showError("Failed to load faculty profile. Please try again.");
   btn.textContent = "Sign In";
   btn.disabled    = false;
@@ -96,7 +98,11 @@ const roleRedirects = {
   5: "/faculty/dean/dean-dashboard.html",
 };
 
-const destination = roleRedirects[me.role_id] || "/faculty/faculty-dashboard.html";
+// Hall coordinator is a derived property — a STAFF member who manages venues
+// should go to the hall dashboard regardless of their base role_id.
+const destination = me.is_hall_coordinator
+  ? "/faculty/hall-coordinator/hall-dashboard.html"
+  : (roleRedirects[me.role_id] || "/faculty/faculty-dashboard.html");
 window.location.href = destination;
 
   } catch (err) {
