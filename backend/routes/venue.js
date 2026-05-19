@@ -31,10 +31,10 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-/** Generate hourly slots 07:00 – 09:00 */
+/** Generate hourly slots 06:00 – 22:00 */
 function generateSlots() {
   const slots = [];
-  for (let hour = 7; hour < 9; hour++) {
+  for (let hour = 6; hour < 22; hour++) {
     slots.push({
       start: `${String(hour).padStart(2, "0")}:00:00`,
       end:   `${String(hour + 1).padStart(2, "0")}:00:00`,
