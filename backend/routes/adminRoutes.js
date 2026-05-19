@@ -1,5 +1,3 @@
-
-
 const express    = require("express");
 const bcrypt     = require("bcrypt");
 const jwt        = require("jsonwebtoken");
@@ -174,17 +172,26 @@ router.get("/dashboard", adminOnly, (req, res) => {
        FROM events e
        LEFT JOIN clubs         c ON c.club_id   = e.club_id
        LEFT JOIN registrations r ON r.event_id  = e.id
+       WHERE e.status IN ('hall_approved', 'published', 'completed')
+         AND e.deleted_at IS NULL
+         AND e.hall_approved_at IS NOT NULL
        GROUP BY e.club_id, c.club_name
        ORDER BY event_count DESC LIMIT 5`),
     q(`SELECT SUM(CASE WHEN category = 'Technical' THEN 1 ELSE 0 END) AS academic,
               SUM(CASE WHEN category != 'Technical' OR category IS NULL THEN 1 ELSE 0 END) AS non_academic
-       FROM events`),
+       FROM events
+       WHERE status IN ('hall_approved', 'published', 'completed')
+         AND deleted_at IS NULL
+         AND hall_approved_at IS NOT NULL`),
     q(`SELECT c.club_name AS club,
               COUNT(r.id)          AS total_participants,
               COUNT(DISTINCT e.id) AS events
        FROM events e
        LEFT JOIN clubs         c ON c.club_id  = e.club_id
        LEFT JOIN registrations r ON r.event_id = e.id
+       WHERE e.status IN ('hall_approved', 'published', 'completed')
+         AND e.deleted_at IS NULL
+         AND e.hall_approved_at IS NOT NULL
        GROUP BY e.club_id, c.club_name ORDER BY total_participants DESC LIMIT 5`),
     q(`SELECT e.id, e.title AS name,
               COALESCE(c.club_name, CONCAT('Club #', e.club_id)) AS organizer,

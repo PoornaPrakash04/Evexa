@@ -310,7 +310,7 @@ const PAGE_META = {
   "pending":          ["Pending Queue",             "All items requiring your immediate action."],
   "all-clubs":        ["All Clubs",                 "Browse all clubs and their events."],
   "clubs":            ["Club & Academic Oversight", "Your incharge clubs and their activity."],
-  "analytics":        ["Reports & Analytics",       "Events, participation, and academic statistics."],
+
   "feedback":         ["Feedback & Reports",        "Student feedback ratings and comments."],
   "announcements":    ["Announcements",             "Post and manage club announcements."],
   "notif-history":    ["Notification History",      "All alerts and system updates."],
@@ -320,11 +320,6 @@ const PAGE_META = {
 };
 
 async function navigateTo(page) {
-  if (page === "analytics" && !cachedClubs.length) {
-    console.warn(`[navigateTo] Redirecting to dashboard — faculty has no club assignments.`);
-    page = "dashboard";
-  }
-
   localStorage.setItem("facultyCurrentPage", page);
 
   document.querySelectorAll("[id^='pg-']").forEach(e => e.style.display = "none");
@@ -347,11 +342,10 @@ async function navigateTo(page) {
   const selectedClub = getSelectedClub();
   const clubLabel    = selectedClub ? (selectedClub.club_name || selectedClub.name || "Club") : "";
 
-  if (selectedClub && ["proposals", "analytics", "event-list", "pending"].includes(page)) {
+  if (selectedClub && ["proposals", "event-list", "pending"].includes(page)) {
     el("pageTitle")?.text(`${t} — ${clubLabel}`);
     el("pageSub")?.text(
       page === "proposals"  ? `Viewing proposals for ${clubLabel}.`  :
-      page === "analytics"  ? `Viewing analytics for ${clubLabel}.`  :
       page === "event-list" ? `Viewing events for ${clubLabel}.`     :
       `Viewing pending items for ${clubLabel}.`
     );
@@ -372,11 +366,6 @@ async function navigateTo(page) {
     "notif-history":  renderNotifHistory,
     "feedback":       renderFeedback,
     "account-settings": () => { initAccountSettings(); asLoadProfile(); },
-    "analytics": async () => {
-      chartsInited = false;
-      await refreshAll();
-      setTimeout(initCharts, 60);
-    },
   };
 
   await renders[page]?.();
@@ -418,9 +407,11 @@ function renderDashboardCalendar() {
   const total    = new Date(calYear, calMonth + 1, 0).getDate();
 
   const dayMap = {};
-  const allCalEvents = [...cachedEvents, ...cachedProposals];
+  // Only show approved events in the calendar — pending events belong in Event Approvals only
+  const PENDING_STATUSES = new Set(["submitted", "pending", "review", "awaiting", "under review", "new"]);
+  const approvedCalEvents = cachedEvents.filter(e => !PENDING_STATUSES.has((e.status || "").toLowerCase().trim()));
   const seen = new Set();
-  allCalEvents.forEach(e => {
+  approvedCalEvents.forEach(e => {
     if (!e || seen.has(e.id)) return;
     seen.add(e.id);
     const dt = parseEventDate(e.date || e.event_date || e.start_date);
@@ -599,36 +590,12 @@ async function renderProposals(filter = "all", search = "", category = "all") {
   if (Array.isArray(freshProposals)) cachedProposals = freshProposals;
   if (Array.isArray(freshEvents))    cachedEvents    = freshEvents;
 
-  const proposalItems = (Array.isArray(cachedProposals) ? cachedProposals : []).map(p => ({
-    ...p, _src: "proposal", _key: `proposal-${p.id}`,
-  }));
-
-  const myClubIds = new Set(cachedClubs.map(c => String(c.id ?? c.club_id ?? "")));
-
-  const submittedEventItems = (Array.isArray(cachedEvents) ? cachedEvents : [])
-    .filter(e => {
-      const s = (e.status || "").toLowerCase().trim();
-      if (s !== STATUS.SUBMITTED) return false;
-      const eid = String(e.club_id ?? e.clubId ?? "");
-      if (eid && myClubIds.has(eid)) return true;
-      return cachedClubs.some(c => eventMatchesClub(e, c));
-    })
-    .map(e => ({
-      ...e, _src: "event", _key: `event-${e.id}`,
-      organizer: e.organizer || e.created_by || "—",
-    }));
-
-  console.log("👉 ALL EVENTS:", cachedEvents.map(e => ({ id: e.id, title: e.title, status: e.status })));
-
-  const seen   = new Set();
-  const merged = [];
-  [...proposalItems, ...submittedEventItems].forEach(item => {
-    if (seen.has(item._key)) return;
-    seen.add(item._key);
-    merged.push(item);
-  });
-
-  let list = merged.filter(p => (p.status || "").toLowerCase().trim() === STATUS.SUBMITTED);
+  // Use only the proposals endpoint — it already contains all pending items.
+  // Pulling submitted events from /events/all and merging caused every proposal
+  // to appear twice (once per source with different _key prefixes).
+  let list = (Array.isArray(cachedProposals) ? cachedProposals : [])
+    .filter(p => (p.status || "").toLowerCase().trim() === STATUS.SUBMITTED)
+    .map(p => ({ ...p, _src: "proposal", _key: `proposal-${p.id}` }));
 
   if (selectedClubId !== "all") list = list.filter(matchesSelectedClub);
   if (category !== "all") list = list.filter(p =>
@@ -643,10 +610,6 @@ async function renderProposals(filter = "all", search = "", category = "all") {
   }
 
   window.currentProposalList = list;
-
-  console.log("📋 cachedProposals raw statuses:", cachedProposals.map(p => p.status));
-  console.log("📋 submittedEventItems:", submittedEventItems.length);
-  console.log("📋 final list after filter:", list.length, list.map(p => ({ id: p.id, title: p.title, status: p.status })));
 
   if (!list.length) {
     tbody.innerHTML = `<tr><td colspan="7" class="td-empty">No proposals pending faculty review.
@@ -908,7 +871,9 @@ async function renderEventList(search = "", status = "all") {
   const tbody = document.getElementById("eventListBody");
   if (!tbody) return;
 
-  let list = [...cachedEvents];
+  // Exclude pending/submitted events — those belong only in Event Approvals
+  const PENDING_STATUSES_LIST = new Set(["submitted", "pending", "review", "awaiting", "under review", "new"]);
+  let list = cachedEvents.filter(e => !PENDING_STATUSES_LIST.has((e.status || "").toLowerCase().trim()));
   if (status !== "all") list = list.filter(e => (e.status || "").toLowerCase().trim() === status.toLowerCase());
   if (search) {
     const q = String(search).toLowerCase();
@@ -1563,7 +1528,6 @@ async function renderClubs() {
         ` : `<div class="list-empty">No events yet.</div>`}
         <div class="club-card-actions">
           <button class="btn ghost sm" onclick="openClubProposals(${clubId})">📋 Proposals</button>
-          <button class="btn ghost sm" onclick="openClubAnalytics(${clubId})">📊 Analytics</button>
         </div>
       </div>
     `;
@@ -1571,9 +1535,7 @@ async function renderClubs() {
 }
 
 function openClubProposals(clubId) { setSelectedClub(clubId); navigateTo("proposals"); renderProposals(); }
-function openClubAnalytics(clubId) { setSelectedClub(clubId); chartsInited = false; navigateTo("analytics"); }
 function openAllClubProposals()    { setSelectedClub("all"); navigateTo("proposals"); renderProposals(); }
-function openAllClubAnalytics()    { setSelectedClub("all"); chartsInited = false; navigateTo("analytics"); }
 
 /* ── Venue helpers (ported from organizer portal) ────────────────── */
 if (typeof formatDateYMD === "undefined") {
@@ -1922,219 +1884,6 @@ document.getElementById("nextMonth")?.addEventListener("click", async () => {
   currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; }
   await loadVenueBookings(); renderCalendar();
 });
-
-/* ══════════════════════════════════════════════════════════
-   ANALYTICS
-   ── CHANGE: Added venue usage chart + summary table
-   ── (ported from hall-dashboard.js initCharts)
-   ── All existing chart code is unchanged.
-   ══════════════════════════════════════════════════════════ */
-async function initCharts() {
-  chartsInited = true;
-
-  const analyticsPg = document.getElementById("pg-analytics");
-  if (!cachedClubs.length) {
-    if (analyticsPg) {
-      analyticsPg.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-          min-height:420px;gap:20px;text-align:center;padding:40px 20px;">
-          <div style="font-size:56px;line-height:1;">📊</div>
-          <div style="font-size:20px;font-weight:800;color:var(--text);">No Analytics Available</div>
-          <div style="font-size:14px;color:var(--text-3);max-width:380px;line-height:1.65;">
-            You are not currently assigned as an advisor for any club.<br>
-            Analytics will appear here once you are linked to at least one club.
-          </div>
-          <div style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;
-            border-radius:12px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);
-            font-size:12px;color:#c4b5fd;">
-            🏛️ Contact your administrator to get assigned to a club.
-          </div>
-        </div>
-      `;
-    }
-    return;
-  }
-
-  const filteredProposals = selectedClubId === "all" ? cachedProposals : cachedProposals.filter(matchesSelectedClub);
-  const filteredEvents    = selectedClubId === "all" ? cachedEvents    : cachedEvents.filter(matchesSelectedClub);
-  const filteredRegs      = cachedRegistrations.filter(r => {
-    if (selectedClubId === "all") return true;
-    const sc = getSelectedClub();
-    return sc ? eventMatchesClub(r, sc) : false;
-  });
-
-  const regCountFromEvents = filteredEvents.reduce((sum, e) =>
-    sum + Number(e.registered_count ?? e.registered ?? e.registrations_count ?? e.participant_count ?? 0), 0);
-  const totalRegistrations = filteredRegs.length || regCountFromEvents;
-
-  const APPROVED_STATUSES = new Set(["hall_approved","approved","published"]);
-  const approvedCount      = filteredEvents.filter(e => APPROVED_STATUSES.has((e.status||"").toLowerCase().trim())).length;
-
-  console.log("📊 Analytics — filteredEvents:", filteredEvents.length, "approvedCount:", approvedCount, "totalRegistrations:", totalRegistrations);
-
-  const kpi = document.getElementById("analyticsKpi");
-  if (kpi) {
-    kpi.innerHTML = [
-      { icon: "📋", val: filteredEvents.length, label: "Total Events"          },
-      { icon: "✅", val: approvedCount,          label: "Approved Events"       },
-      { icon: "👥", val: totalRegistrations,     label: "Student Registrations" },
-    ].map(d => `
-      <div class="kpi-card">
-        <div class="kpi-icon">${d.icon}</div>
-        <div class="kpi-val">${d.val}</div>
-        <div class="kpi-label">${d.label}</div>
-      </div>
-    `).join("");
-  }
-
-  const now = new Date();
-  const labels = [], evCounts = [], regCounts = [];
-  const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-  for (let i = 7; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    labels.push(MONTH_NAMES[d.getMonth()]);
-    const monthEvs = filteredEvents.filter(e => {
-      const ed = parseEventDate(e.date || e.event_date || e.start_date);
-      return ed && ed.getFullYear() === d.getFullYear() && ed.getMonth() === d.getMonth();
-    });
-    evCounts.push(monthEvs.length);
-    const regsFromEvFields = monthEvs.reduce((sum, e) =>
-      sum + Number(e.registered_count ?? e.registered ?? e.registrations_count ?? e.participant_count ?? 0), 0);
-    const regsFromCache = filteredRegs.filter(r => {
-      const rd = parseEventDate(r.created_at || r.date || r.registered_at);
-      return rd && rd.getFullYear() === d.getFullYear() && rd.getMonth() === d.getMonth();
-    }).length;
-    regCounts.push(regsFromEvFields || regsFromCache);
-  }
-
-  const chartDefaults = {
-    responsive: true,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: "rgba(240,242,255,.4)", font: { weight: 600, size: 11 } } },
-      y: { grid: { color: "rgba(255,255,255,.05)" }, ticks: { color: "rgba(240,242,255,.4)", font: { weight: 600, size: 11 }, stepSize: 1 }, beginAtZero: true },
-    },
-  };
-
-  tryChart("eventsChart", {
-    type: "bar",
-    data: { labels, datasets: [{ data: evCounts, backgroundColor: "rgba(139,92,246,.7)", borderRadius: 7, borderSkipped: false }] },
-    options: chartDefaults,
-  });
-  tryChart("participationChart", {
-    type: "line",
-    data: { labels, datasets: [{ data: regCounts, borderColor: "#ec4899", backgroundColor: "rgba(236,72,153,.12)", borderWidth: 2.5, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#ec4899" }] },
-    options: chartDefaults,
-  });
-
-  const TECHNICAL_KEYWORDS = ["ieee","iedc","robotics","coding","tech","computer","ai","ml","cyber","hack","software","hardware"];
-  const technical    = filteredEvents.filter(e => {
-    const cat = (e.club_category || e.category || "").toLowerCase().trim();
-    if (cat === "technical") return true;
-    if (cat === "non-technical") return false;
-    const s = [e.type||"", e.club||"", e.club_name||"", e.title||""].join(" ").toLowerCase();
-    return TECHNICAL_KEYWORDS.some(kw => s.includes(kw));
-  }).length;
-  const nonTechnical = Math.max(0, filteredEvents.length - technical);
-  const total        = filteredEvents.length || 1;
-
-  tryChart("typeChart", {
-    type: "doughnut",
-    data: { labels: ["Technical","Non-Technical"], datasets: [{ data: [technical||0, nonTechnical||0], backgroundColor: ["#8b5cf6","#ec4899"], borderWidth: 0, hoverOffset: 6 }] },
-    options: { responsive: false, plugins: { legend: { display: false } }, cutout: "68%" },
-  });
-
-  const leg = document.getElementById("typeChartLegend");
-  if (leg) {
-    leg.innerHTML = [
-      { color: "#8b5cf6", label: "Technical",     pct: Math.round((technical    / total) * 100), cnt: technical    },
-      { color: "#ec4899", label: "Non-Technical", pct: Math.round((nonTechnical / total) * 100), cnt: nonTechnical },
-    ].map(d => `
-      <div class="leg-row">
-        <div class="leg-swatch" style="background:${d.color};"></div>
-        <div><div class="leg-text">${d.label} — ${d.pct}%</div><div class="leg-pct">${d.cnt} events</div></div>
-      </div>
-    `).join("");
-  }
-
-  const selectedClub = getSelectedClub();
-  let clubNames, clubCounts;
-  if (selectedClub) {
-    clubNames  = [selectedClub.club_name || selectedClub.name || "Club"];
-    clubCounts = [cachedEvents.filter(e => eventMatchesClub(e, selectedClub)).length];
-  } else {
-    const clubMap = {};
-    filteredEvents.forEach(e => { const name = (e.club||e.club_name||"Unknown").trim(); clubMap[name] = (clubMap[name]||0) + 1; });
-    const sorted = Object.entries(clubMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    clubNames  = sorted.map(([name]) => name);
-    clubCounts = sorted.map(([, count]) => count);
-  }
-
-  const BG_COLORS = ["rgba(139,92,246,.7)","rgba(236,72,153,.7)","rgba(6,182,212,.7)","rgba(132,204,22,.7)","rgba(245,158,11,.7)","rgba(239,68,68,.7)","rgba(16,185,129,.7)","rgba(59,130,246,.7)","rgba(251,146,60,.7)","rgba(167,139,250,.7)"];
-  tryChart("clubChart", {
-    type: "bar",
-    data: {
-      labels: clubNames.length ? clubNames : ["No events"],
-      datasets: [{ data: clubCounts.length ? clubCounts : [0], backgroundColor: clubNames.map((_, i) => BG_COLORS[i % BG_COLORS.length]), borderRadius: 7, borderSkipped: false }],
-    },
-    options: { ...chartDefaults, indexAxis: "y" },
-  });
-
-  /* ── VENUE USAGE ANALYTICS (ported from hall-dashboard.js) ── */
-  const venueMap = {};
-  filteredEvents.forEach(e => {
-    const name = (e.venue || "Unknown").trim();
-    venueMap[name] = (venueMap[name] || 0) + 1;
-  });
-  const venueSorted  = Object.entries(venueMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
-  const venueNames   = venueSorted.map(([name]) => name);
-  const venueCounts  = venueSorted.map(([, count]) => count);
-  const VENUE_COLORS = ["rgba(6,182,212,.7)","rgba(139,92,246,.7)","rgba(16,185,129,.7)","rgba(245,158,11,.7)","rgba(236,72,153,.7)","rgba(239,68,68,.7)","rgba(59,130,246,.7)","rgba(251,146,60,.7)","rgba(132,204,22,.7)","rgba(167,139,250,.7)"];
-
-  tryChart("venueUsageChart", {
-    type: "bar",
-    data: {
-      labels: venueNames.length ? venueNames : ["No data"],
-      datasets: [{
-        data: venueCounts.length ? venueCounts : [0],
-        backgroundColor: venueNames.map((_, i) => VENUE_COLORS[i % VENUE_COLORS.length]),
-        borderRadius: 7,
-        borderSkipped: false,
-      }],
-    },
-    options: { ...chartDefaults, indexAxis: "y" },
-  });
-
-  /* ── VENUE BOOKING SUMMARY TABLE ── */
-  const summaryEl = document.getElementById("venueBookingSummary");
-  if (summaryEl) {
-    if (!venueSorted.length) {
-      summaryEl.innerHTML = `<div class="list-empty">No venue data available.</div>`;
-    } else {
-      const grandTotal = venueSorted.reduce((sum, [, c]) => sum + c, 0) || 1;
-      summaryEl.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          ${venueSorted.map(([name, count], i) => {
-            const pct = Math.round((count / grandTotal) * 100);
-            const color = VENUE_COLORS[i % VENUE_COLORS.length];
-            return `
-              <div>
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-                  <span style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;">${name}</span>
-                  <span style="font-size:12px;color:var(--text-3);flex-shrink:0;margin-left:8px;">${count} event${count !== 1 ? "s" : ""} · ${pct}%</span>
-                </div>
-                <div style="height:7px;border-radius:999px;background:var(--surface-3);overflow:hidden;">
-                  <div style="height:100%;border-radius:999px;width:${pct}%;background:${color};transition:width .5s ease;"></div>
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      `;
-    }
-  }
-}
 
 /* ══════════════════════════════════════════════════════════
    FEEDBACK
@@ -2576,8 +2325,6 @@ function updateBadges() {
   const facultyPending = cachedProposals.filter(p => (p.status || "").toLowerCase().trim() === STATUS.SUBMITTED).length;
   updateBadge("badge-proposals", facultyPending);
   updateBadge("badge-pending",   facultyPending);
-  const analyticsNavItem = document.querySelector(".nav-item[data-page='analytics']");
-  if (analyticsNavItem) analyticsNavItem.style.display = cachedClubs.length ? "" : "none";
 }
 
 function updateBadge(id, count) {

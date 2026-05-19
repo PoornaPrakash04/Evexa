@@ -222,35 +222,46 @@ async function loadDashboard() {
       const el = document.getElementById(id);
       if (el) el.textContent = val ?? "—";
     };
-    console.log("API totalEvents:", s.totalEvents);
-    setEl("stat-totalEvents",   s.totalEvents);
-    setEl("stat-eventsWeek",    s.eventsThisWeek);
+    const allEvs = await eventsFetch("/all") || [];
+
+    const approvedEvents = allEvs.filter(e =>
+      ["hall_approved", "published", "completed"]
+        .includes((e.status || "").toLowerCase())
+    );
+
+    // Compute eventsThisWeek client-side from approved events only
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sun
+    const weekStart = new Date(now);
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(now.getDate() - dayOfWeek);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+    const eventsThisWeek = approvedEvents.filter(e => {
+      const d = new Date(e.date || e.event_date);
+      return !isNaN(d) && d >= weekStart && d < weekEnd;
+    }).length;
+
+    setEl("stat-totalEvents", approvedEvents.length);
+    setEl("stat-eventsWeek",    eventsThisWeek);
     setEl("stat-totalUsers",    (s.totalUsers ?? 0).toLocaleString());
     setEl("stat-participation", (s.totalParticipation ?? 0).toLocaleString());
 
     setBadge("badge-events",   s.totalEvents);
     setBadge("badge-activity", (d.recentLogs || []).length);
 
-    
-    
-    try {
-      const allEvs = await eventsFetch("/all") || [];
-      if (allEvs.length) {
-        adminCalEvents = allEvs;
-        renderAdminCalendar();
-        renderAdminCalEvents(adminCalSelected);
-      } else if (d.recentEvents && d.recentEvents.length) {
-        adminCalEvents = d.recentEvents;
-        renderAdminCalendar();
-        renderAdminCalEvents(adminCalSelected);
-      }
-    } catch (_) {
-      
-      if (d.recentEvents && d.recentEvents.length) {
-        adminCalEvents = d.recentEvents;
-        renderAdminCalendar();
-        renderAdminCalEvents(adminCalSelected);
-      }
+    // Populate calendar with approved events only (no pending/submitted)
+    if (approvedEvents.length) {
+      adminCalEvents = approvedEvents;
+      renderAdminCalendar();
+      renderAdminCalEvents(adminCalSelected);
+    } else if (d.recentEvents && d.recentEvents.length) {
+      adminCalEvents = d.recentEvents.filter(e =>
+        ["hall_approved", "published", "completed"]
+          .includes((e.status || "").toLowerCase())
+      );
+      renderAdminCalendar();
+      renderAdminCalEvents(adminCalSelected);
     }
 
     

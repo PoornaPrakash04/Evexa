@@ -563,38 +563,6 @@ body.light .sidebar::before { opacity: .3; }
 .club-event-date { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
 .club-card-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 
-/* ── ANALYTICS ── */
-.analytics-kpi-row {
-  display: grid; grid-template-columns: repeat(4,1fr);
-  gap: 12px; margin-bottom: 16px;
-}
-.kpi-card {
-  background: var(--glass); backdrop-filter: var(--blur-sm);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg); padding: 18px;
-  position: relative; overflow: hidden;
-  transition: all .22s ease;
-}
-.kpi-card::before {
-  content: ''; position: absolute;
-  top: 0; left: 0; right: 0; height: 2px; border-radius: 999px;
-}
-.kpi-card.kv::before { background: var(--g-violet); box-shadow: var(--glow-v); }
-.kpi-card.kp::before { background: var(--g-pink);   box-shadow: var(--glow-p); }
-.kpi-card.kc::before { background: var(--g-cyan);   box-shadow: var(--glow-c); }
-.kpi-card.kl::before { background: var(--g-lime); }
-.kpi-card:hover { transform: translateY(-3px); border-color: var(--border-2); }
-.kpi-icon  { font-size: 22px; margin-bottom: 10px; }
-.kpi-val   { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1; letter-spacing: -.5px; margin-bottom: 4px; }
-.kpi-label { font-size: 11px; color: var(--text-3); font-weight: 500; }
-.chart-box { position: relative; width: 100%; }
-.donut-row { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
-.donut-legend { display: flex; flex-direction: column; gap: 12px; }
-.leg-row { display: flex; align-items: center; gap: 10px; }
-.leg-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
-.leg-text  { font-size: 13px; font-weight: 600; color: var(--text); }
-.leg-pct   { font-size: 12px; color: var(--text-3); margin-top: 1px; }
-
 /* ── FILTER BAR ── */
 .filter-bar {
   display: flex; align-items: center; gap: 10px;
@@ -1205,9 +1173,7 @@ body.light .venue-match-list .venue-list-item.active {
 .mini-btn.confirm:hover { background: rgba(16,185,129,.32); }
 
 /* ── RESPONSIVE ── */
-@media (max-width: 1280px) {
-  .analytics-kpi-row { grid-template-columns: repeat(2,1fr); }
-}
+
 @media (max-width: 1024px) {
   .two-col { grid-template-columns: 1fr; }
 }
@@ -1228,7 +1194,6 @@ body.light .venue-match-list .venue-list-item.active {
   .topbar  { padding: 0 16px; }
   .hero-strip { flex-direction: column; align-items: flex-start; }
   .hero-right { align-self: stretch; justify-content: space-between; }
-  .analytics-kpi-row { grid-template-columns: repeat(2,1fr); }
   .venue-match-layout { grid-template-columns: 1fr; }
   #eventDetailDrawer { width: 100vw; }
   .ed-body-layout { grid-template-columns: 1fr; }
@@ -1238,7 +1203,6 @@ body.light .venue-match-list .venue-list-item.active {
   .as-actions .btn { width: 100%; }
 }
 @media (max-width: 560px) {
-  .analytics-kpi-row { grid-template-columns: 1fr 1fr; }
   .filter-bar { flex-direction: column; align-items: stretch; }
   .bulk-actions { margin-left: 0; }
 }

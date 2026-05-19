@@ -231,10 +231,6 @@
       <button class="nav-item" data-page="clubs" data-tooltip="Club Oversight">
         <span class="icon">🏛️</span><span class="nav-label">Club Oversight</span>
       </button>
-      <button class="nav-item" data-page="analytics" data-tooltip="Analytics">
-        <span class="icon">📊</span><span class="nav-label">Analytics</span>
-      </button>
-
       <div class="section-label">Communication</div>
       <button class="nav-item" data-page="announcements" data-tooltip="Announcements">
         <span class="icon">📢</span><span class="nav-label">Announcements</span>
@@ -342,7 +338,6 @@
           </div>
           <div class="panel-body">
             <div class="cal-legend">
-              <span class="leg-item"><span class="leg-dot pending-dot"></span>Pending</span>
               <span class="leg-item"><span class="leg-dot approved-dot"></span>Approved</span>
               <span class="leg-item"><span class="leg-dot today-dot"></span>Today</span>
             </div>
@@ -650,65 +645,6 @@
       <div id="pg-clubs" class="page-section" style="display:none">
         <div class="clubs-overview-grid" id="clubsGrid">
           <div class="list-empty" style="padding:20px;">Loading clubs…</div>
-        </div>
-      </div>
-
-      <!-- ANALYTICS -->
-      <div id="pg-analytics" class="page-section" style="display:none">
-        <div class="analytics-kpi-row" id="analyticsKpi"></div>
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">📊 Events Per Month</div>
-              <div class="panel-sub">Last 8 months</div>
-            </div></div>
-            <div class="panel-body chart-box"><canvas id="eventsChart" height="200"></canvas></div>
-          </div>
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">👥 Student Participation</div>
-              <div class="panel-sub">Registrations per month</div>
-            </div></div>
-            <div class="panel-body chart-box"><canvas id="participationChart" height="200"></canvas></div>
-          </div>
-        </div>
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">🎓 Technical vs Non-Technical</div>
-              <div class="panel-sub">Distribution</div>
-            </div></div>
-            <div class="panel-body donut-row">
-              <canvas id="typeChart" width="180" height="180"></canvas>
-              <div id="typeChartLegend" class="donut-legend"></div>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">🏛️ Events By Club</div>
-              <div class="panel-sub">Your incharge clubs</div>
-            </div></div>
-            <div class="panel-body chart-box"><canvas id="clubChart" height="200"></canvas></div>
-          </div>
-        </div>
-        <!-- ── Venue Usage Row (ported from Hall Coordinator dashboard) ── -->
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">🏟️ Events By Venue</div>
-              <div class="panel-sub">Venue usage across all events</div>
-            </div></div>
-            <div class="panel-body chart-box"><canvas id="venueUsageChart" height="200"></canvas></div>
-          </div>
-          <div class="panel">
-            <div class="panel-header"><div>
-              <div class="panel-title">📈 Venue Booking Summary</div>
-              <div class="panel-sub">Top venues by event count</div>
-            </div></div>
-            <div class="panel-body" id="venueBookingSummary">
-              <div class="list-empty">Loading…</div>
-            </div>
-          </div>
         </div>
       </div>
 

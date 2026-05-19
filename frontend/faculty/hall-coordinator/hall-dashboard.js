@@ -1017,7 +1017,7 @@ function renderVenueUpcomingBookings(venueName) {
   return `
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Event</th><th>Club</th><th>Date</th><th>Time</th><th>Capacity</th><th>Status</th></tr></thead>
+        <thead><tr><th>Event</th><th>Club</th><th>Date</th><th>Time</th><th>Capacity</th><th>Status</th><th>Action</th></tr></thead>
         <tbody>
           ${upcoming.slice(0, 5).map(e => `
             <tr>
@@ -1027,6 +1027,12 @@ function renderVenueUpcomingBookings(venueName) {
               <td>${formatTime(e.time || e.start_time)}</td>
               <td>${e.capacity || "—"}</td>
               <td><span class="badge ${(e.status || "approved").toLowerCase()}">${cap(e.status || "Approved")}</span></td>
+              <td>
+                <button class="force-open-btn" title="Force this slot back to available (use when organizer contacts you directly)"
+                  onclick="forceOpenBookedSlot(${e.id}, '${(e.date||e.event_date||e.start_date||"").replace(/'/g,"\\'")}', '${(e.venue||"").replace(/'/g,"\\'")}')">
+                  🔓 Force Open
+                </button>
+              </td>
             </tr>
           `).join("")}
         </tbody>
@@ -1053,6 +1059,167 @@ async function saveVenueAvailability(venueId) {
   } else {
     showToast("Failed to update venue.", "error");
   }
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   HALL VENUES — EXTRA: Force-open + All Venues + Tab switch
+   ══════════════════════════════════════════════════════════ */
+
+/** Tab switcher for My Venues page */
+function switchHallVenueTab(tab) {
+  const tabs   = ["my", "all"];
+  tabs.forEach(t => {
+    const btn   = document.getElementById(`hvTab-${t}`);
+    const panel = document.getElementById(`hvPanel-${t}`);
+    if (btn)   btn.classList.toggle("hv-tab-active", t === tab);
+    if (panel) panel.style.display = t === tab ? "" : "none";
+  });
+  if (tab === "all") renderAllSystemVenues();
+}
+
+/** All-venues: full system list (read-only cards) */
+let allSystemVenuesCache = [];
+
+async function renderAllSystemVenues() {
+  const container = document.getElementById("allVenuesContainer");
+  if (!container) return;
+  container.innerHTML = `<div class="list-empty" style="padding:20px;">Loading all venues…</div>`;
+
+  const fresh = await apiFetch("/venues");
+  allSystemVenuesCache = Array.isArray(fresh) ? fresh : [];
+
+  if (!allSystemVenuesCache.length) {
+    container.innerHTML = `<div class="list-empty" style="padding:20px;">No venues found in system.</div>`;
+    return;
+  }
+  renderAllVenueCards(allSystemVenuesCache);
+}
+
+function renderAllVenueCards(list) {
+  const container = document.getElementById("allVenuesContainer");
+  if (!container) return;
+
+  if (!list.length) {
+    container.innerHTML = `<div class="list-empty" style="padding:20px;">No venues match your search.</div>`;
+    return;
+  }
+
+  const STATUS_BADGE = {
+    available:   "av-badge-available",
+    unavailable: "av-badge-unavailable",
+    maintenance: "av-badge-maintenance",
+  };
+  const STATUS_ICON  = { available: "✅", unavailable: "🚫", maintenance: "🔧" };
+
+  container.innerHTML = `<div class="all-venues-grid">` + list.map(v => {
+    const st  = (v.status || "available").toLowerCase();
+    const cls = STATUS_BADGE[st] || "av-badge-available";
+    const ico = STATUS_ICON[st]  || "✅";
+    return `
+      <div class="av-card">
+        <div class="av-card-name">🏟️ ${v.name || "Venue"}</div>
+        <div class="av-card-cap">👥 Capacity: ${v.capacity || "—"}</div>
+        ${v.description ? `<div class="av-card-desc">${v.description}</div>` : ""}
+        ${v.location   ? `<div class="av-card-desc">📍 ${v.location}</div>` : ""}
+        <div class="av-card-badge ${cls}">${ico} ${cap(st)}</div>
+      </div>`;
+  }).join("") + `</div>`;
+}
+
+function filterAllVenues() {
+  const q = (document.getElementById("allVenuesSearch")?.value || "").toLowerCase();
+  const filtered = allSystemVenuesCache.filter(v =>
+    (v.name || "").toLowerCase().includes(q) ||
+    (v.description || "").toLowerCase().includes(q) ||
+    (v.location || "").toLowerCase().includes(q)
+  );
+  renderAllVenueCards(filtered);
+}
+
+/**
+ * Force-open a slot that was accidentally booked.
+ * Triggered when an organizer contacts the HC directly to release the slot.
+ */
+function forceOpenBookedSlot(eventId, dateStr, venueName) {
+  document.getElementById("forceOpenModal")?.remove();
+
+  const venueObj = cachedHallVenues.find(v =>
+    (v.name || "").toLowerCase().trim() === (venueName || "").toLowerCase().trim()
+  );
+
+  const modal = document.createElement("div");
+  modal.id = "forceOpenModal";
+  modal.innerHTML = `
+    <div onclick="document.getElementById('forceOpenModal').remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3200;backdrop-filter:blur(4px);"></div>
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3201;
+      background:var(--surface,#1a1a2e);border:1px solid rgba(139,92,246,.4);
+      border-radius:20px;width:min(460px,92vw);padding:28px 24px;box-shadow:0 24px 60px rgba(0,0,0,.6);">
+      <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:4px;">🔓 Force-Open Slot</div>
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:18px;">
+        📍 ${venueName} &nbsp;·&nbsp; 📅 ${fmtDate(dateStr)}<br>
+        <span style="color:#fcd34d;font-size:11px;">⚠️ This will mark the venue slot as Available, overriding the existing booking.
+        Only do this when the organizer has explicitly contacted you to release the slot.</span>
+      </div>
+      <label style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;">
+        Reason / Note <span style="color:#f87171;">*</span>
+      </label>
+      <textarea id="forceOpenNote" rows="3"
+        placeholder="e.g. Organizer cancelled via call on 19 May…"
+        style="width:100%;margin:6px 0 18px;padding:10px 12px;border-radius:10px;
+          border:1px solid rgba(139,92,246,.3);background:var(--surface-2,#0d0d1a);
+          color:var(--text);font-size:13px;font-family:var(--font,inherit);
+          resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:10px;">
+        <button onclick="document.getElementById('forceOpenModal').remove()"
+          style="flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-2);
+            background:var(--surface-2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>
+        <button onclick="confirmForceOpenSlot(${eventId},'${dateStr}','${venueName.replace(/'/g,"\\'")}')"
+          style="flex:1;padding:10px;border-radius:11px;border:none;
+            background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">
+          🔓 Confirm Force-Open
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById("forceOpenNote")?.focus();
+}
+
+async function confirmForceOpenSlot(eventId, dateStr, venueName) {
+  const note = document.getElementById("forceOpenNote")?.value.trim();
+  if (!note) { showToast("Please enter a reason before force-opening.", "error"); return; }
+
+  const venueObj = cachedHallVenues.find(v =>
+    (v.name || "").toLowerCase().trim() === (venueName || "").toLowerCase().trim()
+  );
+
+  let success = false;
+  if (venueObj?.id) {
+    const res = await apiFetch(`/faculty/hall/venues/${venueObj.id}/availability`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "available", date: dateStr, note }),
+    });
+    success = res !== null;
+  }
+
+  // Also update local cache
+  const day = parseInt((dateStr || "").split("-")[2], 10);
+  if (!isNaN(day)) {
+    const venueKey = venueObj?.id || venueName;
+    if (!venueBookings[venueKey]) venueBookings[venueKey] = {};
+    venueBookings[venueKey][day] = "available";
+  }
+
+  document.getElementById("forceOpenModal")?.remove();
+  addLocalNotif("event", "🔓", "Slot Force-Opened",
+    `${venueName} on ${fmtDate(dateStr)} has been manually released. Reason: ${note}`, eventId);
+  showToast(
+    success ? "🔓 Slot force-opened — venue is now available!" : "⚠️ Saved locally (server may not have updated).",
+    success ? "success" : "info"
+  );
+  renderHallVenues();
 }
 
 /* ══════════════════════════════════════════════════════════
