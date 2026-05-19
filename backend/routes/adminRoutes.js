@@ -150,7 +150,7 @@ router.get("/dashboard", adminOnly, (req, res) => {
     new Promise((resolve, reject) =>
       db.query(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)))
     );
-
+ console.log("TOTAL EVENTS QUERY FIXED");
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const weekStartStr = weekStart.toISOString().slice(0, 10);
@@ -159,7 +159,7 @@ router.get("/dashboard", adminOnly, (req, res) => {
   const weekEndStr = weekEnd.toISOString().slice(0, 10);
   console.log("Dashboard total events query running");
   Promise.all([
-    q("SELECT COUNT(DISTINCT id) AS total FROM events WHERE deleted_at IS NULL"),
+    q("SELECT COUNT(*) AS total FROM (SELECT DISTINCT events.id FROM events WHERE events.deleted_at IS NULL) x"),
     q("SELECT COUNT(*) AS total FROM events WHERE status IN ('Approved','Completed')"),
     q("SELECT COUNT(*) AS total FROM events WHERE status = 'Pending'"),
     q("SELECT COUNT(*) AS total FROM students"),

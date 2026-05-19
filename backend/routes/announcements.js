@@ -3,46 +3,6 @@ const express   = require("express");
 const db        = require("../db");
 const authorize = require("../middleware/authMiddleware");
 const router    = express.Router();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!roles.includes(req.user?.role)) {

@@ -211,6 +211,7 @@ function makeDoughnut(id, labels, data, colors, legendEl) {
 
 
 async function loadDashboard() {
+  console.log("Dashboard loaded");
   try {
     const d = await apiFetch("/dashboard");
     if (!d) return; 
@@ -221,7 +222,7 @@ async function loadDashboard() {
       const el = document.getElementById(id);
       if (el) el.textContent = val ?? "—";
     };
-
+    console.log("API totalEvents:", s.totalEvents);
     setEl("stat-totalEvents",   s.totalEvents);
     setEl("stat-eventsWeek",    s.eventsThisWeek);
     setEl("stat-totalUsers",    (s.totalUsers ?? 0).toLocaleString());
