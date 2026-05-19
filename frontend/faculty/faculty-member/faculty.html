@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Faculty Dashboard | EVEXA</title>
-  <link rel="stylesheet" href="faculty-dashboard.css"/>
+  <title>Faculty Portal | EVEXA</title>
+  <link rel="stylesheet" href="faculty.css"/>
   <style>
     .back-btn-top {
       display: inline-flex;
@@ -208,11 +208,6 @@
         <span class="icon">🏠</span><span class="nav-label">Dashboard</span>
       </button>
 
-      <div class="section-label">Approvals</div>
-      <button class="nav-item" data-page="proposals" data-tooltip="Event Proposals">
-        <span class="icon">📋</span><span class="nav-label">Event Proposals</span>
-        <span class="nav-badge orange" id="badge-proposals">–</span>
-      </button>
 
       <div class="section-label">Venue</div>
       <button class="nav-item" data-page="venues" data-tooltip="Venues">
@@ -228,17 +223,8 @@
       <button class="nav-item" data-page="all-clubs" data-tooltip="All Clubs">
         <span class="icon">🌐</span><span class="nav-label">All Clubs</span>
       </button>
-      <button class="nav-item" data-page="clubs" data-tooltip="Club Oversight">
-        <span class="icon">🏛️</span><span class="nav-label">Club Oversight</span>
-      </button>
-      <button class="nav-item" data-page="analytics" data-tooltip="Analytics">
-        <span class="icon">📊</span><span class="nav-label">Analytics</span>
-      </button>
 
-      <div class="section-label">Communication</div>
-      <button class="nav-item" data-page="announcements" data-tooltip="Announcements">
-        <span class="icon">📢</span><span class="nav-label">Announcements</span>
-      </button>
+      
     </nav>
 
     <div class="sidebar-bottom">
@@ -312,18 +298,7 @@
         <div class="hero-strip" id="heroStrip">
           <div class="hero-left">
             <div class="hero-greeting" id="heroGreeting">Good Morning! Faculty</div>
-            <div class="hero-sub">You have <span id="heroPending" class="hero-accent">–</span> pending approvals.</div>
-          </div>
-          <div class="hero-right">
-            <div class="hero-stat">
-              <div class="hero-stat-val" id="heroClubs">–</div>
-              <div class="hero-stat-label">Clubs Incharge</div>
-            </div>
-            <div class="hero-divider"></div>
-            <div class="hero-stat">
-              <div class="hero-stat-val" id="heroEvents">–</div>
-              <div class="hero-stat-label">Active Events</div>
-            </div>
+            
           </div>
         </div>
 
@@ -377,19 +352,6 @@
           </div>
         </div>
 
-        <!-- My Incharge Clubs -->
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="panel-title">🏛️ My Incharge Clubs</div>
-              <div class="panel-sub">Clubs and their recent activity</div>
-            </div>
-            <button class="btn ghost sm" onclick="navigateTo('clubs')">Full Oversight</button>
-          </div>
-          <div class="clubs-quick-grid" id="dashClubsGrid">
-            <div class="list-empty" style="padding:20px;">Loading…</div>
-          </div>
-        </div>
       </div><!-- /pg-dashboard -->
 
       <!-- VENUES -->
@@ -712,45 +674,7 @@
         </div>
       </div>
 
-      <!-- ANNOUNCEMENTS -->
-      <div id="pg-announcements" class="page-section" style="display:none">
-        <div class="two-col">
-          <div class="panel">
-            <div class="panel-header">
-              <div>
-                <div class="panel-title">✏️ Post Announcement</div>
-                <div class="panel-sub">Notify students &amp; clubs</div>
-              </div>
-            </div>
-            <div class="panel-body" style="display:flex;flex-direction:column;gap:12px;">
-              <input class="search-input" id="announceTitle" placeholder="Announcement title..."/>
-              <textarea class="search-input" id="announceBody"
-                placeholder="Write your message..." style="min-height:120px;resize:vertical;"></textarea>
-              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-                <select class="filter-select" id="announceType">
-                  <option value="General">📣 General</option>
-                  <option value="Info">ℹ️ Info</option>
-                  <option value="Event">📅 Event</option>
-                  <option value="Urgent">🚨 Urgent</option>
-                </select>
-                <button class="btn primary" id="postAnnounceBtn">📢 Post Announcement</button>
-              </div>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-header">
-              <div>
-                <div class="panel-title">📋 Posted Announcements</div>
-                <div class="panel-sub">Your recent posts</div>
-              </div>
-            </div>
-            <div class="panel-body" id="announceList">
-              <div class="list-empty">Loading…</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      
       <!-- ACCOUNT SETTINGS -->
       <div id="pg-account-settings" class="page-section" style="display:none">
         <div class="as-card">
@@ -853,6 +777,6 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="faculty-dashboard.js"></script>
+<script src="faculty.js"></script>
 </body>
 </html>

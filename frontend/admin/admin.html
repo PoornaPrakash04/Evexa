@@ -93,10 +93,6 @@
       </div>
       <div class="topbar-right">
         <span class="role-pill">🛡️ Admin</span>
-        <button class="icon-btn" id="notifBtn" title="Notifications" style="position:relative;">
-          🔔
-          <div class="notif-dot" id="notifDot"></div>
-        </button>
         <button class="icon-btn theme-topbar-btn" id="themeTopbarBtn" title="Switch theme" aria-label="Toggle light/dark mode">
           <span class="theme-icon-moon">🌙</span>
           <span class="theme-icon-sun">☀️</span>
@@ -342,10 +338,8 @@
               <input class="search" placeholder="Search logs…" id="logSearch" style="width:160px"/>
               <select class="search select-input" id="logTypeFilter" style="width:140px">
                 <option value="all">All Types</option>
-                <option value="login">Login Activity</option>
-                <option value="event">Event Actions</option>
+                <option value="login">Login Activity</option>                
                 <option value="user">User Actions</option>
-                <option value="cert">Certificates</option>
                 <option value="system">System</option>
               </select>
               <input type="date" class="search" id="logFromDate" title="From date" style="width:140px"/>

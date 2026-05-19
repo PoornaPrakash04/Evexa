@@ -157,9 +157,9 @@ router.get("/dashboard", adminOnly, (req, res) => {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 6);
   const weekEndStr = weekEnd.toISOString().slice(0, 10);
-
+  console.log("Dashboard total events query running");
   Promise.all([
-    q("SELECT COUNT(*) AS total FROM events"),
+    q("SELECT COUNT(DISTINCT id) AS total FROM events WHERE deleted_at IS NULL"),
     q("SELECT COUNT(*) AS total FROM events WHERE status IN ('Approved','Completed')"),
     q("SELECT COUNT(*) AS total FROM events WHERE status = 'Pending'"),
     q("SELECT COUNT(*) AS total FROM students"),
